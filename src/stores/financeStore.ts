@@ -34,6 +34,8 @@ export interface UsuarioPerfil {
   titulo: string;
   bancoPrincipal: string;
   avatarUrl: string;
+  email?: string;
+  uid?: string;
 }
 
 interface FinanceState {
@@ -111,17 +113,19 @@ interface FinanceState {
 
 const STORAGE_KEY_LANCAMENTOS = 'mf_lancamentos_v3';
 const STORAGE_KEY_CARTOES = 'mf_cartoes_v4';
-const STORAGE_KEY_USUARIO = 'mf_usuario_v1';
+const STORAGE_KEY_USUARIO = 'mf_usuario_v2';
 const STORAGE_KEY_CATEGORIAS = 'mf_categorias_v2';
 const STORAGE_KEY_NATUREZAS = 'mf_naturezas_v2';
 const STORAGE_KEY_RECORRENTES = 'mf_recorrentes_v2';
 const STORAGE_KEY_SEGURANCA = 'mf_seguranca_v2';
 
 export const USUARIO_PADRAO: UsuarioPerfil = {
-  nome: 'Dr. Isaac',
-  titulo: 'Titular • Conta Especial',
+  nome: 'FABIO ALVES LUCENA',
+  titulo: 'Titular Master • Conta Especial',
   bancoPrincipal: 'Banco do Brasil',
   avatarUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80',
+  email: 'alveslucenafabio@gmail.com',
+  uid: 'fabio-master-uid',
 };
 
 // Canal de comunicação inter-abas (Real-time Broadcast)
