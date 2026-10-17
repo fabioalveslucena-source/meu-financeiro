@@ -1,0 +1,504 @@
+import React, { useState, useEffect } from 'react';
+import { useFinanceStore } from '../../stores/financeStore';
+import { TIPOS_LANCAMENTO } from '../../lib/constants';
+import { formatarDataInput, formatarMoeda, parseMoedaBR } from '../../lib/formatters';
+import type { FormaPagamento, TipoLancamento } from '../../types';
+import { Mic } from 'lucide-react';
+
+interface FormLancamentoProps {
+  onAbrirVoz: () => void;
+  dadosPreenchidosVoz?: any;
+  onNavegarCartoes?: () => void;
+}
+
+export const FormLancamento: React.FC<FormLancamentoProps> = ({ 
+  onAbrirVoz,
+  dadosPreenchidosVoz,
+}) => {
+  const { 
+    categorias, 
+    naturezas,
+    cartoes, 
+    contas, 
+    adicionarLancamento, 
+  } = useFinanceStore();
+
+  const [data, setData] = useState(formatarDataInput());
+  const [tipo, setTipo] = useState<TipoLancamento>('Despesa');
+  const [valorTexto, setValorTexto] = useState('');
+  const [pagamento, setPagamento] = useState<FormaPagamento>('📱 Pix');
+  const [natureza, setNatureza] = useState('🛒 Alimentação');
+  const [categoria, setCategoria] = useState('Supermercado');
+  const [descricao, setDescricao] = useState('');
+  const [cartao, setCartao] = useState('');
+  const [conta, setConta] = useState('');
+  const [parcelas, setParcelas] = useState(1);
+  const [erros, setErros] = useState<string[]>([]);
+
+  // Categorias filtradas pela natureza selecionada
+  const categoriasFiltradas = categorias.filter(
+    (c) => c.natureza === natureza && (c.tipo === tipo || c.tipo === 'Todos')
+  );
+
+  // Inicializar defaults - Prioriza Banco do Brasil como solicitado pelo usuário
+  useEffect(() => {
+    if (cartoes.length > 0 && (!cartao || cartao.toLowerCase().includes('nubank'))) {
+      const bb = cartoes.find(c => c.nome.includes('Banco do Brasil'));
+      setCartao(bb ? bb.nome : cartoes[0].nome);
+    }
+    if (contas.length > 0 && (!conta || conta.includes('Itaú'))) {
+      const bbConta = contas.find(c => c.nome.includes('Banco do Brasil'));
+      setConta(bbConta ? bbConta.nome : contas[0].nome);
+    }
+  }, [cartoes, contas]);
+
+  // Preenchimento vindo do comando de voz
+  useEffect(() => {
+    if (dadosPreenchidosVoz) {
+      if (dadosPreenchidosVoz.tipo) setTipo(dadosPreenchidosVoz.tipo);
+      if (dadosPreenchidosVoz.valor) setValorTexto(String(dadosPreenchidosVoz.valor).replace('.', ','));
+      if (dadosPreenchidosVoz.pagamento) setPagamento(dadosPreenchidosVoz.pagamento);
+      if (dadosPreenchidosVoz.natureza) setNatureza(dadosPreenchidosVoz.natureza);
+      if (dadosPreenchidosVoz.categoria) setCategoria(dadosPreenchidosVoz.categoria);
+      if (dadosPreenchidosVoz.descricao) setDescricao(dadosPreenchidosVoz.descricao);
+      if (dadosPreenchidosVoz.parcelas) setParcelas(dadosPreenchidosVoz.parcelas);
+
+      // Se for crédito e cartão não estiver selecionado, prioriza Banco do Brasil
+      if (dadosPreenchidosVoz.pagamento === '💳 Crédito' && cartoes.length > 0) {
+        const bb = cartoes.find(c => c.nome.includes('Banco do Brasil'));
+        setCartao(bb ? bb.nome : cartoes[0].nome);
+      }
+    }
+  }, [dadosPreenchidosVoz]);
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setErros([]);
+
+    const valorNumerico = parseMoedaBR(valorTexto);
+
+    const validacaoErros: string[] = [];
+    if (!valorNumerico || valorNumerico <= 0) {
+      validacaoErros.push('Informe um valor financeiro válido.');
+    }
+
+    // Se o usuário não preencher a descrição, replica automaticamente o nome da categoria
+    const descricaoFinal = (descricao.trim() || categoria).trim();
+    if (!descricaoFinal) {
+      validacaoErros.push('Selecione uma categoria ou informe uma descrição.');
+    }
+
+    if (pagamento === '💳 Crédito' && !cartao) {
+      validacaoErros.push('Selecione o cartão de crédito.');
+    }
+    if (pagamento !== '💳 Crédito' && pagamento !== '💵 Dinheiro' && !conta) {
+      validacaoErros.push('Selecione a conta bancária.');
+    }
+
+    if (validacaoErros.length > 0) {
+      setErros(validacaoErros);
+      return;
+    }
+
+    const resultado = adicionarLancamento({
+      data,
+      tipo,
+      valor: valorNumerico,
+      pagamento,
+      natureza,
+      categoria,
+      descricao: descricaoFinal,
+      cartao: pagamento === '💳 Crédito' ? cartao : undefined,
+      conta: pagamento !== '💳 Crédito' ? conta : undefined,
+      parcelas: pagamento === '💳 Crédito' ? parcelas : undefined,
+    });
+
+    if (resultado.sucesso) {
+      setValorTexto('');
+      setDescricao('');
+      setParcelas(1);
+    }
+  };
+
+  const pagamentosOriginais: FormaPagamento[] = [
+    '📱 Pix',
+    '🏦 Débito',
+    '💳 Crédito',
+    '💵 Dinheiro',
+    '📝 Boleto'
+  ];
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+      
+      {/* =====================================================
+           ⚡ FORMULÁRIO DE LANÇAMENTO (NO TOPO DA TELA)
+         ===================================================== */}
+      <div style={{
+        backgroundColor: '#0F2744',
+        border: '1px solid #1E3A5F',
+        borderRadius: '20px',
+        padding: '20px 18px',
+        boxShadow: '0 6px 20px rgba(11, 25, 41, 0.4)'
+      }}>
+        {/* Cabeçalho do formulário com botão de voz integrado */}
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          marginBottom: '16px',
+          borderBottom: '1px solid #1E3A5F',
+          paddingBottom: '12px',
+          flexWrap: 'wrap',
+          gap: '8px'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span style={{ fontSize: '22px' }}>⚡</span>
+            <div>
+              <h2 style={{ fontSize: '17px', fontWeight: 800, margin: 0, color: '#FFFFFF' }}>
+                Novo Lançamento
+              </h2>
+              <span style={{ fontSize: '11px', color: '#607789' }}>Preencha os dados ou fale por voz</span>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={onAbrirVoz}
+            style={{
+              padding: '8px 14px',
+              borderRadius: '12px',
+              border: '1px solid #287EA5',
+              background: 'linear-gradient(135deg, #173F5F 0%, #287EA5 100%)',
+              color: '#FFFFFF',
+              fontSize: '12px',
+              fontWeight: 800,
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              boxShadow: '0 2px 8px rgba(40, 126, 165, 0.3)',
+              transition: 'transform 0.15s ease'
+            }}
+          >
+            <Mic size={15} />
+            <span>Falar Lançamento 🎙️</span>
+          </button>
+        </div>
+
+        {erros.length > 0 && (
+          <div style={{
+            backgroundColor: 'rgba(244, 67, 54, 0.1)',
+            border: '1px solid #F44336',
+            borderRadius: '12px',
+            padding: '10px 12px',
+            marginBottom: '14px'
+          }}>
+            {erros.map((err, i) => (
+              <p key={i} style={{ color: '#F44336', fontSize: '12px', margin: '2px 0', fontWeight: 600 }}>
+                • {err}
+              </p>
+            ))}
+          </div>
+        )}
+
+        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+          
+          {/* Seletor de Tipo (Despesa, Receita, Investimento) */}
+          <div>
+            <label style={{ fontSize: '11px', fontWeight: 800, color: '#607789', textTransform: 'uppercase', display: 'block', marginBottom: '6px' }}>
+              Tipo de Movimento
+            </label>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px' }}>
+              {TIPOS_LANCAMENTO.map((t) => {
+                const ativo = tipo === t;
+                let corBorda = '#1E3A5F';
+                let corBg = '#132F4C';
+                let corTexto = '#AAB4BE';
+
+                if (ativo) {
+                  if (t === 'Despesa') {
+                    corBorda = '#F44336';
+                    corBg = 'rgba(244, 67, 54, 0.15)';
+                    corTexto = '#F44336';
+                  } else if (t === 'Receita') {
+                    corBorda = '#4CAF50';
+                    corBg = 'rgba(76, 175, 80, 0.15)';
+                    corTexto = '#4CAF50';
+                  } else {
+                    corBorda = '#2196F3';
+                    corBg = 'rgba(33, 150, 243, 0.15)';
+                    corTexto = '#2196F3';
+                  }
+                }
+
+                return (
+                  <button
+                    key={t}
+                    type="button"
+                    onClick={() => setTipo(t)}
+                    style={{
+                      padding: '12px 6px',
+                      borderRadius: '14px',
+                      border: `2px solid ${corBorda}`,
+                      backgroundColor: corBg,
+                      color: corTexto,
+                      fontWeight: 800,
+                      fontSize: '13px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '6px',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s ease'
+                    }}
+                  >
+                    <span>{t === 'Despesa' ? '🔴' : t === 'Receita' ? '🟢' : '🔵'}</span>
+                    <span>{t}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Campo de Valor em Destaque Original */}
+          <div style={{
+            backgroundColor: '#132F4C',
+            border: '2px solid #1E3A5F',
+            borderRadius: '16px',
+            padding: '12px',
+            textAlign: 'center'
+          }}>
+            <label style={{ fontSize: '11px', fontWeight: 800, color: '#5090D3', textTransform: 'uppercase', display: 'block', marginBottom: '4px' }}>
+              VALOR DO LANÇAMENTO
+            </label>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+              <span style={{ fontSize: '22px', fontWeight: 800, color: '#5090D3' }}>R$</span>
+              <input
+                type="text"
+                inputMode="decimal"
+                value={valorTexto}
+                onChange={(e) => setValorTexto(e.target.value)}
+                placeholder="0,00"
+                style={{
+                  fontSize: '28px',
+                  fontWeight: 900,
+                  textAlign: 'center',
+                  background: 'transparent',
+                  border: 'none',
+                  color: '#FFFFFF',
+                  width: '200px',
+                  outline: 'none',
+                  padding: 0
+                }}
+              />
+            </div>
+          </div>
+
+          {/* Forma de Pagamento (Grid Clássica de 5 Opções) */}
+          <div>
+            <label style={{ fontSize: '11px', fontWeight: 800, color: '#607789', textTransform: 'uppercase', display: 'block', marginBottom: '6px' }}>
+              Forma de Pagamento
+            </label>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(90px, 1fr))', gap: '6px' }}>
+              {pagamentosOriginais.map((p) => {
+                const ativo = pagamento === p;
+                return (
+                  <button
+                    key={p}
+                    type="button"
+                    onClick={() => setPagamento(p)}
+                    style={{
+                      padding: '10px 4px',
+                      borderRadius: '12px',
+                      border: `1.5px solid ${ativo ? '#287EA5' : '#1E3A5F'}`,
+                      backgroundColor: ativo ? 'rgba(40, 126, 165, 0.25)' : '#132F4C',
+                      color: ativo ? '#FFFFFF' : '#AAB4BE',
+                      fontSize: '11px',
+                      fontWeight: ativo ? 800 : 600,
+                      cursor: 'pointer',
+                      textAlign: 'center',
+                      transition: 'all 0.15s ease'
+                    }}
+                  >
+                    {p}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Seletor Cartão de Crédito ou Parcelas */}
+          {pagamento === '💳 Crédito' && (
+            <div style={{
+              backgroundColor: '#132F4C',
+              border: '1px solid #1E3A5F',
+              borderRadius: '14px',
+              padding: '12px',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '10px'
+            }}>
+              <div>
+                <label style={{ fontSize: '11px', fontWeight: 800, color: '#F8D117', textTransform: 'uppercase', display: 'block', marginBottom: '4px' }}>
+                  💳 Cartão de Crédito
+                </label>
+                <select 
+                  value={cartao} 
+                  onChange={(e) => setCartao(e.target.value)}
+                  style={{ backgroundColor: '#0B1929', color: '#FFFFFF', fontSize: '13px', fontWeight: 600 }}
+                >
+                  {cartoes.filter(c => c.ativo).map((c) => (
+                    <option key={c.id} value={c.nome}>
+                      {c.nome} ({c.bandeira}) • Fech. {c.diaFechamento} / Venc. {c.diaVencimento}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label style={{ fontSize: '11px', fontWeight: 800, color: '#AAB4BE', textTransform: 'uppercase', display: 'block', marginBottom: '4px' }}>
+                  Número de Parcelas
+                </label>
+                <select 
+                  value={parcelas} 
+                  onChange={(e) => setParcelas(Number(e.target.value))}
+                  style={{ backgroundColor: '#0B1929', color: '#FFFFFF', fontSize: '13px', fontWeight: 600 }}
+                >
+                  <option value={1}>À vista (1x)</option>
+                  {[2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 18, 24, 36, 48].map((n) => (
+                    <option key={n} value={n}>
+                      {n}x de {valorTexto ? formatarMoeda(parseMoedaBR(valorTexto) / n) : `Parcela ${n}`}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          )}
+
+          {/* Seletor de Conta Bancária */}
+          {pagamento !== '💳 Crédito' && pagamento !== '💵 Dinheiro' && (
+            <div>
+              <label style={{ fontSize: '11px', fontWeight: 800, color: '#607789', textTransform: 'uppercase', display: 'block', marginBottom: '4px' }}>
+                Conta Bancária Utilizada
+              </label>
+              <select 
+                value={conta} 
+                onChange={(e) => setConta(e.target.value)}
+                style={{ backgroundColor: '#0B1929', color: '#FFFFFF', fontSize: '13px', fontWeight: 600 }}
+              >
+                {contas.filter(c => c.ativa).map((c) => (
+                  <option key={c.id} value={c.nome}>
+                    {c.nome} - {c.banco}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          {/* Natureza e Categoria */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+            <div>
+              <label style={{ fontSize: '11px', fontWeight: 800, color: '#607789', textTransform: 'uppercase', display: 'block', marginBottom: '4px' }}>
+                Natureza
+              </label>
+              <select 
+                value={natureza} 
+                onChange={(e) => {
+                  const novaNat = e.target.value;
+                  setNatureza(novaNat);
+                  const fil = categorias.filter(c => c.natureza === novaNat && (c.tipo === tipo || c.tipo === 'Todos'));
+                  if (fil.length > 0) {
+                    setCategoria(fil[0].nome);
+                  }
+                }}
+                style={{ fontSize: '13px', fontWeight: 600 }}
+              >
+                {naturezas.map((nat) => (
+                  <option key={nat.id} value={nat.label}>
+                    {nat.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label style={{ fontSize: '11px', fontWeight: 800, color: '#AAB4BE', textTransform: 'uppercase', display: 'block', marginBottom: '4px' }}>
+                Categoria
+              </label>
+              <select 
+                value={categoria} 
+                onChange={(e) => setCategoria(e.target.value)}
+                style={{ fontSize: '13px', fontWeight: 600 }}
+              >
+                {categoriasFiltradas.map((cat) => (
+                  <option key={cat.id} value={cat.nome}>
+                    {cat.nome}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          {/* Descrição */}
+          <div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+              <label style={{ fontSize: '11px', fontWeight: 800, color: '#AAB4BE', textTransform: 'uppercase' }}>
+                Descrição
+              </label>
+              <span style={{ fontSize: '10.5px', color: '#5090D3', fontWeight: 600 }}>
+                Opcional (se vazio, usa "{categoria}")
+              </span>
+            </div>
+            <input
+              type="text"
+              value={descricao}
+              onChange={(e) => setDescricao(e.target.value)}
+              placeholder={`Ex.: ${categoria} (ou deixe em branco para repetir)`}
+              style={{ fontSize: '13px', fontWeight: 600 }}
+            />
+          </div>
+
+          {/* Data */}
+          <div>
+            <label style={{ fontSize: '11px', fontWeight: 800, color: '#607789', textTransform: 'uppercase', display: 'block', marginBottom: '4px' }}>
+              Data do Lançamento
+            </label>
+            <input
+              type="date"
+              value={data}
+              onChange={(e) => setData(e.target.value)}
+              style={{ fontSize: '13px', fontWeight: 600 }}
+            />
+          </div>
+
+          {/* Botão de Lançar Principal Verde Original */}
+          {/* Botão de Lançar Principal Verde Original (sem ícone redundante) */}
+          <button
+            type="submit"
+            style={{
+              width: '100%',
+              border: 'none',
+              borderRadius: '16px',
+              padding: '16px',
+              background: 'linear-gradient(135deg, #2E8B57 0%, #237447 100%)',
+              color: '#FFFFFF',
+              fontSize: '17px',
+              fontWeight: 800,
+              boxShadow: '0 6px 18px rgba(46, 139, 87, 0.35)',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '8px',
+              marginTop: '6px',
+              transition: 'transform 0.15s ease'
+            }}
+          >
+            <span>EFETUAR LANÇAMENTO</span>
+          </button>
+        </form>
+      </div>
+    </div>
+  );
+};

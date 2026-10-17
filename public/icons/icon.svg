@@ -1,0 +1,112 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <!-- Gradiente de Fundo Noturno Sofisticado -->
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0F2A4A"/>
+      <stop offset="50%" stop-color="#0B1A2E"/>
+      <stop offset="100%" stop-color="#040A14"/>
+    </linearGradient>
+
+    <!-- Gradiente Ouro Real BB / Alta Riqueza -->
+    <linearGradient id="goldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FFF9C4"/>
+      <stop offset="30%" stop-color="#F8D117"/>
+      <stop offset="70%" stop-color="#E5A800"/>
+      <stop offset="100%" stop-color="#B28200"/>
+    </linearGradient>
+
+    <!-- Gradiente Ouro Secundário -->
+    <linearGradient id="goldAccent" x1="0%" y1="100%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#C69214"/>
+      <stop offset="50%" stop-color="#FCD34D"/>
+      <stop offset="100%" stop-color="#FFFFFF"/>
+    </linearGradient>
+
+    <!-- Gradiente Azul Safira / Tech Banking -->
+    <linearGradient id="sapphireGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#5090D3"/>
+      <stop offset="100%" stop-color="#1A4971"/>
+    </linearGradient>
+
+    <!-- Brilho Suave Radial de Fundo -->
+    <radialGradient id="goldGlow" cx="50%" cy="45%" r="55%">
+      <stop offset="0%" stop-color="rgba(248, 209, 23, 0.22)"/>
+      <stop offset="60%" stop-color="rgba(80, 144, 211, 0.08)"/>
+      <stop offset="100%" stop-color="rgba(11, 26, 46, 0)"/>
+    </radialGradient>
+
+    <!-- Sombra Elegante -->
+    <filter id="dropShadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="16" stdDeviation="20" flood-color="#000000" flood-opacity="0.6"/>
+    </filter>
+
+    <filter id="goldGlowFilter" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="8" result="blur"/>
+      <feComposite in="SourceGraphic" in2="blur" operator="over"/>
+    </filter>
+  </defs>
+
+  <!-- Fundo Squircle Arredondado com Borda Ouro Sutil -->
+  <rect x="16" y="16" width="480" height="480" rx="112" fill="url(#bgGrad)"/>
+  <rect x="16" y="16" width="480" height="480" rx="112" fill="url(#goldGlow)"/>
+  <rect x="17" y="17" width="478" height="478" rx="111" fill="none" stroke="url(#goldGrad)" stroke-width="2.5" stroke-opacity="0.45"/>
+
+  <!-- Emblema Central: Brasão Diamante Financeiro em Alta Resolução -->
+  <g filter="url(#dropShadow)">
+    <!-- Losango / Escudo de Proteção Patrimonial (Exterior Dourado) -->
+    <path d="M 256 70 
+             L 396 210 
+             L 256 420 
+             L 116 210 Z" 
+          fill="none" 
+          stroke="url(#goldGrad)" 
+          stroke-width="14" 
+          stroke-linejoin="round"
+          stroke-linecap="round"/>
+
+    <!-- Núcleo Safira Profundo do Escudo -->
+    <path d="M 256 94 
+             L 376 214 
+             L 256 394 
+             L 136 214 Z" 
+          fill="#0C2038" 
+          stroke="rgba(80, 144, 211, 0.3)" 
+          stroke-width="2" 
+          stroke-linejoin="round"/>
+
+    <!-- Barras Geométricas de Ascensão Financeira (Crescimento Patrimonial) -->
+    <!-- Barra 1 (Base / Esquerda) -->
+    <rect x="180" y="250" width="28" height="60" rx="8" fill="url(#sapphireGrad)"/>
+    
+    <!-- Barra 2 (Média / Centro) -->
+    <rect x="226" y="205" width="28" height="105" rx="8" fill="url(#goldAccent)"/>
+    
+    <!-- Barra 3 (Pico / Direita) -->
+    <rect x="272" y="160" width="28" height="150" rx="8" fill="url(#goldGrad)"/>
+
+    <!-- Flecha Dinâmica de Alta e Prosperidade -->
+    <path d="M 180 270 
+             Q 240 230 326 140" 
+          fill="none" 
+          stroke="url(#goldGrad)" 
+          stroke-width="8" 
+          stroke-linecap="round"/>
+    
+    <!-- Ponta da Flecha Diamante -->
+    <polygon points="328,124 344,146 318,154" fill="url(#goldGrad)"/>
+
+    <!-- Estrela / Brilho de Prosperidade no Topo -->
+    <circle cx="256" cy="115" r="7" fill="#FFFFFF" filter="url(#goldGlowFilter)"/>
+  </g>
+
+  <!-- Tipografia Institucional Minimalista Inferior -->
+  <text x="256" y="462" 
+        font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Inter, sans-serif" 
+        font-size="22" 
+        font-weight="900" 
+        letter-spacing="4" 
+        fill="url(#goldGrad)" 
+        text-anchor="middle">
+    MEU FINANCEIRO
+  </text>
+</svg>
