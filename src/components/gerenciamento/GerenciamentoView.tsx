@@ -8,8 +8,10 @@ import {
   Edit3, 
   X, 
   AlertTriangle, 
-  Filter 
+  Filter,
+  ShoppingCart
 } from 'lucide-react';
+import { ReciboMercadoModal } from '../mercado/ReciboMercadoModal';
 
 export const GerenciamentoView: React.FC = () => {
   const { 
@@ -30,6 +32,7 @@ export const GerenciamentoView: React.FC = () => {
   const [itemParaEditar, setItemParaEditar] = useState<Lancamento | null>(null);
   const [descricaoEdicao, setDescricaoEdicao] = useState('');
   const [valorEdicao, setValorEdicao] = useState('');
+  const [lancamentoMercado, setLancamentoMercado] = useState<Lancamento | null>(null);
 
   const listaFiltrada = obterLancamentosFiltrados();
 
@@ -206,6 +209,30 @@ export const GerenciamentoView: React.FC = () => {
                           ⚡ À vista
                         </span>
                       )}
+
+                      {item.detalhesMercado && (
+                        <button
+                          type="button"
+                          onClick={() => setLancamentoMercado(item)}
+                          style={{
+                            fontSize: '0.72rem',
+                            fontWeight: 800,
+                            padding: '2px 8px',
+                            borderRadius: '6px',
+                            backgroundColor: 'rgba(76, 175, 80, 0.22)',
+                            color: '#66BB6A',
+                            border: '1px solid rgba(76, 175, 80, 0.45)',
+                            cursor: 'pointer',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '4px'
+                          }}
+                          title="Ver cupom detalhado de compras do Meu Mercado"
+                        >
+                          <ShoppingCart size={11} />
+                          <span>Cupom ({item.detalhesMercado.itens.length} itens)</span>
+                        </button>
+                      )}
                     </div>
 
                     <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', margin: '4px 0 0 0', display: 'flex', flexWrap: 'wrap', gap: '6px', alignItems: 'center' }}>
@@ -379,6 +406,15 @@ export const GerenciamentoView: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Modal de Detalhes da Compra do Meu Mercado */}
+      <ReciboMercadoModal
+        aberto={Boolean(lancamentoMercado)}
+        onFechar={() => setLancamentoMercado(null)}
+        detalhes={lancamentoMercado?.detalhesMercado}
+        valorTotalLancamento={lancamentoMercado?.valor}
+        formaPagamento={lancamentoMercado?.pagamento}
+      />
     </div>
   );
 };

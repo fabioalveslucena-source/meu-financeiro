@@ -61,6 +61,80 @@
   --transition-slow: 350ms ease;
 }
 
+/* ===== TEMA CLARO (Modo Diurno / Leitura Alternativa) ===== */
+[data-theme="light"] {
+  /* Backgrounds Claro */
+  --bg-primary: #F1F5F9;
+  --bg-secondary: #FFFFFF;
+  --bg-tertiary: #E2E8F0;
+  --bg-elevated: #CBD5E1;
+  --bg-overlay: rgba(15, 23, 42, 0.5);
+  
+  /* Text Claro */
+  --text-primary: #0F172A;
+  --text-secondary: #334155;
+  --text-tertiary: #64748B;
+  --text-inverse: #FFFFFF;
+  
+  /* Borders Claro */
+  --border-subtle: #E2E8F0;
+  --border-default: #CBD5E1;
+  --border-focus: #287EA5;
+  
+  /* Brand */
+  --brand-primary: #287EA5;
+  --brand-secondary: #0284C7;
+  --brand-hover: #0369A1;
+  --brand-light: #E0F2FE;
+  
+  /* Status Claro */
+  --color-despesa: #DC2626;
+  --color-despesa-bg: rgba(220, 38, 38, 0.08);
+  --color-receita: #16A34A;
+  --color-receita-bg: rgba(22, 163, 74, 0.08);
+  --color-investimento: #2563EB;
+  --color-investimento-bg: rgba(37, 99, 235, 0.08);
+  --color-alerta: #D97706;
+  --color-alerta-bg: rgba(217, 119, 6, 0.08);
+  --color-erro: #DC2626;
+  --color-sucesso: #16A34A;
+  
+  /* Shadows Claro */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.06);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.08), 0 2px 4px -2px rgba(0, 0, 0, 0.04);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.08), 0 4px 6px -4px rgba(0, 0, 0, 0.04);
+  --shadow-glow: 0 0 15px rgba(40, 126, 165, 0.15);
+}
+
+[data-theme="light"] .card {
+  background-color: #FFFFFF !important;
+  border-color: #E2E8F0 !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05) !important;
+}
+
+[data-theme="light"] input,
+[data-theme="light"] select,
+[data-theme="light"] textarea {
+  background-color: #F8FAFC !important;
+  border-color: #CBD5E1 !important;
+  color: #0F172A !important;
+}
+
+[data-theme="light"] select option {
+  background-color: #FFFFFF !important;
+  color: #0F172A !important;
+}
+
+[data-theme="light"] .btn-secondary {
+  background-color: #F1F5F9 !important;
+  color: #0F172A !important;
+  border-color: #CBD5E1 !important;
+}
+
+[data-theme="light"] .btn-secondary:hover:not(:disabled) {
+  background-color: #E2E8F0 !important;
+}
+
 /* ===== RESET & BASE ===== */
 *, *::before, *::after {
   box-sizing: border-box;

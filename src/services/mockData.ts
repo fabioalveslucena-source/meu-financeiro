@@ -207,6 +207,39 @@ const compAtual = `${mesAtual}/${anoAtual}`;
 
 export const LANCAMENTOS_INICIAIS: Lancamento[] = [
   {
+    id: 'lanc-mercado-1',
+    userId: 'default-user',
+    data: new Date(anoAtual, hoje.getMonth(), 8),
+    competencia: compAtual,
+    valor: 650.00,
+    tipo: 'Despesa',
+    natureza: '🛒 Alimentação',
+    categoria: 'Supermercado',
+    descricao: 'Compra Meu Mercado (Itens Detalhados)',
+    pagamento: '💳 Crédito',
+    cartao: 'Banco do Brasil Ourocard',
+    status: 'Lançado',
+    origem: 'meu-mercado',
+    detalhesMercado: {
+      mercadoNome: 'Meu Mercado (Sincronizado)',
+      cupomNumero: 'MM-2026-081',
+      dataCompra: `${anoAtual}-${mesAtual}-08`,
+      valorTotal: 650.00,
+      formaPagamentoUtilizada: '💳 Crédito • BB Ourocard',
+      totalItens: 6,
+      itens: [
+        { nome: 'Tomate Italiano Selecionado', quantidade: 2.5, unidade: 'kg', precoUnitario: 8.50, precoTotal: 21.25, categoriaItem: 'Hortifruti' },
+        { nome: 'Achocolatado Toddy 800g', quantidade: 2, unidade: 'un', precoUnitario: 18.90, precoTotal: 37.80, categoriaItem: 'Mercearia' },
+        { nome: 'Arroz Branco Nobre 5kg', quantidade: 3, unidade: 'pct', precoUnitario: 31.90, precoTotal: 95.70, categoriaItem: 'Mercearia' },
+        { nome: 'Feijão Carioca Tipo 1 1kg', quantidade: 4, unidade: 'pct', precoUnitario: 8.20, precoTotal: 32.80, categoriaItem: 'Mercearia' },
+        { nome: 'Carnes de Primeira (Alcatra / Patinho)', quantidade: 5.2, unidade: 'kg', precoUnitario: 42.50, precoTotal: 221.00, categoriaItem: 'Açougue' },
+        { nome: 'Hortifruti, Laticínios e Limpeza Geral', quantidade: 1, unidade: 'kit', precoUnitario: 241.45, precoTotal: 241.45, categoriaItem: 'Diversos' },
+      ]
+    },
+    criadoEm: new Date(),
+    atualizadoEm: new Date(),
+  },
+  {
     id: 'lanc-1',
     userId: 'default-user',
     data: new Date(anoAtual, hoje.getMonth(), 1),

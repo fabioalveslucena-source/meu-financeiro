@@ -8,7 +8,9 @@ import type {
   LivroCaixaResumo,
   ResumoCartao,
   Natureza,
-  DespesaRecorrente
+  DespesaRecorrente,
+  ItemCompraMercado,
+  FormaPagamento
 } from '../types';
 import { NATUREZAS_PADRAO } from '../types/categoria';
 import { DESPESAS_RECORRENTES_PADRAO } from '../types/recorrente';
@@ -72,6 +74,21 @@ interface FinanceState {
   excluirCategoria: (id: string) => void;
   adicionarNatureza: (nat: { nome: string; emoji: string }) => void;
 
+  // Tema do Aplicativo (Modo Dark / Modo Light)
+  tema: 'dark' | 'light';
+  alternarTema: () => void;
+
+  // Integração Direta Meu Mercado
+  adicionarCompraMercado: (dados: {
+    mercadoNome?: string;
+    data: string; // YYYY-MM-DD
+    valorTotal: number;
+    formaPagamento: FormaPagamento;
+    cartao?: string;
+    conta?: string;
+    itens: ItemCompraMercado[];
+  }) => { sucesso: boolean; mensagem: string };
+
   // CRUD Lançamentos com propagação em Tempo Real
   adicionarLancamento: (input: LancamentoInput, emitirEvento?: boolean) => { sucesso: boolean; mensagem: string };
   editarLancamento: (id: string, dados: Partial<Lancamento>, emitirEvento?: boolean) => { sucesso: boolean; mensagem: string };
@@ -118,6 +135,13 @@ const STORAGE_KEY_CATEGORIAS = 'mf_categorias_v2';
 const STORAGE_KEY_NATUREZAS = 'mf_naturezas_v2';
 const STORAGE_KEY_RECORRENTES = 'mf_recorrentes_v2';
 const STORAGE_KEY_SEGURANCA = 'mf_seguranca_v2';
+const STORAGE_KEY_TEMA = 'mf_tema_v1';
+
+function aplicarTemaNoDocumento(tema: 'dark' | 'light') {
+  if (typeof document !== 'undefined') {
+    document.documentElement.setAttribute('data-theme', tema);
+  }
+}
 
 export const USUARIO_PADRAO: UsuarioPerfil = {
   nome: 'FABIO ALVES LUCENA',
@@ -207,12 +231,19 @@ function migrarCartoes(cartoes: Cartao[]): Cartao[] {
 }
 
 function migrarLancamentos(lancamentos: Lancamento[]): Lancamento[] {
-  return lancamentos.map((l) => {
+  let lista = lancamentos.map((l) => {
     if (l.cartao && l.cartao.toLowerCase().includes('nubank')) {
       return { ...l, cartao: 'Banco do Brasil Ourocard' };
     }
     return l;
   });
+
+  const temMercado = lista.some((l) => l.origem === 'meu-mercado' || l.detalhesMercado);
+  if (!temMercado && LANCAMENTOS_INICIAIS.length > 0 && LANCAMENTOS_INICIAIS[0].origem === 'meu-mercado') {
+    lista = [LANCAMENTOS_INICIAIS[0], ...lista];
+  }
+
+  return lista;
 }
 
 function carregarDoStorage<T>(chave: string, padrao: T): T {
@@ -269,6 +300,12 @@ export const useFinanceStore = create<FinanceState>((set, get) => {
         ...seg,
         estaBloqueado: Boolean(seg.bloqueioAtivo && seg.pin),
       };
+    })(),
+    tema: ((): 'dark' | 'light' => {
+      const temaSalvo = typeof localStorage !== 'undefined' ? (localStorage.getItem(STORAGE_KEY_TEMA) as 'dark' | 'light') : null;
+      const tema: 'dark' | 'light' = temaSalvo === 'light' ? 'light' : 'dark';
+      aplicarTemaNoDocumento(tema);
+      return tema;
     })(),
     competenciaAtiva: competenciaAtual(),
     termoBusca: '',
@@ -357,6 +394,61 @@ export const useFinanceStore = create<FinanceState>((set, get) => {
     },
 
     limparToast: () => set({ toast: null }),
+
+    alternarTema: () => {
+      const novoTema = get().tema === 'dark' ? 'light' : 'dark';
+      salvarNoStorage(STORAGE_KEY_TEMA, novoTema);
+      aplicarTemaNoDocumento(novoTema);
+      set({ tema: novoTema });
+      get().mostrarToast(novoTema === 'light' ? '☀️ Modo Claro ativado' : '🌙 Modo Escuro ativado', 'info');
+    },
+
+    adicionarCompraMercado: (dados) => {
+      const { lancamentos, usuario, adicionarLogRealtime, mostrarToast } = get();
+      const dataObj = new Date(dados.data + 'T12:00:00');
+      const [ano, mes] = dados.data.split('-');
+      const competencia = `${mes}/${ano}`;
+
+      const novoLancamento: Lancamento = {
+        id: `mercado_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+        userId: usuario.uid || 'fabio-master-uid',
+        data: dataObj,
+        competencia,
+        valor: dados.valorTotal,
+        tipo: 'Despesa',
+        natureza: '🛒 Alimentação',
+        categoria: 'Supermercado',
+        descricao: dados.mercadoNome ? `Compra ${dados.mercadoNome}` : 'Compra Supermercado',
+        pagamento: dados.formaPagamento,
+        cartao: dados.cartao,
+        conta: dados.conta,
+        status: 'Lançado',
+        origem: 'meu-mercado',
+        detalhesMercado: {
+          mercadoNome: dados.mercadoNome || 'Meu Mercado',
+          cupomNumero: `MM-${Date.now().toString().slice(-4)}`,
+          itens: dados.itens,
+          totalItens: dados.itens.length,
+          valorTotal: dados.valorTotal,
+          dataCompra: dados.data,
+          formaPagamentoUtilizada: dados.formaPagamento,
+        },
+        criadoEm: new Date(),
+        atualizadoEm: new Date(),
+      };
+
+      const novaLista = [novoLancamento, ...lancamentos];
+      salvarNoStorage(STORAGE_KEY_LANCAMENTOS, novaLista);
+      set({ lancamentos: novaLista, ultimoEventoTimestamp: Date.now() });
+
+      adicionarLogRealtime(
+        '[MEU MERCADO] Compra Integrada',
+        `${dados.mercadoNome || 'Supermercado'}: R$ ${dados.valorTotal.toFixed(2)} (${dados.itens.length} itens).`,
+        'sucesso'
+      );
+      mostrarToast(`🛒 Compra de ${dados.mercadoNome || 'Supermercado'} integrada com sucesso!`, 'sucesso');
+      return { sucesso: true, mensagem: 'Compra integrada com sucesso' };
+    },
 
     adicionarLogRealtime: (acao, detalhes, tipo = 'info') => {
       const novoLog: RealtimeLog = {

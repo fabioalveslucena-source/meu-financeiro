@@ -14,13 +14,17 @@ import {
   Loader2,
   List,
   Table,
-  CalendarCheck
+  CalendarCheck,
+  ShoppingCart
 } from 'lucide-react';
+import type { Lancamento } from '../../types';
+import { ReciboMercadoModal } from '../mercado/ReciboMercadoModal';
 
 export const LivroCaixaView: React.FC = () => {
   const { competenciaAtiva, obterResumoLivroCaixa, lancamentos, usuario } = useFinanceStore();
   const [gerandoPdf, setGerandoPdf] = useState(false);
   const [modoVisualizacao, setModoVisualizacao] = useState<'extrato' | 'tabela'>('extrato');
+  const [lancamentoMercado, setLancamentoMercado] = useState<Lancamento | null>(null);
 
   const resumo = obterResumoLivroCaixa(competenciaAtiva);
 
@@ -353,6 +357,31 @@ export const LivroCaixaView: React.FC = () => {
                               ⚡ À vista
                             </span>
                           )}
+
+                          {item.detalhesMercado && (
+                            <button
+                              type="button"
+                              onClick={() => setLancamentoMercado(item)}
+                              style={{
+                                fontSize: '10px',
+                                fontWeight: 800,
+                                padding: '2px 8px',
+                                borderRadius: '6px',
+                                backgroundColor: 'rgba(76, 175, 80, 0.22)',
+                                color: '#66BB6A',
+                                border: '1px solid rgba(76, 175, 80, 0.45)',
+                                cursor: 'pointer',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '4px',
+                                transition: 'all 0.15s ease'
+                              }}
+                              title="Ver cupom detalhado de compras do Meu Mercado"
+                            >
+                              <ShoppingCart size={11} />
+                              <span>Cupom ({item.detalhesMercado.itens.length} itens)</span>
+                            </button>
+                          )}
                         </div>
 
                         <strong style={{ fontSize: '15px', fontWeight: 900, color: corValor }}>
@@ -442,7 +471,28 @@ export const LivroCaixaView: React.FC = () => {
                             {grupo.dataStr}
                           </td>
                           <td style={{ padding: '0.75rem 0.85rem', fontWeight: 700, color: 'var(--text-primary)' }}>
-                            {item.descricao}
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                              <span>{item.descricao}</span>
+                              {item.detalhesMercado && (
+                                <button
+                                  type="button"
+                                  onClick={() => setLancamentoMercado(item)}
+                                  style={{
+                                    fontSize: '9.5px',
+                                    fontWeight: 800,
+                                    padding: '1px 6px',
+                                    borderRadius: '4px',
+                                    backgroundColor: 'rgba(76, 175, 80, 0.2)',
+                                    color: '#66BB6A',
+                                    border: '1px solid rgba(76, 175, 80, 0.4)',
+                                    cursor: 'pointer'
+                                  }}
+                                  title="Ver cupom do Meu Mercado"
+                                >
+                                  🛒 Recibo
+                                </button>
+                              )}
+                            </div>
                           </td>
                           <td style={{ padding: '0.75rem 0.85rem', color: 'var(--text-secondary)' }}>
                             {item.categoria}
@@ -474,6 +524,15 @@ export const LivroCaixaView: React.FC = () => {
           </div>
         )}
       </div>
+
+      {/* Modal de Detalhes da Compra do Meu Mercado */}
+      <ReciboMercadoModal
+        aberto={Boolean(lancamentoMercado)}
+        onFechar={() => setLancamentoMercado(null)}
+        detalhes={lancamentoMercado?.detalhesMercado}
+        valorTotalLancamento={lancamentoMercado?.valor}
+        formaPagamento={lancamentoMercado?.pagamento}
+      />
     </div>
   );
 };

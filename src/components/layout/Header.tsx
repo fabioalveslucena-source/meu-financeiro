@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { useFinanceStore } from '../../stores/financeStore';
-import { Calendar, User, Check, Edit3, X, Upload, Camera, Settings } from 'lucide-react';
+import { Calendar, User, Check, Edit3, X, Upload, Camera, Settings, Moon, Sun } from 'lucide-react';
 import { ConfiguracoesBaseModal } from '../configuracoes/ConfiguracoesBaseModal';
 import type { SecaoAtiva } from './Sidebar';
 
@@ -17,7 +17,7 @@ const AVATARES_PREDEFINIDOS = [
 ];
 
 export const Header: React.FC<HeaderProps> = () => {
-  const { competenciaAtiva, setCompetenciaAtiva, usuario, setUsuario } = useFinanceStore();
+  const { competenciaAtiva, setCompetenciaAtiva, usuario, setUsuario, tema, alternarTema } = useFinanceStore();
   const [modalPerfilAberto, setModalPerfilAberto] = useState(false);
   const [modalConfigAberto, setModalConfigAberto] = useState(false);
   const [abaConfigInicial, setAbaConfigInicial] = useState<'cartoes' | 'categorias' | 'banco'>('banco');
@@ -224,6 +224,29 @@ export const Header: React.FC<HeaderProps> = () => {
                   ))}
                 </select>
               </div>
+
+              {/* Botão de Alternância de Tema (Modo Escuro / Modo Claro) */}
+              <button
+                type="button"
+                onClick={alternarTema}
+                title={tema === 'dark' ? 'Mudar para Modo Claro (Diurno)' : 'Mudar para Modo Escuro (Noturno)'}
+                style={{
+                  width: '34px',
+                  height: '34px',
+                  borderRadius: '12px',
+                  backgroundColor: 'rgba(11, 25, 41, 0.55)',
+                  border: '1px solid rgba(255, 255, 255, 0.18)',
+                  color: tema === 'dark' ? '#F8D117' : '#FFFFFF',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  cursor: 'pointer',
+                  transition: 'all 0.15s ease',
+                  flexShrink: 0
+                }}
+              >
+                {tema === 'dark' ? <Moon size={16} /> : <Sun size={16} />}
+              </button>
 
               {/* Botão de Configurações da Base de Dados */}
               <button

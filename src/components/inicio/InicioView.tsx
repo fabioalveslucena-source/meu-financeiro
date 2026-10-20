@@ -11,8 +11,11 @@ import {
   ArrowRight,
   Calendar,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  ShoppingCart
 } from 'lucide-react';
+import type { Lancamento } from '../../types';
+import { ReciboMercadoModal } from '../mercado/ReciboMercadoModal';
 
 interface InicioViewProps {
   onIrParaLancar?: () => void;
@@ -47,6 +50,7 @@ export const InicioView: React.FC<InicioViewProps> = ({
 
   // Controle de sanfona para parcelamentos em aberto
   const [mostrarParcelamentos, setMostrarParcelamentos] = useState(false);
+  const [lancamentoMercado, setLancamentoMercado] = useState<Lancamento | null>(null);
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
@@ -634,6 +638,30 @@ export const InicioView: React.FC<InicioViewProps> = ({
                             À vista
                           </span>
                         )}
+
+                        {item.detalhesMercado && (
+                          <button
+                            type="button"
+                            onClick={() => setLancamentoMercado(item)}
+                            style={{
+                              fontSize: '10px',
+                              fontWeight: 800,
+                              padding: '1px 7px',
+                              borderRadius: '4px',
+                              backgroundColor: 'rgba(76, 175, 80, 0.22)',
+                              color: '#66BB6A',
+                              border: '1px solid rgba(76, 175, 80, 0.45)',
+                              cursor: 'pointer',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '3px'
+                            }}
+                            title="Ver cupom detalhado do Meu Mercado"
+                          >
+                            <ShoppingCart size={10} />
+                            <span>Cupom ({item.detalhesMercado.itens.length})</span>
+                          </button>
+                        )}
                       </div>
                       <span style={{ fontSize: '11px', color: '#AAB4BE' }}>
                         {formatarData(item.data)} • {item.categoria} • {item.pagamento}
@@ -651,6 +679,15 @@ export const InicioView: React.FC<InicioViewProps> = ({
           </div>
         )}
       </div>
+
+      {/* Modal de Detalhes da Compra do Meu Mercado */}
+      <ReciboMercadoModal
+        aberto={Boolean(lancamentoMercado)}
+        onFechar={() => setLancamentoMercado(null)}
+        detalhes={lancamentoMercado?.detalhesMercado}
+        valorTotalLancamento={lancamentoMercado?.valor}
+        formaPagamento={lancamentoMercado?.pagamento}
+      />
     </div>
   );
 };
