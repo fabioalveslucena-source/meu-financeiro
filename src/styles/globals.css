@@ -541,55 +541,50 @@ button:disabled {
 /* ===== AJUSTES DE FONTES, CAMPOS E ESPAÇAMENTOS MOBILE ===== */
 @media (max-width: 640px) {
   html {
-    font-size: 14.5px;
+    font-size: 16px;
   }
 
   .card {
-    padding: 12px 14px !important;
-    border-radius: 16px !important;
+    padding: 14px 16px !important;
+    border-radius: 18px !important;
   }
 
-  /* Títulos responsivos no celular */
+  /* Títulos responsivos no celular com ótima legibilidade */
   h2 {
-    font-size: 1.15rem !important;
+    font-size: 1.25rem !important;
     letter-spacing: -0.2px;
   }
 
   h3 {
-    font-size: 1rem !important;
+    font-size: 1.08rem !important;
   }
 
   h4 {
-    font-size: 0.9rem !important;
+    font-size: 0.96rem !important;
   }
 
-  /* Redução de valores grandes para não quebrar linha no mobile */
+  /* Redução equilibrada de valores gigantes */
   span[style*="font-size: 26px"],
   span[style*="fontSize: 26px"] {
-    font-size: 20px !important;
+    font-size: 22px !important;
   }
 
   span[style*="font-size: 24px"],
   span[style*="fontSize: 24px"] {
-    font-size: 19px !important;
+    font-size: 20px !important;
   }
 
-  span[style*="font-size: 20px"],
-  span[style*="fontSize: 20px"] {
-    font-size: 17px !important;
-  }
-
-  /* Campos de input mais compactos e elegantes no celular */
+  /* Campos de input confortáveis ao toque */
   input, select, textarea {
-    padding: 0.6rem 0.85rem !important;
-    font-size: 0.9rem !important;
+    padding: 0.65rem 0.9rem !important;
+    font-size: 0.95rem !important;
     border-radius: var(--radius-md) !important;
   }
 
   /* Botões proporcionais */
   .btn-primary, .btn-secondary, .btn-danger {
-    padding: 0.6rem 1.1rem !important;
-    font-size: 0.88rem !important;
+    padding: 0.65rem 1.15rem !important;
+    font-size: 0.92rem !important;
   }
 
   /* Margem de segurança na área de toque */

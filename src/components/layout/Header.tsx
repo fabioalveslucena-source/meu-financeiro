@@ -166,7 +166,7 @@ export const Header: React.FC<HeaderProps> = () => {
               <div style={{ minWidth: 0, overflow: 'hidden' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '3px' }}>
                   <span style={{ 
-                    fontSize: 'clamp(10.5px, 2.7vw, 12.5px)', 
+                    fontSize: 'clamp(11.5px, 2.8vw, 13px)', 
                     fontWeight: 800, 
                     color: '#FFFFFF',
                     whiteSpace: 'nowrap',
@@ -175,10 +175,10 @@ export const Header: React.FC<HeaderProps> = () => {
                   }}>
                     {usuario.nome}
                   </span>
-                  <Edit3 size={10} color="#F8D117" opacity={0.8} style={{ flexShrink: 0 }} />
+                  <Edit3 size={11} color="#F8D117" opacity={0.8} style={{ flexShrink: 0 }} />
                 </div>
                 <span style={{ 
-                  fontSize: '9px', 
+                  fontSize: '10px', 
                   color: '#F8D117', 
                   fontWeight: 700, 
                   display: 'block',
@@ -199,11 +199,11 @@ export const Header: React.FC<HeaderProps> = () => {
                 gap: '3px',
                 background: 'rgba(11, 25, 41, 0.55)',
                 backdropFilter: 'blur(8px)',
-                padding: '5px 7px',
+                padding: '5px 8px',
                 borderRadius: '10px',
                 border: '1px solid rgba(255, 255, 255, 0.18)'
               }}>
-                <Calendar size={12} color="#5090D3" style={{ flexShrink: 0 }} />
+                <Calendar size={13} color="#5090D3" style={{ flexShrink: 0 }} />
                 <select
                   value={competenciaAtiva}
                   onChange={(e) => setCompetenciaAtiva(e.target.value)}
@@ -211,7 +211,7 @@ export const Header: React.FC<HeaderProps> = () => {
                     background: 'transparent',
                     border: 'none',
                     padding: 0,
-                    fontSize: '11px',
+                    fontSize: '12px',
                     fontWeight: 800,
                     color: '#FFFFFF',
                     cursor: 'pointer',

@@ -231,17 +231,14 @@ function migrarCartoes(cartoes: Cartao[]): Cartao[] {
 }
 
 function migrarLancamentos(lancamentos: Lancamento[]): Lancamento[] {
-  let lista = lancamentos.map((l) => {
-    if (l.cartao && l.cartao.toLowerCase().includes('nubank')) {
-      return { ...l, cartao: 'Banco do Brasil Ourocard' };
-    }
-    return l;
-  });
-
-  const temMercado = lista.some((l) => l.origem === 'meu-mercado' || l.detalhesMercado);
-  if (!temMercado && LANCAMENTOS_INICIAIS.length > 0 && LANCAMENTOS_INICIAIS[0].origem === 'meu-mercado') {
-    lista = [LANCAMENTOS_INICIAIS[0], ...lista];
-  }
+  let lista = lancamentos
+    .filter((l) => l.id !== 'lanc-mercado-1') // Remove qualquer compra teste de 650 resquicial
+    .map((l) => {
+      if (l.cartao && l.cartao.toLowerCase().includes('nubank')) {
+        return { ...l, cartao: 'Banco do Brasil Ourocard' };
+      }
+      return l;
+    });
 
   return lista;
 }

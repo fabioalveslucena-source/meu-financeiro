@@ -181,14 +181,14 @@ export const GerenciamentoView: React.FC = () => {
 
                   <div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
-                      <h4 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 700 }}>
+                      <h4 style={{ margin: 0, fontSize: '1rem', fontWeight: 700 }}>
                         {item.descricao}
                       </h4>
                       {item.parcela && item.totalParcelas && item.totalParcelas > 1 ? (
                         <span style={{
-                          fontSize: '0.72rem',
+                          fontSize: '0.78rem',
                           fontWeight: 800,
-                          padding: '2px 8px',
+                          padding: '2.5px 8px',
                           borderRadius: '6px',
                           backgroundColor: 'rgba(138, 5, 190, 0.2)',
                           border: '1px solid rgba(192, 132, 252, 0.4)',
@@ -198,9 +198,9 @@ export const GerenciamentoView: React.FC = () => {
                         </span>
                       ) : (
                         <span style={{
-                          fontSize: '0.72rem',
+                          fontSize: '0.78rem',
                           fontWeight: 800,
-                          padding: '2px 8px',
+                          padding: '2.5px 8px',
                           borderRadius: '6px',
                           backgroundColor: 'rgba(40, 126, 165, 0.18)',
                           border: '1px solid rgba(80, 144, 211, 0.35)',
@@ -215,9 +215,9 @@ export const GerenciamentoView: React.FC = () => {
                           type="button"
                           onClick={() => setLancamentoMercado(item)}
                           style={{
-                            fontSize: '0.72rem',
+                            fontSize: '0.78rem',
                             fontWeight: 800,
-                            padding: '2px 8px',
+                            padding: '2.5px 8px',
                             borderRadius: '6px',
                             backgroundColor: 'rgba(76, 175, 80, 0.22)',
                             color: '#66BB6A',
@@ -229,13 +229,13 @@ export const GerenciamentoView: React.FC = () => {
                           }}
                           title="Ver cupom detalhado de compras do Meu Mercado"
                         >
-                          <ShoppingCart size={11} />
+                          <ShoppingCart size={12} />
                           <span>Cupom ({item.detalhesMercado.itens.length} itens)</span>
                         </button>
                       )}
                     </div>
 
-                    <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', margin: '4px 0 0 0', display: 'flex', flexWrap: 'wrap', gap: '6px', alignItems: 'center' }}>
+                    <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', margin: '4px 0 0 0', display: 'flex', flexWrap: 'wrap', gap: '6px', alignItems: 'center' }}>
                       <span>📅 {formatarData(item.data)}</span>
                       <span>•</span>
                       <span>{item.natureza}</span>

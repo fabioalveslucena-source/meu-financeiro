@@ -113,10 +113,10 @@ export const LivroCaixaView: React.FC = () => {
         gap: '1rem'
       }}>
         <div>
-          <h2 style={{ fontSize: '1.4rem', fontWeight: 800, margin: 0 }}>
+          <h2 style={{ fontSize: '1.45rem', fontWeight: 800, margin: 0 }}>
             Livro Caixa • {competenciaAtiva}
           </h2>
-          <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', margin: '2px 0 0 0' }}>
+          <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', margin: '2px 0 0 0' }}>
             Titular: <strong style={{ color: '#FFFFFF' }}>{usuario.nome}</strong> • {lancamentosComSaldo.length} lançamentos
           </p>
         </div>
@@ -173,10 +173,10 @@ export const LivroCaixaView: React.FC = () => {
         {/* Saldo Anterior */}
         <div className="card" style={{ padding: '1rem' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
-            <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-secondary)' }}>SALDO ANTERIOR</span>
+            <span style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-secondary)' }}>SALDO ANTERIOR</span>
             <Scale size={16} color="var(--brand-secondary)" />
           </div>
-          <p style={{ fontSize: '1.25rem', fontWeight: 800, margin: 0, color: 'var(--text-primary)' }}>
+          <p style={{ fontSize: '1.3rem', fontWeight: 800, margin: 0, color: 'var(--text-primary)' }}>
             {formatarMoeda(resumo.saldoAnterior)}
           </p>
         </div>
@@ -184,10 +184,10 @@ export const LivroCaixaView: React.FC = () => {
         {/* Receitas */}
         <div className="card" style={{ padding: '1rem', borderLeft: '4px solid var(--color-receita)' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
-            <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-receita)' }}>RECEITAS (+)</span>
+            <span style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--color-receita)' }}>RECEITAS (+)</span>
             <ArrowUpRight size={18} color="var(--color-receita)" />
           </div>
-          <p style={{ fontSize: '1.25rem', fontWeight: 800, margin: 0, color: 'var(--color-receita)' }}>
+          <p style={{ fontSize: '1.3rem', fontWeight: 800, margin: 0, color: 'var(--color-receita)' }}>
             {formatarMoeda(resumo.totalReceitas)}
           </p>
         </div>
@@ -195,10 +195,10 @@ export const LivroCaixaView: React.FC = () => {
         {/* Despesas */}
         <div className="card" style={{ padding: '1rem', borderLeft: '4px solid var(--color-despesa)' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
-            <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-despesa)' }}>DESPESAS (-)</span>
+            <span style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--color-despesa)' }}>DESPESAS (-)</span>
             <ArrowDownRight size={18} color="var(--color-despesa)" />
           </div>
-          <p style={{ fontSize: '1.25rem', fontWeight: 800, margin: 0, color: 'var(--color-despesa)' }}>
+          <p style={{ fontSize: '1.3rem', fontWeight: 800, margin: 0, color: 'var(--color-despesa)' }}>
             {formatarMoeda(resumo.totalDespesas)}
           </p>
         </div>
@@ -206,10 +206,10 @@ export const LivroCaixaView: React.FC = () => {
         {/* Investimentos */}
         <div className="card" style={{ padding: '1rem', borderLeft: '4px solid var(--color-investimento)' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
-            <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-investimento)' }}>INVESTIMENTOS</span>
+            <span style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--color-investimento)' }}>INVESTIMENTOS</span>
             <PiggyBank size={18} color="var(--color-investimento)" />
           </div>
-          <p style={{ fontSize: '1.25rem', fontWeight: 800, margin: 0, color: 'var(--color-investimento)' }}>
+          <p style={{ fontSize: '1.3rem', fontWeight: 800, margin: 0, color: 'var(--color-investimento)' }}>
             {formatarMoeda(resumo.totalInvestimentos)}
           </p>
         </div>
@@ -221,11 +221,11 @@ export const LivroCaixaView: React.FC = () => {
           border: '1px solid var(--brand-secondary)'
         }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
-            <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--brand-secondary)' }}>SALDO FINAL</span>
+            <span style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--brand-secondary)' }}>SALDO FINAL</span>
             <TrendingUp size={18} color="var(--brand-secondary)" />
           </div>
           <p style={{
-            fontSize: '1.35rem',
+            fontSize: '1.4rem',
             fontWeight: 800,
             margin: 0,
             color: resumo.saldoFinal >= 0 ? 'var(--text-primary)' : 'var(--color-despesa)'
@@ -248,10 +248,10 @@ export const LivroCaixaView: React.FC = () => {
           gap: '8px'
         }}>
           <div>
-            <h3 style={{ fontSize: '0.95rem', fontWeight: 700, margin: 0 }}>
+            <h3 style={{ fontSize: '1rem', fontWeight: 700, margin: 0 }}>
               Extrato de Lançamentos
             </h3>
-            <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
+            <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
               Saldo consolidado a cada fechamento de dia
             </span>
           </div>
@@ -260,35 +260,35 @@ export const LivroCaixaView: React.FC = () => {
             <button
               onClick={() => setModoVisualizacao('extrato')}
               style={{
-                padding: '4px 10px',
+                padding: '5px 12px',
                 borderRadius: '6px',
-                fontSize: '11px',
+                fontSize: '12px',
                 fontWeight: 700,
                 backgroundColor: modoVisualizacao === 'extrato' ? '#287EA5' : 'transparent',
                 color: modoVisualizacao === 'extrato' ? '#FFFFFF' : 'var(--text-secondary)',
                 display: 'flex',
                 alignItems: 'center',
-                gap: '4px'
+                gap: '5px'
               }}
             >
-              <List size={13} />
+              <List size={14} />
               <span>Extrato</span>
             </button>
             <button
               onClick={() => setModoVisualizacao('tabela')}
               style={{
-                padding: '4px 10px',
+                padding: '5px 12px',
                 borderRadius: '6px',
-                fontSize: '11px',
+                fontSize: '12px',
                 fontWeight: 700,
                 backgroundColor: modoVisualizacao === 'tabela' ? '#287EA5' : 'transparent',
                 color: modoVisualizacao === 'tabela' ? '#FFFFFF' : 'var(--text-secondary)',
                 display: 'flex',
                 alignItems: 'center',
-                gap: '4px'
+                gap: '5px'
               }}
             >
-              <Table size={13} />
+              <Table size={14} />
               <span>Tabela</span>
             </button>
           </div>
@@ -326,17 +326,17 @@ export const LivroCaixaView: React.FC = () => {
                       {/* Linha 1: Data, Descrição, Badges e Valor */}
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                          <span style={{ fontSize: '11px', fontWeight: 700, color: '#AAB4BE' }}>
+                          <span style={{ fontSize: '12px', fontWeight: 700, color: '#AAB4BE' }}>
                             📅 {grupo.dataStr}
                           </span>
-                          <strong style={{ fontSize: '14px', color: '#FFFFFF' }}>
+                          <strong style={{ fontSize: '15px', color: '#FFFFFF' }}>
                             {item.descricao}
                           </strong>
                           {item.parcela && item.totalParcelas && item.totalParcelas > 1 ? (
                             <span style={{
-                              fontSize: '10px',
+                              fontSize: '11px',
                               fontWeight: 800,
-                              padding: '2px 6px',
+                              padding: '2.5px 7px',
                               borderRadius: '4px',
                               backgroundColor: 'rgba(138, 5, 190, 0.25)',
                               color: '#C084FC',
@@ -346,9 +346,9 @@ export const LivroCaixaView: React.FC = () => {
                             </span>
                           ) : (
                             <span style={{
-                              fontSize: '10px',
+                              fontSize: '11px',
                               fontWeight: 800,
-                              padding: '2px 6px',
+                              padding: '2.5px 7px',
                               borderRadius: '4px',
                               backgroundColor: 'rgba(40, 126, 165, 0.2)',
                               color: '#5090D3',
@@ -363,9 +363,9 @@ export const LivroCaixaView: React.FC = () => {
                               type="button"
                               onClick={() => setLancamentoMercado(item)}
                               style={{
-                                fontSize: '10px',
+                                fontSize: '11px',
                                 fontWeight: 800,
-                                padding: '2px 8px',
+                                padding: '2.5px 8px',
                                 borderRadius: '6px',
                                 backgroundColor: 'rgba(76, 175, 80, 0.22)',
                                 color: '#66BB6A',
@@ -378,20 +378,20 @@ export const LivroCaixaView: React.FC = () => {
                               }}
                               title="Ver cupom detalhado de compras do Meu Mercado"
                             >
-                              <ShoppingCart size={11} />
+                              <ShoppingCart size={12} />
                               <span>Cupom ({item.detalhesMercado.itens.length} itens)</span>
                             </button>
                           )}
                         </div>
 
-                        <strong style={{ fontSize: '15px', fontWeight: 900, color: corValor }}>
+                        <strong style={{ fontSize: '16px', fontWeight: 900, color: corValor }}>
                           {isDespesa ? '- ' : '+ '}
                           {formatarMoeda(item.valor)}
                         </strong>
                       </div>
 
                       {/* Linha 2: Natureza, Categoria e Forma de Pagamento */}
-                      <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
+                      <div style={{ fontSize: '12.5px', color: 'var(--text-secondary)' }}>
                         {item.natureza} • <strong style={{ color: 'var(--text-primary)' }}>{item.categoria}</strong> • <span style={{ color: '#82B1FF' }}>{item.pagamento}</span> {item.cartao ? `(${item.cartao})` : ''}
                       </div>
                     </div>
@@ -406,7 +406,7 @@ export const LivroCaixaView: React.FC = () => {
                   display: 'flex',
                   justifyContent: 'space-between',
                   alignItems: 'center',
-                  fontSize: '11px',
+                  fontSize: '12px',
                   fontWeight: 700
                 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#AAB4BE' }}>
@@ -420,7 +420,7 @@ export const LivroCaixaView: React.FC = () => {
                     backgroundColor: grupo.saldoFinalDia >= 0 ? 'rgba(76, 175, 80, 0.15)' : 'rgba(244, 67, 54, 0.15)',
                     color: grupo.saldoFinalDia >= 0 ? '#4CAF50' : '#F44336',
                     fontWeight: 900,
-                    fontSize: '12px',
+                    fontSize: '12.5px',
                     border: `1px solid ${grupo.saldoFinalDia >= 0 ? 'rgba(76, 175, 80, 0.3)' : 'rgba(244, 67, 54, 0.3)'}`
                   }}>
                     Saldo Acumulado: {formatarMoeda(grupo.saldoFinalDia)}
@@ -434,13 +434,13 @@ export const LivroCaixaView: React.FC = () => {
              MODO TABELA CLÁSSICA (COMPACTA) COM FECHAMENTO DIÁRIO
              ========================================================== */
           <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.825rem' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
               <thead>
                 <tr style={{
                   backgroundColor: 'var(--bg-secondary)',
                   borderBottom: '1px solid var(--border-subtle)',
                   color: 'var(--text-secondary)',
-                  fontSize: '0.75rem',
+                  fontSize: '0.78rem',
                   textTransform: 'uppercase',
                   textAlign: 'left'
                 }}>
@@ -478,9 +478,9 @@ export const LivroCaixaView: React.FC = () => {
                                   type="button"
                                   onClick={() => setLancamentoMercado(item)}
                                   style={{
-                                    fontSize: '9.5px',
+                                    fontSize: '11px',
                                     fontWeight: 800,
-                                    padding: '1px 6px',
+                                    padding: '2px 7px',
                                     borderRadius: '4px',
                                     backgroundColor: 'rgba(76, 175, 80, 0.2)',
                                     color: '#66BB6A',
@@ -510,10 +510,10 @@ export const LivroCaixaView: React.FC = () => {
 
                     {/* Linha de Fechamento do Dia na Tabela */}
                     <tr style={{ backgroundColor: 'rgba(11, 25, 41, 0.8)', borderBottom: '2px solid var(--border-default)' }}>
-                      <td colSpan={3} style={{ padding: '0.5rem 0.85rem', fontWeight: 700, color: '#AAB4BE', fontSize: '0.75rem' }}>
+                      <td colSpan={3} style={{ padding: '0.55rem 0.85rem', fontWeight: 700, color: '#AAB4BE', fontSize: '0.8rem' }}>
                         Fechamento do Dia {grupo.dataStr}
                       </td>
-                      <td colSpan={2} style={{ padding: '0.5rem 0.85rem', textAlign: 'right', fontWeight: 900, color: grupo.saldoFinalDia >= 0 ? '#4CAF50' : '#F44336' }}>
+                      <td colSpan={2} style={{ padding: '0.55rem 0.85rem', textAlign: 'right', fontWeight: 900, color: grupo.saldoFinalDia >= 0 ? '#4CAF50' : '#F44336' }}>
                         Saldo: {formatarMoeda(grupo.saldoFinalDia)}
                       </td>
                     </tr>
