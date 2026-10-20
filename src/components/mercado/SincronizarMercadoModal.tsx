@@ -16,6 +16,7 @@ interface SincronizarMercadoModalProps {
 }
 
 const STORAGE_KEY_URL_MERCADO = 'mf_url_meu_mercado_v1';
+const URL_PADRAO_MEU_MERCADO = 'https://script.google.com/macros/s/AKfycbyVzn-uiAsqoXOxDGDqeVTTr3pFWPEc6SfqmiTH8j3YTAnr4MPrKRAXtQjbPI7VHp3x9w/exec';
 
 export const SincronizarMercadoModal: React.FC<SincronizarMercadoModalProps> = ({
   aberto,
@@ -24,7 +25,7 @@ export const SincronizarMercadoModal: React.FC<SincronizarMercadoModalProps> = (
   const { adicionarCompraMercado, lancamentos, excluirLancamento, mostrarToast } = useFinanceStore();
 
   const [urlApp, setUrlApp] = useState(() => {
-    return localStorage.getItem(STORAGE_KEY_URL_MERCADO) || '';
+    return localStorage.getItem(STORAGE_KEY_URL_MERCADO) || URL_PADRAO_MEU_MERCADO;
   });
   const [carregando, setCarregando] = useState(false);
   const [mensagemStatus, setMensagemStatus] = useState<string | null>(null);
