@@ -27,11 +27,12 @@ export const AppShell: React.FC = () => {
   return (
     <div style={{
       minHeight: '100vh',
-      backgroundColor: '#0B1929',
-      color: '#E7EBF0',
+      backgroundColor: 'var(--bg-primary)',
+      color: 'var(--text-primary)',
       display: 'flex',
       flexDirection: 'column',
-      alignItems: 'center'
+      alignItems: 'center',
+      transition: 'background-color 0.25s ease, color 0.25s ease'
     }}>
       {/* Toast Notificação */}
       {toast && (
@@ -48,14 +49,15 @@ export const AppShell: React.FC = () => {
         </div>
       )}
 
-      {/* Container Centralizado com a Largura e Estilo Original do App */}
+      {/* Container Centralizado com a Largura e Estilo do App */}
       <div style={{
         width: '100%',
         maxWidth: '680px',
         minHeight: '100vh',
-        backgroundColor: '#0B1929',
+        backgroundColor: 'var(--bg-primary)',
         display: 'flex',
-        flexDirection: 'column'
+        flexDirection: 'column',
+        transition: 'background-color 0.25s ease'
       }}>
         {/* Cabeçalho Original com Perfil do Titular e Navegação Superior */}
         <Header 

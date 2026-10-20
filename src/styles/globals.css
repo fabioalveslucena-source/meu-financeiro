@@ -61,23 +61,23 @@
   --transition-slow: 350ms ease;
 }
 
-/* ===== TEMA CLARO (Modo Diurno / Leitura Alternativa) ===== */
+/* ===== TEMA CLARO (Modo Diurno Refinado com Bordas Realçadas) ===== */
 [data-theme="light"] {
   /* Backgrounds Claro */
-  --bg-primary: #F1F5F9;
+  --bg-primary: #F0F3F8;
   --bg-secondary: #FFFFFF;
-  --bg-tertiary: #E2E8F0;
-  --bg-elevated: #CBD5E1;
-  --bg-overlay: rgba(15, 23, 42, 0.5);
+  --bg-tertiary: #E8EEF5;
+  --bg-elevated: #DCE5EF;
+  --bg-overlay: rgba(15, 23, 42, 0.45);
   
   /* Text Claro */
   --text-primary: #0F172A;
-  --text-secondary: #334155;
+  --text-secondary: #475569;
   --text-tertiary: #64748B;
   --text-inverse: #FFFFFF;
   
   /* Borders Claro */
-  --border-subtle: #E2E8F0;
+  --border-subtle: #D8E1EA;
   --border-default: #CBD5E1;
   --border-focus: #287EA5;
   
@@ -100,23 +100,56 @@
   --color-sucesso: #16A34A;
   
   /* Shadows Claro */
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.06);
-  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.08), 0 2px 4px -2px rgba(0, 0, 0, 0.04);
-  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.08), 0 4px 6px -4px rgba(0, 0, 0, 0.04);
-  --shadow-glow: 0 0 15px rgba(40, 126, 165, 0.15);
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.07), 0 2px 4px -2px rgba(0, 0, 0, 0.03);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.07), 0 4px 6px -4px rgba(0, 0, 0, 0.03);
+  --shadow-glow: 0 0 15px rgba(40, 126, 165, 0.12);
 }
 
-[data-theme="light"] .card {
+/* Blocos Maiores: Fundo Branco Limpo com Realce nas Bordas */
+[data-theme="light"] .card,
+[data-theme="light"] div[style*="#0F2744"],
+[data-theme="light"] div[style*="rgb(15, 39, 68)"] {
   background-color: #FFFFFF !important;
-  border-color: #E2E8F0 !important;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05) !important;
+  border: 1.5px solid #CBD5E1 !important;
+  box-shadow: 0 4px 16px rgba(15, 23, 42, 0.05) !important;
+  color: #0F172A !important;
+}
+
+/* Blocos Menores com Informações em Destaque */
+[data-theme="light"] div[style*="#132F4C"],
+[data-theme="light"] div[style*="rgb(19, 47, 76)"],
+[data-theme="light"] tr[style*="#132F4C"],
+[data-theme="light"] tr[style*="rgba(19, 47, 76"] {
+  background-color: #F4F7FB !important;
+  border: 1px solid #CBD5E1 !important;
+  color: #0F172A !important;
+}
+
+/* Títulos e Textos principais nos blocos no modo claro */
+[data-theme="light"] strong[style*="#FFFFFF"],
+[data-theme="light"] strong[style*="rgb(255, 255, 255)"],
+[data-theme="light"] h2, 
+[data-theme="light"] h3, 
+[data-theme="light"] h4 {
+  color: #0F172A !important;
+}
+
+[data-theme="light"] span[style*="#E7EBF0"],
+[data-theme="light"] span[style*="rgb(231, 235, 240)"] {
+  color: #334155 !important;
+}
+
+[data-theme="light"] span[style*="#AAB4BE"],
+[data-theme="light"] span[style*="rgb(170, 180, 190)"] {
+  color: #475569 !important;
 }
 
 [data-theme="light"] input,
 [data-theme="light"] select,
 [data-theme="light"] textarea {
-  background-color: #F8FAFC !important;
-  border-color: #CBD5E1 !important;
+  background-color: #FFFFFF !important;
+  border: 1.5px solid #CBD5E1 !important;
   color: #0F172A !important;
 }
 
@@ -128,11 +161,54 @@
 [data-theme="light"] .btn-secondary {
   background-color: #F1F5F9 !important;
   color: #0F172A !important;
-  border-color: #CBD5E1 !important;
+  border: 1.5px solid #CBD5E1 !important;
 }
 
 [data-theme="light"] .btn-secondary:hover:not(:disabled) {
   background-color: #E2E8F0 !important;
+}
+
+/* Barra inferior (BottomNav) no modo claro */
+[data-theme="light"] nav[style*="#0B1929"],
+[data-theme="light"] nav[style*="rgb(11, 25, 41)"],
+[data-theme="light"] nav[style*="rgba(11, 25, 41"] {
+  background-color: rgba(255, 255, 255, 0.96) !important;
+  border-top: 1.5px solid #CBD5E1 !important;
+  box-shadow: 0 -4px 16px rgba(15, 23, 42, 0.05) !important;
+}
+
+/* Tabelas e Extrato no modo claro */
+[data-theme="light"] table thead tr {
+  background-color: #E8EEF5 !important;
+  color: #334155 !important;
+  border-bottom: 2px solid #CBD5E1 !important;
+}
+
+[data-theme="light"] table tr {
+  border-bottom-color: #E2E8F0 !important;
+}
+
+[data-theme="light"] td {
+  color: #334155 !important;
+}
+
+/* Fechamento do dia no modo claro */
+[data-theme="light"] tr[style*="rgba(11, 25, 41, 0.8)"] {
+  background-color: #E2EAF4 !important;
+  border-bottom: 2px solid #CBD5E1 !important;
+}
+
+/* Divisores internos e bordas no modo claro */
+[data-theme="light"] *[style*="#1E3A5F"],
+[data-theme="light"] *[style*="rgb(30, 58, 95)"] {
+  border-color: #CBD5E1 !important;
+}
+
+/* Fundo de containers pretos/azuis escuros no modo claro */
+[data-theme="light"] div[style*="backgroundColor: rgb(11, 25, 41)"],
+[data-theme="light"] div[style*="background-color: rgb(11, 25, 41)"],
+[data-theme="light"] div[style*="#0B1929"] {
+  background-color: #F8FAFC !important;
 }
 
 /* ===== RESET & BASE ===== */
@@ -460,4 +536,64 @@ button:disabled {
   background: var(--color-investimento-bg);
   border: 1px solid rgba(33, 150, 243, 0.3);
   color: var(--brand-secondary);
+}
+
+/* ===== AJUSTES DE FONTES, CAMPOS E ESPAÇAMENTOS MOBILE ===== */
+@media (max-width: 640px) {
+  html {
+    font-size: 14.5px;
+  }
+
+  .card {
+    padding: 12px 14px !important;
+    border-radius: 16px !important;
+  }
+
+  /* Títulos responsivos no celular */
+  h2 {
+    font-size: 1.15rem !important;
+    letter-spacing: -0.2px;
+  }
+
+  h3 {
+    font-size: 1rem !important;
+  }
+
+  h4 {
+    font-size: 0.9rem !important;
+  }
+
+  /* Redução de valores grandes para não quebrar linha no mobile */
+  span[style*="font-size: 26px"],
+  span[style*="fontSize: 26px"] {
+    font-size: 20px !important;
+  }
+
+  span[style*="font-size: 24px"],
+  span[style*="fontSize: 24px"] {
+    font-size: 19px !important;
+  }
+
+  span[style*="font-size: 20px"],
+  span[style*="fontSize: 20px"] {
+    font-size: 17px !important;
+  }
+
+  /* Campos de input mais compactos e elegantes no celular */
+  input, select, textarea {
+    padding: 0.6rem 0.85rem !important;
+    font-size: 0.9rem !important;
+    border-radius: var(--radius-md) !important;
+  }
+
+  /* Botões proporcionais */
+  .btn-primary, .btn-secondary, .btn-danger {
+    padding: 0.6rem 1.1rem !important;
+    font-size: 0.88rem !important;
+  }
+
+  /* Margem de segurança na área de toque */
+  .container {
+    padding: 0 0.5rem !important;
+  }
 }
