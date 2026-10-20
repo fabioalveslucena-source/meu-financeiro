@@ -3,7 +3,8 @@ import { LivroCaixaView } from '../livro-caixa/LivroCaixaView';
 import { GerenciamentoView } from '../gerenciamento/GerenciamentoView';
 import { RecorrentesView } from '../recorrentes/RecorrentesView';
 import { ImportarExtratoModal } from './ImportarExtratoModal';
-import { BookOpen, Search, Repeat, UploadCloud } from 'lucide-react';
+import { SincronizarMercadoModal } from '../mercado/SincronizarMercadoModal';
+import { BookOpen, Search, Repeat, UploadCloud, ShoppingCart } from 'lucide-react';
 
 interface ExtratoViewProps {
   subAbaInicial?: 'livro-caixa' | 'gerenciar' | 'recorrentes';
@@ -12,6 +13,7 @@ interface ExtratoViewProps {
 export const ExtratoView: React.FC<ExtratoViewProps> = ({ subAbaInicial = 'livro-caixa' }) => {
   const [subAba, setSubAba] = useState<'livro-caixa' | 'gerenciar' | 'recorrentes'>(subAbaInicial);
   const [modalImportarAberto, setModalImportarAberto] = useState(false);
+  const [modalMercadoAberto, setModalMercadoAberto] = useState(false);
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
@@ -108,8 +110,28 @@ export const ExtratoView: React.FC<ExtratoViewProps> = ({ subAbaInicial = 'livro
           </button>
         </div>
 
-        {/* Botão de Importar OFX/CSV alinhado à direita */}
-        <div style={{ display: 'flex', justifyContent: 'flex-end', width: '100%' }}>
+        {/* Barra de Ações Rápidas: Sincronizar Mercado e Importar OFX/CSV */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px', width: '100%' }}>
+          <button
+            type="button"
+            onClick={() => setModalMercadoAberto(true)}
+            className="btn-secondary"
+            style={{
+              padding: '7px 12px',
+              fontSize: '11.5px',
+              fontWeight: 700,
+              gap: '6px',
+              borderRadius: '10px',
+              borderColor: '#4CAF50',
+              color: '#66BB6A',
+              backgroundColor: 'rgba(76, 175, 80, 0.12)'
+            }}
+            title="Sincronizar compras e recibos do Meu Mercado"
+          >
+            <ShoppingCart size={14} color="#66BB6A" />
+            <span>Sincronizar Meu Mercado</span>
+          </button>
+
           <button
             type="button"
             onClick={() => setModalImportarAberto(true)}
@@ -140,6 +162,12 @@ export const ExtratoView: React.FC<ExtratoViewProps> = ({ subAbaInicial = 'livro
       <ImportarExtratoModal
         aberto={modalImportarAberto}
         onFechar={() => setModalImportarAberto(false)}
+      />
+
+      {/* Modal de Sincronização do Meu Mercado */}
+      <SincronizarMercadoModal
+        aberto={modalMercadoAberto}
+        onFechar={() => setModalMercadoAberto(false)}
       />
     </div>
   );
