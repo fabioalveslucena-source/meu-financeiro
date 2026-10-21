@@ -176,71 +176,117 @@ export const LivroCaixaView: React.FC = () => {
         </div>
       </div>
 
-      {/* Cards de Resumo Financeiro (KPIs) */}
+      {/* Cards de Resumo Financeiro no Topo (Layout em 3 linhas: 2 + 2 + 1) */}
       <div style={{
         display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
-        gap: '1rem'
+        gridTemplateColumns: 'repeat(2, 1fr)',
+        gap: '10px'
       }}>
-        {/* Saldo Anterior */}
-        <div className="card" style={{ padding: '1rem' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
-            <span style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-secondary)' }}>SALDO ANTERIOR</span>
-            <Scale size={16} color="var(--brand-secondary)" />
+        {/* Linha 1: Saldo Anterior */}
+        <div style={{
+          padding: '12px 14px',
+          borderRadius: '12px',
+          backgroundColor: '#0F2744',
+          border: '1px solid #1E3A5F',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '4px'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <span style={{ fontSize: '11px', fontWeight: 700, color: '#AAB4BE', textTransform: 'uppercase' }}>Saldo Anterior</span>
+            <Scale size={15} color="#5090D3" />
           </div>
-          <p style={{ fontSize: '1.3rem', fontWeight: 800, margin: 0, color: 'var(--text-primary)' }}>
+          <p style={{ fontSize: '16px', fontWeight: 900, margin: 0, color: '#FFFFFF' }}>
             {formatarMoeda(resumo.saldoAnterior)}
           </p>
         </div>
 
-        {/* Receitas */}
-        <div className="card" style={{ padding: '1rem', borderLeft: '4px solid var(--color-receita)' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
-            <span style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--color-receita)' }}>RECEITAS (+)</span>
-            <ArrowUpRight size={18} color="var(--color-receita)" />
+        {/* Linha 1: Receitas */}
+        <div style={{
+          padding: '12px 14px',
+          borderRadius: '12px',
+          backgroundColor: 'rgba(76, 175, 80, 0.12)',
+          border: '1px solid rgba(76, 175, 80, 0.3)',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '4px'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <span style={{ fontSize: '11px', fontWeight: 700, color: '#66BB6A', textTransform: 'uppercase' }}>Receitas (+)</span>
+            <ArrowUpRight size={16} color="#4CAF50" />
           </div>
-          <p style={{ fontSize: '1.3rem', fontWeight: 800, margin: 0, color: 'var(--color-receita)' }}>
-            {formatarMoeda(resumo.totalReceitas)}
+          <p style={{ fontSize: '16px', fontWeight: 900, margin: 0, color: '#4CAF50' }}>
+            + {formatarMoeda(resumo.totalReceitas)}
           </p>
         </div>
 
-        {/* Despesas */}
-        <div className="card" style={{ padding: '1rem', borderLeft: '4px solid var(--color-despesa)' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
-            <span style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--color-despesa)' }}>DESPESAS (-)</span>
-            <ArrowDownRight size={18} color="var(--color-despesa)" />
+        {/* Linha 2: Despesas */}
+        <div style={{
+          padding: '12px 14px',
+          borderRadius: '12px',
+          backgroundColor: 'rgba(244, 67, 54, 0.12)',
+          border: '1px solid rgba(244, 67, 54, 0.3)',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '4px'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <span style={{ fontSize: '11px', fontWeight: 700, color: '#EF5350', textTransform: 'uppercase' }}>Despesas (-)</span>
+            <ArrowDownRight size={16} color="#F44336" />
           </div>
-          <p style={{ fontSize: '1.3rem', fontWeight: 800, margin: 0, color: 'var(--color-despesa)' }}>
-            {formatarMoeda(resumo.totalDespesas)}
+          <p style={{ fontSize: '16px', fontWeight: 900, margin: 0, color: '#F44336' }}>
+            - {formatarMoeda(resumo.totalDespesas)}
           </p>
         </div>
 
-        {/* Investimentos */}
-        <div className="card" style={{ padding: '1rem', borderLeft: '4px solid var(--color-investimento)' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
-            <span style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--color-investimento)' }}>INVESTIMENTOS</span>
-            <PiggyBank size={18} color="var(--color-investimento)" />
+        {/* Linha 2: Investimentos */}
+        <div style={{
+          padding: '12px 14px',
+          borderRadius: '12px',
+          backgroundColor: 'rgba(40, 126, 165, 0.14)',
+          border: '1px solid rgba(40, 126, 165, 0.35)',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '4px'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <span style={{ fontSize: '11px', fontWeight: 700, color: '#82B1FF', textTransform: 'uppercase' }}>Investimentos</span>
+            <PiggyBank size={16} color="#5090D3" />
           </div>
-          <p style={{ fontSize: '1.3rem', fontWeight: 800, margin: 0, color: 'var(--color-investimento)' }}>
+          <p style={{ fontSize: '16px', fontWeight: 900, margin: 0, color: '#82B1FF' }}>
             {formatarMoeda(resumo.totalInvestimentos)}
           </p>
         </div>
 
-        {/* Saldo Final */}
-        <div className="card" style={{
-          padding: '1rem',
-          background: 'linear-gradient(135deg, var(--bg-secondary) 0%, rgba(40, 126, 165, 0.2) 100%)',
-          border: '1px solid var(--brand-secondary)'
+        {/* Linha 3: Saldo Final (Sozinho, ocupando as duas colunas com destaque) */}
+        <div style={{
+          gridColumn: 'span 2',
+          padding: '14px 18px',
+          borderRadius: '14px',
+          backgroundColor: resumo.saldoFinal >= 0 ? 'rgba(76, 175, 80, 0.18)' : 'rgba(244, 67, 54, 0.18)',
+          border: `1px solid ${resumo.saldoFinal >= 0 ? 'rgba(76, 175, 80, 0.45)' : 'rgba(244, 67, 54, 0.45)'}`,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          boxShadow: '0 4px 14px rgba(0, 0, 0, 0.25)'
         }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
-            <span style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--brand-secondary)' }}>SALDO FINAL</span>
-            <TrendingUp size={18} color="var(--brand-secondary)" />
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <TrendingUp size={16} color={resumo.saldoFinal >= 0 ? '#4CAF50' : '#F44336'} />
+              <span style={{ fontSize: '11.5px', fontWeight: 800, color: resumo.saldoFinal >= 0 ? '#81C784' : '#E57373', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                Saldo Final do Mês ({competenciaAtiva})
+              </span>
+            </div>
+            <span style={{ fontSize: '11px', color: '#AAB4BE' }}>
+              Saldo consolidado pós entradas e saídas
+            </span>
           </div>
+
           <p style={{
-            fontSize: '1.4rem',
-            fontWeight: 800,
+            fontSize: '20px',
+            fontWeight: 900,
             margin: 0,
-            color: resumo.saldoFinal >= 0 ? 'var(--text-primary)' : 'var(--color-despesa)'
+            color: resumo.saldoFinal >= 0 ? '#4CAF50' : '#F44336'
           }}>
             {formatarMoeda(resumo.saldoFinal)}
           </p>
@@ -338,7 +384,7 @@ export const LivroCaixaView: React.FC = () => {
                   </span>
                 </div>
 
-                {/* Lançamentos da Semana (sem saldo linha a linha e sem tag à vista para evitar poluição) */}
+                {/* Lançamentos da Semana em 2 Linhas Estilo Bancário Profissional */}
                 {grupo.itens.map((item, itemIdx) => {
                   const isDespesa = item.tipo === 'Despesa';
                   const isReceita = item.tipo === 'Receita';
@@ -350,103 +396,154 @@ export const LivroCaixaView: React.FC = () => {
                       style={{
                         padding: '12px 16px',
                         borderBottom: itemIdx < grupo.itens.length - 1 ? '1px solid rgba(30, 58, 95, 0.4)' : 'none',
-                        backgroundColor: itemIdx % 2 === 1 ? 'rgba(19, 47, 76, 0.25)' : 'transparent',
+                        backgroundColor: itemIdx % 2 === 1 ? 'rgba(19, 47, 76, 0.2)' : 'transparent',
                         display: 'flex',
-                        flexDirection: 'column',
-                        gap: '5px'
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        gap: '12px'
                       }}
                     >
-                      {/* Linha 1: Data, Descrição, Badges de Parcelamento e Valor */}
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                          <span style={{ fontSize: '12px', fontWeight: 700, color: '#AAB4BE' }}>
-                            📅 {formatarData(item.data)}
+                      {/* Coluna Esquerda: Exatamente 2 Linhas */}
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', flex: 1, minWidth: 0 }}>
+                        {/* Linha 1: Data + Nomenclatura (Descrição) + Badge de Parcelas (apenas se parcelado) */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', minWidth: 0 }}>
+                          <span style={{
+                            fontSize: '11px',
+                            fontWeight: 700,
+                            color: '#82B1FF',
+                            backgroundColor: 'rgba(40, 126, 165, 0.2)',
+                            padding: '1.5px 6px',
+                            borderRadius: '5px',
+                            whiteSpace: 'nowrap',
+                            flexShrink: 0
+                          }}>
+                            {formatarData(item.data).slice(0, 5)}
                           </span>
-                          <strong style={{ fontSize: '15px', color: '#FFFFFF' }}>
+
+                          <strong style={{
+                            fontSize: '14px',
+                            fontWeight: 700,
+                            color: '#FFFFFF',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            whiteSpace: 'nowrap'
+                          }} title={item.descricao}>
                             {item.descricao}
                           </strong>
 
-                          {/* Apenas exibe badge quando for PARCELADO (evita poluição no à vista) */}
+                          {/* Apenas exibe badge quando for PARCELADO */}
                           {item.totalParcelas && item.totalParcelas > 1 ? (
                             <span style={{
-                              fontSize: '11px',
+                              fontSize: '10.5px',
                               fontWeight: 800,
-                              padding: '2.5px 7px',
+                              padding: '1.5px 6px',
                               borderRadius: '4px',
                               backgroundColor: 'rgba(138, 5, 190, 0.25)',
                               color: '#C084FC',
-                              border: '1px solid rgba(192, 132, 252, 0.4)'
+                              border: '1px solid rgba(192, 132, 252, 0.4)',
+                              whiteSpace: 'nowrap',
+                              flexShrink: 0
                             }}>
-                              📦 {item.parcela || 1}/{item.totalParcelas} ({item.pagamento.replace(/^[^\s]+\s*/, '')})
+                              📦 {item.parcela || 1}/{item.totalParcelas}
                             </span>
                           ) : null}
+                        </div>
+
+                        {/* Linha 2: Natureza • Categoria • Forma de Pagamento */}
+                        <div style={{
+                          fontSize: '11.5px',
+                          color: '#AAB4BE',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '6px',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap'
+                        }}>
+                          <span style={{ color: '#8899A6' }}>{item.natureza}</span>
+                          <span>•</span>
+                          <span style={{ color: '#E2E8F0', fontWeight: 600 }}>{item.categoria}</span>
+                          <span>•</span>
+                          <span style={{ color: '#5090D3' }}>{item.pagamento}</span>
+                          {item.cartao ? <span style={{ color: '#7E9BB8' }}>({item.cartao})</span> : null}
 
                           {item.detalhesMercado && (
                             <button
                               type="button"
                               onClick={() => setLancamentoMercado(item)}
                               style={{
-                                fontSize: '11px',
+                                fontSize: '10.5px',
                                 fontWeight: 800,
-                                padding: '2.5px 8px',
-                                borderRadius: '6px',
+                                padding: '1px 6px',
+                                borderRadius: '4px',
                                 backgroundColor: 'rgba(76, 175, 80, 0.22)',
                                 color: '#66BB6A',
                                 border: '1px solid rgba(76, 175, 80, 0.45)',
                                 cursor: 'pointer',
                                 display: 'inline-flex',
                                 alignItems: 'center',
-                                gap: '4px',
-                                transition: 'all 0.15s ease'
+                                gap: '3px',
+                                marginLeft: '2px',
+                                flexShrink: 0
                               }}
                               title="Ver cupom detalhado de compras do Meu Mercado"
                             >
-                              <ShoppingCart size={12} />
-                              <span>Cupom ({item.detalhesMercado.itens.length} itens)</span>
+                              <ShoppingCart size={11} />
+                              <span>Cupom</span>
                             </button>
                           )}
                         </div>
+                      </div>
 
-                        <strong style={{ fontSize: '16px', fontWeight: 900, color: corValor }}>
+                      {/* Coluna Direita: Valor Monetário Alinhado à Direita de Forma Responsiva */}
+                      <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                        <strong style={{
+                          fontSize: '15px',
+                          fontWeight: 900,
+                          color: corValor,
+                          whiteSpace: 'nowrap'
+                        }}>
                           {isDespesa ? '- ' : '+ '}
                           {formatarMoeda(item.valor)}
                         </strong>
-                      </div>
-
-                      {/* Linha 2: Natureza, Categoria e Forma de Pagamento */}
-                      <div style={{ fontSize: '12.5px', color: 'var(--text-secondary)' }}>
-                        {item.natureza} • <strong style={{ color: 'var(--text-primary)' }}>{item.categoria}</strong> • <span style={{ color: '#82B1FF' }}>{item.pagamento}</span> {item.cartao ? `(${item.cartao})` : ''}
                       </div>
                     </div>
                   );
                 })}
 
-                {/* Barra Elegante de Fechamento da Semana com Saldo Acumulado */}
+                {/* Barra Elegante e Responsiva de Fechamento da Semana */}
                 <div style={{
-                  backgroundColor: 'rgba(11, 25, 41, 0.75)',
+                  backgroundColor: 'rgba(11, 25, 41, 0.85)',
                   borderTop: '1px dashed #265D97',
-                  padding: '9px 16px',
+                  padding: '8px 14px',
                   display: 'flex',
                   justifyContent: 'space-between',
                   alignItems: 'center',
-                  fontSize: '12px',
-                  fontWeight: 700
+                  fontSize: '11.5px',
+                  gap: '8px'
                 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#AAB4BE' }}>
-                    <CalendarCheck size={14} color="#5090D3" />
-                    <span>Fechamento da {grupo.titulo.split('•')[0].trim()} ({grupo.itens.length} {grupo.itens.length === 1 ? 'movimento' : 'movimentos'})</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '5px', color: '#8899A6', minWidth: 0 }}>
+                    <CalendarCheck size={13} color="#5090D3" style={{ flexShrink: 0 }} />
+                    <span style={{ fontWeight: 700, color: '#C5D1DE', whiteSpace: 'nowrap' }}>
+                      {grupo.titulo.split('•')[0].trim()}
+                    </span>
+                    <span style={{ color: '#607789', fontSize: '11px', whiteSpace: 'nowrap' }}>
+                      ({grupo.itens.length} {grupo.itens.length === 1 ? 'mov.' : 'mov.'})
+                    </span>
                   </div>
 
                   <div style={{
-                    padding: '3px 10px',
+                    padding: '2.5px 8px',
                     borderRadius: '6px',
                     backgroundColor: grupo.saldoFinalSemana >= 0 ? 'rgba(76, 175, 80, 0.15)' : 'rgba(244, 67, 54, 0.15)',
                     color: grupo.saldoFinalSemana >= 0 ? '#4CAF50' : '#F44336',
                     fontWeight: 900,
-                    fontSize: '12.5px',
-                    border: `1px solid ${grupo.saldoFinalSemana >= 0 ? 'rgba(76, 175, 80, 0.3)' : 'rgba(244, 67, 54, 0.3)'}`
+                    fontSize: '12px',
+                    border: `1px solid ${grupo.saldoFinalSemana >= 0 ? 'rgba(76, 175, 80, 0.3)' : 'rgba(244, 67, 54, 0.3)'}`,
+                    whiteSpace: 'nowrap',
+                    flexShrink: 0
                   }}>
-                    Saldo Acumulado: {formatarMoeda(grupo.saldoFinalSemana)}
+                    Saldo: {formatarMoeda(grupo.saldoFinalSemana)}
                   </div>
                 </div>
               </div>

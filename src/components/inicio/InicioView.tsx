@@ -50,6 +50,7 @@ export const InicioView: React.FC<InicioViewProps> = ({
 
   // Controle de sanfona para parcelamentos em aberto
   const [mostrarParcelamentos, setMostrarParcelamentos] = useState(false);
+  const [mostrarUltimasMovimentacoes, setMostrarUltimasMovimentacoes] = useState(false);
   const [lancamentoMercado, setLancamentoMercado] = useState<Lancamento | null>(null);
 
   return (
@@ -552,130 +553,204 @@ export const InicioView: React.FC<InicioViewProps> = ({
       {/* =====================================================
            📝 ÚLTIMOS LANÇAMENTOS DO MÊS (ACESSO RÁPIDO)
          ===================================================== */}
+      {/* Janela Recolhível de Últimas Movimentações (abre apenas no toque) */}
       <div style={{
         backgroundColor: '#0F2744',
         border: '1px solid #1E3A5F',
         borderRadius: '20px',
-        padding: '18px 20px',
+        padding: '16px 20px',
         boxShadow: '0 6px 20px rgba(11, 25, 41, 0.4)'
       }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-          <div>
+        {/* Cabeçalho Clicável: Apenas a barra com o título quando recolhido */}
+        <div 
+          onClick={() => setMostrarUltimasMovimentacoes(!mostrarUltimasMovimentacoes)}
+          style={{ 
+            display: 'flex', 
+            justifyContent: 'space-between', 
+            alignItems: 'center', 
+            cursor: 'pointer',
+            userSelect: 'none'
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <h3 style={{ fontSize: '15px', fontWeight: 800, margin: 0, color: '#FFFFFF' }}>
               Últimas Movimentações
             </h3>
-            <span style={{ fontSize: '11px', color: '#AAB4BE' }}>Lançamentos recentes deste mês</span>
+            <span style={{ 
+              fontSize: '11px', 
+              color: '#82B1FF', 
+              backgroundColor: 'rgba(40, 126, 165, 0.2)', 
+              padding: '2px 8px', 
+              borderRadius: '6px',
+              fontWeight: 700 
+            }}>
+              {ultimosLancamentos.length} recentes
+            </span>
           </div>
 
-          <button
-            type="button"
-            onClick={onIrParaGerenciar}
-            style={{
-              background: 'none',
-              border: 'none',
-              color: '#5090D3',
-              fontSize: '12px',
-              fontWeight: 700,
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '4px'
-            }}
-          >
-            <span>Gerenciar todos</span>
-            <ArrowRight size={14} />
-          </button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span style={{ fontSize: '12px', color: '#5090D3', fontWeight: 700 }}>
+              {mostrarUltimasMovimentacoes ? 'Recolher' : 'Ver movimentações'}
+            </span>
+            {mostrarUltimasMovimentacoes ? <ChevronUp size={18} color="#5090D3" /> : <ChevronDown size={18} color="#5090D3" />}
+          </div>
         </div>
 
-        {ultimosLancamentos.length === 0 ? (
-          <p style={{ fontSize: '13px', color: '#607789', margin: '10px 0', textAlign: 'center' }}>
-            Nenhum lançamento registrado neste mês ainda.
-          </p>
-        ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            {ultimosLancamentos.map((item) => {
-              const isDespesa = item.tipo === 'Despesa';
-              const isReceita = item.tipo === 'Receita';
-              const corValor = isReceita ? '#4CAF50' : item.tipo === 'Investimento' ? '#5090D3' : '#F44336';
+        {/* Conteúdo exibido APENAS quando o usuário clicar na janela */}
+        {mostrarUltimasMovimentacoes && (
+          <div style={{ marginTop: '14px', paddingTop: '12px', borderTop: '1px solid rgba(30, 58, 95, 0.5)' }}>
+            {ultimosLancamentos.length === 0 ? (
+              <p style={{ fontSize: '13px', color: '#607789', margin: '10px 0', textAlign: 'center' }}>
+                Nenhum lançamento registrado neste mês ainda.
+              </p>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                {ultimosLancamentos.map((item) => {
+                  const isDespesa = item.tipo === 'Despesa';
+                  const isReceita = item.tipo === 'Receita';
+                  const corValor = isReceita ? '#4CAF50' : item.tipo === 'Investimento' ? '#5090D3' : '#F44336';
 
-              return (
-                <div key={item.id} style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  padding: '10px 12px',
-                  borderRadius: '12px',
-                  backgroundColor: '#132F4C',
-                  border: '1px solid #1E3A5F'
-                }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    <span style={{ fontSize: '16px' }}>
-                      {isReceita ? '🟢' : isDespesa ? '🔴' : '🔵'}
-                    </span>
-                    <div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        <strong style={{ fontSize: '13px', color: '#FFFFFF' }}>{item.descricao}</strong>
-                        {item.parcela && item.totalParcelas && item.totalParcelas > 1 ? (
+                  return (
+                    <div key={item.id} style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      padding: '10px 14px',
+                      borderRadius: '12px',
+                      backgroundColor: '#132F4C',
+                      border: '1px solid #1E3A5F',
+                      gap: '12px'
+                    }}>
+                      {/* Coluna Esquerda: Exatamente 2 linhas */}
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', flex: 1, minWidth: 0 }}>
+                        {/* Linha 1: Data + Descrição + Parcelamento (apenas se parcelado) */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', minWidth: 0 }}>
                           <span style={{
-                            fontSize: '10px',
-                            fontWeight: 800,
-                            padding: '1px 6px',
-                            borderRadius: '4px',
-                            backgroundColor: 'rgba(138, 5, 190, 0.25)',
-                            color: '#C084FC'
-                          }}>
-                            {item.parcela}/{item.totalParcelas}
-                          </span>
-                        ) : (
-                          <span style={{
-                            fontSize: '10px',
-                            fontWeight: 800,
-                            padding: '1px 6px',
-                            borderRadius: '4px',
+                            fontSize: '11px',
+                            fontWeight: 700,
+                            color: '#82B1FF',
                             backgroundColor: 'rgba(40, 126, 165, 0.2)',
-                            color: '#5090D3'
+                            padding: '1.5px 6px',
+                            borderRadius: '5px',
+                            whiteSpace: 'nowrap',
+                            flexShrink: 0
                           }}>
-                            À vista
+                            {formatarData(item.data).slice(0, 5)}
                           </span>
-                        )}
 
-                        {item.detalhesMercado && (
-                          <button
-                            type="button"
-                            onClick={() => setLancamentoMercado(item)}
-                            style={{
-                              fontSize: '10px',
+                          <strong style={{
+                            fontSize: '13.5px',
+                            fontWeight: 700,
+                            color: '#FFFFFF',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            whiteSpace: 'nowrap'
+                          }} title={item.descricao}>
+                            {item.descricao}
+                          </strong>
+
+                          {/* Mostra APENAS se for parcelado */}
+                          {item.totalParcelas && item.totalParcelas > 1 ? (
+                            <span style={{
+                              fontSize: '10.5px',
                               fontWeight: 800,
-                              padding: '1px 7px',
+                              padding: '1.5px 6px',
                               borderRadius: '4px',
-                              backgroundColor: 'rgba(76, 175, 80, 0.22)',
-                              color: '#66BB6A',
-                              border: '1px solid rgba(76, 175, 80, 0.45)',
-                              cursor: 'pointer',
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              gap: '3px'
-                            }}
-                            title="Ver cupom detalhado do Meu Mercado"
-                          >
-                            <ShoppingCart size={10} />
-                            <span>Cupom ({item.detalhesMercado.itens.length})</span>
-                          </button>
-                        )}
-                      </div>
-                      <span style={{ fontSize: '11px', color: '#AAB4BE' }}>
-                        {formatarData(item.data)} • {item.categoria} • {item.pagamento}
-                      </span>
-                    </div>
-                  </div>
+                              backgroundColor: 'rgba(138, 5, 190, 0.25)',
+                              color: '#C084FC',
+                              border: '1px solid rgba(192, 132, 252, 0.4)',
+                              whiteSpace: 'nowrap',
+                              flexShrink: 0
+                            }}>
+                              📦 {item.totalParcelas}x de {formatarMoeda(item.valor / item.totalParcelas)}
+                            </span>
+                          ) : null}
+                        </div>
 
-                  <strong style={{ fontSize: '14px', color: corValor }}>
-                    {isDespesa ? '- ' : '+ '}
-                    {formatarMoeda(item.valor)}
-                  </strong>
+                        {/* Linha 2: Natureza • Categoria • Forma de Pagamento */}
+                        <div style={{
+                          fontSize: '11px',
+                          color: '#AAB4BE',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '6px',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap'
+                        }}>
+                          <span style={{ color: '#8899A6' }}>{item.natureza}</span>
+                          <span>•</span>
+                          <span style={{ color: '#E2E8F0', fontWeight: 600 }}>{item.categoria}</span>
+                          <span>•</span>
+                          <span style={{ color: '#5090D3' }}>{item.pagamento}</span>
+
+                          {item.detalhesMercado && (
+                            <button
+                              type="button"
+                              onClick={() => setLancamentoMercado(item)}
+                              style={{
+                                fontSize: '10px',
+                                fontWeight: 800,
+                                padding: '1px 6px',
+                                borderRadius: '4px',
+                                backgroundColor: 'rgba(76, 175, 80, 0.22)',
+                                color: '#66BB6A',
+                                border: '1px solid rgba(76, 175, 80, 0.45)',
+                                cursor: 'pointer',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '3px',
+                                marginLeft: '2px',
+                                flexShrink: 0
+                              }}
+                              title="Ver cupom detalhado do Meu Mercado"
+                            >
+                              <ShoppingCart size={10} />
+                              <span>Cupom</span>
+                            </button>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Coluna Direita: Valor Monetário Responsivo Alinhado à Direita */}
+                      <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                        <strong style={{
+                          fontSize: '14.5px',
+                          fontWeight: 900,
+                          color: corValor,
+                          whiteSpace: 'nowrap'
+                        }}>
+                          {isDespesa ? '- ' : '+ '}
+                          {formatarMoeda(item.valor)}
+                        </strong>
+                      </div>
+                    </div>
+                  );
+                })}
+
+                <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '8px' }}>
+                  <button
+                    type="button"
+                    onClick={onIrParaGerenciar}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      color: '#5090D3',
+                      fontSize: '12px',
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                      padding: '4px 0'
+                    }}
+                  >
+                    <span>Gerenciar todos os lançamentos</span>
+                    <ArrowRight size={14} />
+                  </button>
                 </div>
-              );
-            })}
+              </div>
+            )}
           </div>
         )}
       </div>
