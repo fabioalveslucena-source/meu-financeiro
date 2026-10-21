@@ -58,15 +58,37 @@ export function converterTextoParaNumero(texto: string): number | null {
 }
 
 export function extrairValorVoz(texto: string): number | null {
-  // 1. Tentar dígitos diretos "R$ 150,50" ou "150 reais"
-  const regexDigito = /(?:r\$|reais?)?\s*(\d+(?:[.,]\d{1,2})?)\s*(?:reais|pila|conto)?/i;
-  const matchDigito = texto.match(regexDigito);
-  if (matchDigito && matchDigito[1]) {
-    const num = parseFloat(matchDigito[1].replace(',', '.'));
+  if (!texto) return null;
+
+  // 1. Unificar vírgula com espaço: "12, 80" -> "12,80"
+  let s = texto.replace(/(\d+)\s*,\s*(\d{1,2})/g, '$1,$2');
+
+  // 2. Composto falado: "12 e 80", "12 com 80", "12 vírgula 80", "12 reais e 80 centavos", "12 reais e 80"
+  const matchComposto = s.match(/(?:r\$|reais?)?\s*(\d+)\s*(?:reais|real)?\s*(?:e|com|vírgula|virgula)\s*(\d{1,2})\s*(?:centavos|reais|pila|conto)?/i);
+  if (matchComposto) {
+    const inteiro = parseInt(matchComposto[1], 10);
+    let centavosStr = matchComposto[2];
+    if (centavosStr.length === 1) centavosStr += '0';
+    const centavos = parseInt(centavosStr, 10);
+    const total = inteiro + (centavos / 100);
+    if (!isNaN(total) && total > 0) return total;
+  }
+
+  // 3. Dígito direto com decimais (ex: "12,80", "12.80", "12,8", "12.8")
+  const matchDecimal = s.match(/(?:r\$|reais?)?\s*(\d+[.,]\d{1,2})\s*(?:reais|real|pila|conto)?/i);
+  if (matchDecimal && matchDecimal[1]) {
+    const num = parseFloat(matchDecimal[1].replace(',', '.'));
     if (!isNaN(num) && num > 0) return num;
   }
 
-  // 2. Tentar número por extenso
+  // 4. Dígito inteiro (ex: "12 reais", "12 conto", "12")
+  const matchInteiro = s.match(/(?:r\$|reais?)?\s*(\d+)\s*(?:reais|real|pila|conto)?/i);
+  if (matchInteiro && matchInteiro[1]) {
+    const num = parseInt(matchInteiro[1], 10);
+    if (!isNaN(num) && num > 0) return num;
+  }
+
+  // 5. Tentar número por extenso
   const norm = normalizarTexto(texto);
   const extenso = converterTextoParaNumero(norm);
   if (extenso && extenso > 0) return extenso;
@@ -104,8 +126,8 @@ export function identificarPagamentoVoz(texto: string, parcelasIdentificadas?: n
     return '💳 Crédito';
   }
 
-  // 4. Pix
-  if (/\b(pix|chave)\b/.test(norm)) {
+  // 4. Pix (exige 'pix' ou 'chave pix' para não colidir com 'chave de fenda', 'chave inglesa', etc)
+  if (/\b(pix|chave\s*pix|chave\s*aleatoria|chave\s*cpf|chave\s*telefone)\b/.test(norm)) {
     return '📱 Pix';
   }
 
@@ -119,7 +141,8 @@ export function identificarPagamentoVoz(texto: string, parcelasIdentificadas?: n
     return '📝 Boleto';
   }
 
-  return '📱 Pix';
+  // Padrão do sistema quando a forma não for especificada: Débito
+  return '🏦 Débito';
 }
 
 export function identificarNaturezaECategoria(texto: string, tipo: TipoLancamento): { natureza: string; categoria: string } {
@@ -144,7 +167,34 @@ export function identificarNaturezaECategoria(texto: string, tipo: TipoLancament
     { regex: /\b(uber|taxi|corrida|99)\b/, naturezaLabel: '🚗 Transporte', categoriaNome: 'Uber / Táxi / 99' },
     { regex: /\b(ipva|seguro veiculo|mecanico|pneu|revisao)\b/, naturezaLabel: '🚗 Transporte', categoriaNome: 'Manutenção e Mecânica' },
     
-    // Moradia
+    // Ferramentas, Oficina, Elétrica, Hidráulica, Jardim e EPIs (Solicitado expressamente pelo usuário)
+    { 
+      regex: /\b(chave de fenda|chave philips|chave fenda|chave inglesa|chave estrela|chave combinada|chave allen|alicate|martelo|furadeira|parafusadeira|serrote|serra|trena|broca|marreta|esmerilhadeira|lixadeira|nivel|estilete|multimetro)\b/, 
+      naturezaLabel: '🏠 Moradia', 
+      categoriaNome: 'Ferramentas e Materiais' 
+    },
+    { 
+      regex: /\b(disjuntor|interruptor|tomada|fiação|fiacao|fio eletrico|fio|cabo eletrico|fita isolante|conduite|lampada|lampadas|reator|extensao|plugue|bocal|soquete|fusivel)\b/, 
+      naturezaLabel: '🏠 Moradia', 
+      categoriaNome: 'Ferramentas e Materiais' 
+    },
+    { 
+      regex: /\b(enxada|enxadao|pa|rastelo|ancinho|foice|mangueira|podador|pulverizador|regador|tesoura de poda|adubo|fertilizante|terra vegetal)\b/, 
+      naturezaLabel: '🏠 Moradia', 
+      categoriaNome: 'Ferramentas e Materiais' 
+    },
+    { 
+      regex: /\b(luvas latex|luva latex|luva de latex|luvas de latex|luva nitrilica|luva de raspa|luva|luvas|oculos de protecao|mascara|bota de seguranca|bota de borracha|capacete|protetor auricular|epi)\b/, 
+      naturezaLabel: '🏠 Moradia', 
+      categoriaNome: 'Ferramentas e Materiais' 
+    },
+    { 
+      regex: /\b(torneira|cano|tubo|conexao|sifao|registro|valvula|pvc|cimento|argamassa|rejunte|tijolo|bloco|lixa|tinta|pincel|rolo de pintura|verniz|thinner|silicone|veda rosca|parafuso|prego|bucha|dobradica|fechadura)\b/, 
+      naturezaLabel: '🏠 Moradia', 
+      categoriaNome: 'Ferramentas e Materiais' 
+    },
+
+    // Moradia (Contas e Serviços Gerais)
     { regex: /\b(aluguel|condominio|iptu)\b/, naturezaLabel: '🏠 Moradia', categoriaNome: 'Aluguel / Condomínio' },
     { regex: /\b(luz|energia|enel|cemig)\b/, naturezaLabel: '🏠 Moradia', categoriaNome: 'Energia Elétrica' },
     { regex: /\b(internet|wifi|fibra|claro|vivo|tv)\b/, naturezaLabel: '🏠 Moradia', categoriaNome: 'Internet / TV a Cabo' },
@@ -181,7 +231,9 @@ export function identificarNaturezaECategoria(texto: string, tipo: TipoLancament
     }
   }
 
-  return { natureza: '🛒 Alimentação', categoria: 'Supermercado' };
+  // Fallback seguro: se não reconheceu termos específicos, atribui a Outros/Imprevistos
+  // NUNCA mais força Alimentação/Supermercado para não distorcer o extrato!
+  return { natureza: '📦 Outros', categoria: 'Imprevistos e Diversos' };
 }
 
 const PALAVRAS_PARCELAS: Record<string, number> = {
@@ -247,29 +299,36 @@ export function interpretarComandoVoz(frase: string): VozInterpretada {
   const pagamento = identificarPagamentoVoz(frase, parcelas);
   const { natureza, categoria } = identificarNaturezaECategoria(frase, tipo);
 
-  // Sanitização profunda da descrição: remove moedas, números, formas de pagamento, parcelas e verbos
+  // Sanitização inteligente da descrição: remove moedas, números, formas de pagamento, parcelas e verbos financeiros
   let s = frase
     .replace(/(?<!\d)[,.;:!?](?!\d)/gu, ' ')
     .replace(/r\$/gi, ' ');
 
-  // Moedas (BRL, R$, reais, etc)
-  s = s.replace(/(?<!\p{L})(?:brl|usd|eur|reais?|real|pila|conto|centavos?)(?!\p{L})/giu, ' ');
-  // Números
-  s = s.replace(/(?<!\p{L})\d+(?:[.,]\d{1,2})?(?!\p{L})/gu, ' ');
-  // Parcelas ("10x", "em 2 vezes", "3 parcelas")
-  s = s.replace(/(?<!\p{L})\d{1,2}\s*x(?!\p{L})/giu, ' ');
-  s = s.replace(/(?:em|de|para)?\s*(?:\d{1,2}|uma|um|duas|dois|tres|três|quatro|cinco|seis|sete|oito|nove|dez|doze)?\s*(?:vezes|parcelas|prestações|prestacoes)(?!\p{L})/giu, ' ');
-  s = s.replace(/(?<!\p{L})parcelad[oa](?:\s+em)?(?!\p{L})/giu, ' ');
-  // Formas de pagamento e conectivos ("é débito", "foi no débito", "no crédito", "via pix")
-  s = s.replace(/(?<!\p{L})(?:é|e|foi|será|sera|no|na|em|via|pelo|pela|com|de)?\s*(?:débito|debito|crédito|credito|cartão|cartao|pix|dinheiro|espécie|especie|boleto)(?!\p{L})/giu, ' ');
-  s = s.replace(/(?<!\p{L})(?:débito|debito|crédito|credito|cartão|cartao|pix|dinheiro|espécie|especie|boleto)(?!\p{L})/giu, ' ');
-  // Verbos de ação financeira
-  s = s.replace(/(?<!\p{L})(?:gastei|paguei|gasto|gastos|comprei|compra|recebi|ganhei|investi|aporte|lancei|lançar|coloquei)(?!\p{L})/giu, ' ');
-  // Preposições e artigos soltos
-  s = s.replace(/(?<!\p{L})(?:é|e|no|na|nos|nas|em|de|do|da|dos|das|com|via|pelo|pela|pelos|pelas|um|uma|uns|umas|o|a|os|as|pra|para|por)(?!\p{L})/giu, ' ');
-  // Pontuações
+  // 1. Formas de pagamento completas ("no débito", "via pix", "em 2x")
+  s = s.replace(/(?:é|e|foi|será|sera|no|na|em|via|pelo|pela|com|de)?\s*(?:débito|debito|crédito|credito|cartão|cartao|pix|dinheiro|espécie|especie|boleto)\b/giu, ' ');
+
+  // 2. Parcelas
+  s = s.replace(/(?:em|de|para)?\s*\d{1,2}\s*x\b/giu, ' ');
+  s = s.replace(/(?:em|de|para)?\s*(?:\d{1,2}|uma|um|duas|dois|tres|três|quatro|cinco|seis|sete|oito|nove|dez|doze)?\s*(?:vezes|parcelas|prestações|prestacoes)\b/giu, ' ');
+  s = s.replace(/\bparcelad[oa](?:\s+em)?\b/giu, ' ');
+
+  // 3. Remover valores compostos falados (ex: "12 e 80", "12 com 80", "12 reais e 80 centavos")
+  s = s.replace(/\b\d+\s*(?:reais|real)?\s*(?:e|com|vírgula|virgula)\s*\d{1,2}\s*(?:centavos|reais|pila|conto)?\b/giu, ' ');
+
+  // 4. Remover valores normais e moedas
+  s = s.replace(/\b\d+(?:[.,]\s*\d{1,2})?\s*(?:reais?|real|pila|conto|centavos?)?\b/giu, ' ');
+  s = s.replace(/\b(?:brl|usd|eur|reais?|real|pila|conto|centavos?)\b/giu, ' ');
+
+  // 5. Remover verbos financeiros comuns
+  s = s.replace(/\b(?:gastei|paguei|gasto|gastos|comprei|compra|recebi|ganhei|investi|aporte|lancei|lançar|coloquei)\b/giu, ' ');
+
+  // 6. Remover pontuações residuais
   s = s.replace(/[^\p{L}\p{N}\s-]/gu, ' ');
   s = s.replace(/\s+/g, ' ').trim();
+
+  // 7. Remover conectivos soltos apenas no início ou fim para preservar expressões compostas como "Chave de fenda"
+  s = s.replace(/^(?:de|da|do|em|no|na|com|para|pra|por)\s+/i, '');
+  s = s.replace(/\s+(?:de|da|do|em|no|na|com|para|pra|por)$/i, '');
 
   let descricao = s;
 

@@ -238,7 +238,7 @@ export const LivroCaixaPdfDocument: React.FC<LivroCaixaPdfProps> = ({
               const pagLimpo = removerEmojis(item.pagamento);
               const detalhePagamento = item.parcela && item.totalParcelas && item.totalParcelas > 1
                 ? `${pagLimpo} • Parcela ${item.parcela}/${item.totalParcelas}`
-                : `${pagLimpo} • à vista`;
+                : pagLimpo;
 
               return (
                 <View 

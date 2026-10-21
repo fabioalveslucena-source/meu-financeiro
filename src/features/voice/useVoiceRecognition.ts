@@ -71,6 +71,9 @@ export function useVoiceRecognition(onResultadoFinal?: (res: VozInterpretada) =>
         if (event.results[0].isFinal) {
           const interpretado = interpretarComandoVoz(textoAtual);
           setResultado(interpretado);
+          if (interpretado.sucesso && typeof navigator !== 'undefined' && 'vibrate' in navigator) {
+            try { navigator.vibrate(40); } catch (_) {}
+          }
           if (onResultadoFinal) {
             onResultadoFinal(interpretado);
           }

@@ -47,33 +47,45 @@ export const LivroCaixaView: React.FC = () => {
     };
   });
 
-  // Agrupar por dia para exibir o saldo no fechamento de cada dia (evitando poluição numérica)
-  interface GrupoDia {
-    dataStr: string;
+  // Agrupar por semana do mês para exibir o saldo acumulado semanal (evitando a poluição diária na tela)
+  interface GrupoSemana {
+    idSemana: number;
+    titulo: string;
     itens: typeof lancamentosComSaldo;
-    saldoFinalDia: number;
-    totalReceitasDia: number;
-    totalDespesasDia: number;
+    saldoFinalSemana: number;
+    totalReceitasSemana: number;
+    totalDespesasSemana: number;
   }
 
-  const gruposPorDia: GrupoDia[] = [];
+  const obterSemanaInfo = (data: string | Date) => {
+    const d = typeof data === 'string' ? new Date(data + 'T00:00:00') : data;
+    const dia = d.getDate();
+    if (dia <= 7) return { id: 1, titulo: 'Semana 1 • 01 a 07' };
+    if (dia <= 14) return { id: 2, titulo: 'Semana 2 • 08 a 14' };
+    if (dia <= 21) return { id: 3, titulo: 'Semana 3 • 15 a 21' };
+    if (dia <= 28) return { id: 4, titulo: 'Semana 4 • 22 a 28' };
+    return { id: 5, titulo: 'Semana 5 • 29 ao fechamento' };
+  };
+
+  const gruposPorSemana: GrupoSemana[] = [];
   lancamentosComSaldo.forEach((item) => {
-    const dataStr = formatarData(item.data);
-    let grupo = gruposPorDia.find((g) => g.dataStr === dataStr);
+    const info = obterSemanaInfo(item.data);
+    let grupo = gruposPorSemana.find((g) => g.idSemana === info.id);
     if (!grupo) {
       grupo = {
-        dataStr,
+        idSemana: info.id,
+        titulo: info.titulo,
         itens: [],
-        saldoFinalDia: item.saldoAcumulado,
-        totalReceitasDia: 0,
-        totalDespesasDia: 0,
+        saldoFinalSemana: item.saldoAcumulado,
+        totalReceitasSemana: 0,
+        totalDespesasSemana: 0,
       };
-      gruposPorDia.push(grupo);
+      gruposPorSemana.push(grupo);
     }
     grupo.itens.push(item);
-    grupo.saldoFinalDia = item.saldoAcumulado;
-    if (item.tipo === 'Receita') grupo.totalReceitasDia += item.valor;
-    if (item.tipo === 'Despesa') grupo.totalDespesasDia += item.valor;
+    grupo.saldoFinalSemana = item.saldoAcumulado;
+    if (item.tipo === 'Receita') grupo.totalReceitasSemana += item.valor;
+    if (item.tipo === 'Despesa') grupo.totalDespesasSemana += item.valor;
   });
 
   const handleExportarPdf = async () => {
@@ -294,18 +306,39 @@ export const LivroCaixaView: React.FC = () => {
           </div>
         </div>
 
-        {gruposPorDia.length === 0 ? (
+        {gruposPorSemana.length === 0 ? (
           <div style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-secondary)' }}>
             Nenhum lançamento registrado nesta competência.
           </div>
         ) : modoVisualizacao === 'extrato' ? (
           /* ==========================================================
-             MODO EXTRATO BANCÁRIO COM SALDO NO FECHAMENTO DO DIA
+             MODO EXTRATO BANCÁRIO COM SALDO NO FECHAMENTO SEMANAL
              ========================================================== */
           <div style={{ display: 'flex', flexDirection: 'column' }}>
-            {gruposPorDia.map((grupo) => (
-              <div key={grupo.dataStr} style={{ borderBottom: '1px solid var(--border-subtle)' }}>
-                {/* Lançamentos do Dia (sem saldo em cada linha para evitar poluição) */}
+            {gruposPorSemana.map((grupo) => (
+              <div key={grupo.idSemana} style={{ borderBottom: '1px solid var(--border-subtle)', marginBottom: '4px' }}>
+                {/* Cabeçalho da Semana */}
+                <div style={{
+                  backgroundColor: 'rgba(23, 63, 95, 0.4)',
+                  borderBottom: '1px solid rgba(38, 93, 151, 0.4)',
+                  padding: '9px 16px',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  fontSize: '12px',
+                  fontWeight: 800,
+                  color: '#F8D117'
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <CalendarCheck size={14} color="#F8D117" />
+                    <span>{grupo.titulo}</span>
+                  </div>
+                  <span style={{ fontSize: '11px', color: '#AAB4BE', fontWeight: 600 }}>
+                    {grupo.itens.length} {grupo.itens.length === 1 ? 'lançamento' : 'lançamentos'}
+                  </span>
+                </div>
+
+                {/* Lançamentos da Semana (sem saldo linha a linha e sem tag à vista para evitar poluição) */}
                 {grupo.itens.map((item, itemIdx) => {
                   const isDespesa = item.tipo === 'Despesa';
                   const isReceita = item.tipo === 'Receita';
@@ -323,16 +356,18 @@ export const LivroCaixaView: React.FC = () => {
                         gap: '5px'
                       }}
                     >
-                      {/* Linha 1: Data, Descrição, Badges e Valor */}
+                      {/* Linha 1: Data, Descrição, Badges de Parcelamento e Valor */}
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                           <span style={{ fontSize: '12px', fontWeight: 700, color: '#AAB4BE' }}>
-                            📅 {grupo.dataStr}
+                            📅 {formatarData(item.data)}
                           </span>
                           <strong style={{ fontSize: '15px', color: '#FFFFFF' }}>
                             {item.descricao}
                           </strong>
-                          {item.parcela && item.totalParcelas && item.totalParcelas > 1 ? (
+
+                          {/* Apenas exibe badge quando for PARCELADO (evita poluição no à vista) */}
+                          {item.totalParcelas && item.totalParcelas > 1 ? (
                             <span style={{
                               fontSize: '11px',
                               fontWeight: 800,
@@ -342,21 +377,9 @@ export const LivroCaixaView: React.FC = () => {
                               color: '#C084FC',
                               border: '1px solid rgba(192, 132, 252, 0.4)'
                             }}>
-                              📦 {item.parcela}/{item.totalParcelas}
+                              📦 {item.parcela || 1}/{item.totalParcelas} ({item.pagamento.replace(/^[^\s]+\s*/, '')})
                             </span>
-                          ) : (
-                            <span style={{
-                              fontSize: '11px',
-                              fontWeight: 800,
-                              padding: '2.5px 7px',
-                              borderRadius: '4px',
-                              backgroundColor: 'rgba(40, 126, 165, 0.2)',
-                              color: '#5090D3',
-                              border: '1px solid rgba(80, 144, 211, 0.35)'
-                            }}>
-                              ⚡ À vista
-                            </span>
-                          )}
+                          ) : null}
 
                           {item.detalhesMercado && (
                             <button
@@ -398,9 +421,9 @@ export const LivroCaixaView: React.FC = () => {
                   );
                 })}
 
-                {/* Barra Elegante de Fechamento do Dia com Saldo Consolidado */}
+                {/* Barra Elegante de Fechamento da Semana com Saldo Acumulado */}
                 <div style={{
-                  backgroundColor: 'rgba(11, 25, 41, 0.7)',
+                  backgroundColor: 'rgba(11, 25, 41, 0.75)',
                   borderTop: '1px dashed #265D97',
                   padding: '9px 16px',
                   display: 'flex',
@@ -411,19 +434,19 @@ export const LivroCaixaView: React.FC = () => {
                 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#AAB4BE' }}>
                     <CalendarCheck size={14} color="#5090D3" />
-                    <span>Fechamento do Dia • {grupo.dataStr} ({grupo.itens.length} {grupo.itens.length === 1 ? 'movimento' : 'movimentos'})</span>
+                    <span>Fechamento da {grupo.titulo.split('•')[0].trim()} ({grupo.itens.length} {grupo.itens.length === 1 ? 'movimento' : 'movimentos'})</span>
                   </div>
 
                   <div style={{
                     padding: '3px 10px',
                     borderRadius: '6px',
-                    backgroundColor: grupo.saldoFinalDia >= 0 ? 'rgba(76, 175, 80, 0.15)' : 'rgba(244, 67, 54, 0.15)',
-                    color: grupo.saldoFinalDia >= 0 ? '#4CAF50' : '#F44336',
+                    backgroundColor: grupo.saldoFinalSemana >= 0 ? 'rgba(76, 175, 80, 0.15)' : 'rgba(244, 67, 54, 0.15)',
+                    color: grupo.saldoFinalSemana >= 0 ? '#4CAF50' : '#F44336',
                     fontWeight: 900,
                     fontSize: '12.5px',
-                    border: `1px solid ${grupo.saldoFinalDia >= 0 ? 'rgba(76, 175, 80, 0.3)' : 'rgba(244, 67, 54, 0.3)'}`
+                    border: `1px solid ${grupo.saldoFinalSemana >= 0 ? 'rgba(76, 175, 80, 0.3)' : 'rgba(244, 67, 54, 0.3)'}`
                   }}>
-                    Saldo Acumulado: {formatarMoeda(grupo.saldoFinalDia)}
+                    Saldo Acumulado: {formatarMoeda(grupo.saldoFinalSemana)}
                   </div>
                 </div>
               </div>
@@ -431,7 +454,7 @@ export const LivroCaixaView: React.FC = () => {
           </div>
         ) : (
           /* ==========================================================
-             MODO TABELA CLÁSSICA (COMPACTA) COM FECHAMENTO DIÁRIO
+             MODO TABELA CLÁSSICA (COMPACTA) COM FECHAMENTO SEMANAL
              ========================================================== */
           <div style={{ overflowX: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
@@ -452,8 +475,15 @@ export const LivroCaixaView: React.FC = () => {
                 </tr>
               </thead>
               <tbody>
-                {gruposPorDia.map((grupo) => (
-                  <React.Fragment key={grupo.dataStr}>
+                {gruposPorSemana.map((grupo) => (
+                  <React.Fragment key={grupo.idSemana}>
+                    {/* Linha de Cabeçalho da Semana na Tabela */}
+                    <tr style={{ backgroundColor: 'rgba(23, 63, 95, 0.5)' }}>
+                      <td colSpan={5} style={{ padding: '0.5rem 0.85rem', fontWeight: 800, color: '#F8D117', fontSize: '0.82rem' }}>
+                        {grupo.titulo} ({grupo.itens.length} {grupo.itens.length === 1 ? 'movimento' : 'movimentos'})
+                      </td>
+                    </tr>
+
                     {grupo.itens.map((item, idx) => {
                       const isDespesa = item.tipo === 'Despesa';
                       const isReceita = item.tipo === 'Receita';
@@ -468,11 +498,23 @@ export const LivroCaixaView: React.FC = () => {
                           }}
                         >
                           <td style={{ padding: '0.75rem 0.85rem', whiteSpace: 'nowrap' }}>
-                            {grupo.dataStr}
+                            {formatarData(item.data)}
                           </td>
                           <td style={{ padding: '0.75rem 0.85rem', fontWeight: 700, color: 'var(--text-primary)' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                               <span>{item.descricao}</span>
+                              {item.totalParcelas && item.totalParcelas > 1 && (
+                                <span style={{
+                                  fontSize: '10.5px',
+                                  fontWeight: 800,
+                                  padding: '1px 5px',
+                                  borderRadius: '4px',
+                                  backgroundColor: 'rgba(138, 5, 190, 0.25)',
+                                  color: '#C084FC'
+                                }}>
+                                  📦 {item.parcela || 1}/{item.totalParcelas}
+                                </span>
+                              )}
                               {item.detalhesMercado && (
                                 <button
                                   type="button"
@@ -508,19 +550,67 @@ export const LivroCaixaView: React.FC = () => {
                       );
                     })}
 
-                    {/* Linha de Fechamento do Dia na Tabela */}
+                    {/* Linha de Fechamento da Semana na Tabela */}
                     <tr style={{ backgroundColor: 'rgba(11, 25, 41, 0.8)', borderBottom: '2px solid var(--border-default)' }}>
                       <td colSpan={3} style={{ padding: '0.55rem 0.85rem', fontWeight: 700, color: '#AAB4BE', fontSize: '0.8rem' }}>
-                        Fechamento do Dia {grupo.dataStr}
+                        Fechamento da {grupo.titulo.split('•')[0].trim()}
                       </td>
-                      <td colSpan={2} style={{ padding: '0.55rem 0.85rem', textAlign: 'right', fontWeight: 900, color: grupo.saldoFinalDia >= 0 ? '#4CAF50' : '#F44336' }}>
-                        Saldo: {formatarMoeda(grupo.saldoFinalDia)}
+                      <td colSpan={2} style={{ padding: '0.55rem 0.85rem', textAlign: 'right', fontWeight: 900, color: grupo.saldoFinalSemana >= 0 ? '#4CAF50' : '#F44336' }}>
+                        Saldo Acumulado: {formatarMoeda(grupo.saldoFinalSemana)}
                       </td>
                     </tr>
                   </React.Fragment>
                 ))}
               </tbody>
             </table>
+          </div>
+        )}
+
+        {/* ==========================================================
+            RODAPÉ CONSOLIDADO: SALDO FINAL DO MÊS (TOTAL DO MÊS)
+            ========================================================== */}
+        {lancamentosDoMes.length > 0 && (
+          <div style={{
+            marginTop: '16px',
+            padding: '16px 20px',
+            borderRadius: '14px',
+            backgroundColor: '#0F2744',
+            border: '1px solid #1E3A5F',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '12px',
+            boxShadow: '0 4px 14px rgba(0, 0, 0, 0.25)'
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
+              <span style={{ fontSize: '12.5px', fontWeight: 800, color: '#F8D117', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                📊 Fechamento Consolidado do Mês ({competenciaAtiva})
+              </span>
+              <span style={{ fontSize: '11.5px', color: '#AAB4BE' }}>
+                {lancamentosDoMes.length} {lancamentosDoMes.length === 1 ? 'movimentação registrada' : 'movimentações registradas'}
+              </span>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(135px, 1fr))', gap: '10px' }}>
+              <div style={{ padding: '9px 12px', borderRadius: '10px', backgroundColor: 'rgba(76, 175, 80, 0.12)', border: '1px solid rgba(76, 175, 80, 0.25)' }}>
+                <div style={{ fontSize: '11px', color: '#66BB6A', fontWeight: 700 }}>Total Receitas</div>
+                <div style={{ fontSize: '15px', fontWeight: 900, color: '#4CAF50' }}>+ {formatarMoeda(resumo.totalReceitas)}</div>
+              </div>
+
+              <div style={{ padding: '9px 12px', borderRadius: '10px', backgroundColor: 'rgba(244, 67, 54, 0.12)', border: '1px solid rgba(244, 67, 54, 0.25)' }}>
+                <div style={{ fontSize: '11px', color: '#EF5350', fontWeight: 700 }}>Total Despesas</div>
+                <div style={{ fontSize: '15px', fontWeight: 900, color: '#F44336' }}>- {formatarMoeda(resumo.totalDespesas)}</div>
+              </div>
+
+              <div style={{
+                padding: '9px 12px',
+                borderRadius: '10px',
+                backgroundColor: resumo.saldoFinal >= 0 ? 'rgba(76, 175, 80, 0.2)' : 'rgba(244, 67, 54, 0.2)',
+                border: `1px solid ${resumo.saldoFinal >= 0 ? 'rgba(76, 175, 80, 0.45)' : 'rgba(244, 67, 54, 0.45)'}`
+              }}>
+                <div style={{ fontSize: '11px', color: resumo.saldoFinal >= 0 ? '#81C784' : '#E57373', fontWeight: 800 }}>Saldo Final do Mês</div>
+                <div style={{ fontSize: '16px', fontWeight: 900, color: resumo.saldoFinal >= 0 ? '#4CAF50' : '#F44336' }}>{formatarMoeda(resumo.saldoFinal)}</div>
+              </div>
+            </div>
           </div>
         )}
       </div>

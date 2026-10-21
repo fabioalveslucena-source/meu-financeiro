@@ -111,6 +111,7 @@ export const CATEGORIAS_PADRAO: Categoria[] = [
   { id: 'cat-m3', userId: 'default-user', natureza: '🏠 Moradia', nome: 'Internet / TV a Cabo', tipo: 'Despesa', ativa: true },
   { id: 'cat-m4', userId: 'default-user', natureza: '🏠 Moradia', nome: 'Água e Gás', tipo: 'Despesa', ativa: true },
   { id: 'cat-m5', userId: 'default-user', natureza: '🏠 Moradia', nome: 'Manutenção e Reformas', tipo: 'Despesa', ativa: true },
+  { id: 'cat-m9', userId: 'default-user', natureza: '🏠 Moradia', nome: 'Ferramentas e Materiais', tipo: 'Despesa', ativa: true },
   { id: 'cat-m6', userId: 'default-user', natureza: '🏠 Moradia', nome: 'IPTU e Taxas', tipo: 'Despesa', ativa: true },
   { id: 'cat-m7', userId: 'default-user', natureza: '🏠 Moradia', nome: 'Móveis e Decoração', tipo: 'Despesa', ativa: true },
   { id: 'cat-m8', userId: 'default-user', natureza: '🏠 Moradia', nome: 'Serviços de Limpeza / Diarista', tipo: 'Despesa', ativa: true },

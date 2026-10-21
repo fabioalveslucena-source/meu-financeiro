@@ -3,7 +3,7 @@ import { useFinanceStore } from '../../stores/financeStore';
 import { TIPOS_LANCAMENTO } from '../../lib/constants';
 import { formatarDataInput, formatarMoeda, parseMoedaBR } from '../../lib/formatters';
 import type { FormaPagamento, TipoLancamento } from '../../types';
-import { Mic } from 'lucide-react';
+import { Mic, Plus, X, Check } from 'lucide-react';
 
 interface FormLancamentoProps {
   onAbrirVoz: () => void;
@@ -20,13 +20,15 @@ export const FormLancamento: React.FC<FormLancamentoProps> = ({
     naturezas,
     cartoes, 
     contas, 
-    adicionarLancamento, 
+    adicionarLancamento,
+    adicionarCategoria,
+    adicionarNatureza,
   } = useFinanceStore();
 
   const [data, setData] = useState(formatarDataInput());
   const [tipo, setTipo] = useState<TipoLancamento>('Despesa');
   const [valorTexto, setValorTexto] = useState('');
-  const [pagamento, setPagamento] = useState<FormaPagamento>('📱 Pix');
+  const [pagamento, setPagamento] = useState<FormaPagamento>('🏦 Débito');
   const [natureza, setNatureza] = useState('🛒 Alimentação');
   const [categoria, setCategoria] = useState('Supermercado');
   const [descricao, setDescricao] = useState('');
@@ -34,6 +36,13 @@ export const FormLancamento: React.FC<FormLancamentoProps> = ({
   const [conta, setConta] = useState('');
   const [parcelas, setParcelas] = useState(1);
   const [erros, setErros] = useState<string[]>([]);
+
+  // Modal discreto para criar Nova Categoria ou Natureza
+  const [modalCriarAberto, setModalCriarAberto] = useState(false);
+  const [modoCriar, setModoCriar] = useState<'categoria' | 'natureza'>('categoria');
+  const [novoNome, setNovoNome] = useState('');
+  const [novoEmoji, setNovoEmoji] = useState('📦');
+  const [novaNatPai, setNovaNatPai] = useState('');
 
   // Categorias filtradas pela natureza selecionada
   const categoriasFiltradas = categorias.filter(
@@ -56,7 +65,9 @@ export const FormLancamento: React.FC<FormLancamentoProps> = ({
   useEffect(() => {
     if (dadosPreenchidosVoz) {
       if (dadosPreenchidosVoz.tipo) setTipo(dadosPreenchidosVoz.tipo);
-      if (dadosPreenchidosVoz.valor) setValorTexto(String(dadosPreenchidosVoz.valor).replace('.', ','));
+      if (dadosPreenchidosVoz.valor !== undefined && dadosPreenchidosVoz.valor !== null) {
+        setValorTexto(dadosPreenchidosVoz.valor.toFixed(2).replace('.', ','));
+      }
       if (dadosPreenchidosVoz.pagamento) setPagamento(dadosPreenchidosVoz.pagamento);
       if (dadosPreenchidosVoz.natureza) setNatureza(dadosPreenchidosVoz.natureza);
       if (dadosPreenchidosVoz.categoria) setCategoria(dadosPreenchidosVoz.categoria);
@@ -396,47 +407,80 @@ export const FormLancamento: React.FC<FormLancamentoProps> = ({
             </div>
           )}
 
-          {/* Natureza e Categoria */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-            <div>
-              <label style={{ fontSize: '11px', fontWeight: 800, color: '#607789', textTransform: 'uppercase', display: 'block', marginBottom: '4px' }}>
-                Natureza
-              </label>
-              <select 
-                value={natureza} 
-                onChange={(e) => {
-                  const novaNat = e.target.value;
-                  setNatureza(novaNat);
-                  const fil = categorias.filter(c => c.natureza === novaNat && (c.tipo === tipo || c.tipo === 'Todos'));
-                  if (fil.length > 0) {
-                    setCategoria(fil[0].nome);
-                  }
+          {/* Natureza e Categoria com Botão Discreto de Criação */}
+          <div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+              <span style={{ fontSize: '11px', fontWeight: 800, color: '#607789', textTransform: 'uppercase' }}>
+                Classificação
+              </span>
+              <button
+                type="button"
+                onClick={() => {
+                  setNovaNatPai(natureza);
+                  setNovoNome('');
+                  setModalCriarAberto(true);
                 }}
-                style={{ fontSize: '13px', fontWeight: 600 }}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: '#5090D3',
+                  fontSize: '11px',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '3px',
+                  padding: '2px 4px',
+                  opacity: 0.9
+                }}
+                title="Criar nova categoria ou natureza personalizada"
               >
-                {naturezas.map((nat) => (
-                  <option key={nat.id} value={nat.label}>
-                    {nat.label}
-                  </option>
-                ))}
-              </select>
+                <Plus size={12} />
+                <span>Nova categoria / natureza</span>
+              </button>
             </div>
 
-            <div>
-              <label style={{ fontSize: '11px', fontWeight: 800, color: '#AAB4BE', textTransform: 'uppercase', display: 'block', marginBottom: '4px' }}>
-                Categoria
-              </label>
-              <select 
-                value={categoria} 
-                onChange={(e) => setCategoria(e.target.value)}
-                style={{ fontSize: '13px', fontWeight: 600 }}
-              >
-                {categoriasFiltradas.map((cat) => (
-                  <option key={cat.id} value={cat.nome}>
-                    {cat.nome}
-                  </option>
-                ))}
-              </select>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+              <div>
+                <label style={{ fontSize: '10.5px', fontWeight: 700, color: '#AAB4BE', textTransform: 'uppercase', display: 'block', marginBottom: '4px' }}>
+                  Natureza
+                </label>
+                <select 
+                  value={natureza} 
+                  onChange={(e) => {
+                    const novaNat = e.target.value;
+                    setNatureza(novaNat);
+                    const fil = categorias.filter(c => c.natureza === novaNat && (c.tipo === tipo || c.tipo === 'Todos'));
+                    if (fil.length > 0) {
+                      setCategoria(fil[0].nome);
+                    }
+                  }}
+                  style={{ fontSize: '13px', fontWeight: 600 }}
+                >
+                  {naturezas.map((nat) => (
+                    <option key={nat.id} value={nat.label}>
+                      {nat.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label style={{ fontSize: '10.5px', fontWeight: 700, color: '#AAB4BE', textTransform: 'uppercase', display: 'block', marginBottom: '4px' }}>
+                  Categoria
+                </label>
+                <select 
+                  value={categoria} 
+                  onChange={(e) => setCategoria(e.target.value)}
+                  style={{ fontSize: '13px', fontWeight: 600 }}
+                >
+                  {categoriasFiltradas.map((cat) => (
+                    <option key={cat.id} value={cat.nome}>
+                      {cat.nome}
+                    </option>
+                  ))}
+                </select>
+              </div>
             </div>
           </div>
 
@@ -498,6 +542,192 @@ export const FormLancamento: React.FC<FormLancamentoProps> = ({
             <span>EFETUAR LANÇAMENTO</span>
           </button>
         </form>
+
+        {/* Modal Discreto de Criação Rápida de Categoria / Natureza */}
+        {modalCriarAberto && (
+          <div style={{
+            position: 'fixed',
+            inset: 0,
+            backgroundColor: 'rgba(5, 13, 24, 0.75)',
+            backdropFilter: 'blur(5px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 120,
+            padding: '16px'
+          }}>
+            <div className="card glass" style={{
+              maxWidth: '420px',
+              width: '100%',
+              padding: '20px',
+              borderRadius: '16px',
+              border: '1px solid #1E3A5F',
+              backgroundColor: '#0B1C2E',
+              position: 'relative'
+            }}>
+              <button
+                type="button"
+                onClick={() => setModalCriarAberto(false)}
+                style={{
+                  position: 'absolute',
+                  top: '14px',
+                  right: '14px',
+                  background: 'none',
+                  border: 'none',
+                  color: '#AAB4BE',
+                  cursor: 'pointer'
+                }}
+              >
+                <X size={18} />
+              </button>
+
+              <h4 style={{ margin: '0 0 14px 0', fontSize: '15px', fontWeight: 800, color: '#F8D117' }}>
+                Criar Nova {modoCriar === 'categoria' ? 'Categoria' : 'Natureza'}
+              </h4>
+
+              {/* Seletor Categoria / Natureza */}
+              <div style={{ display: 'flex', gap: '6px', marginBottom: '14px', backgroundColor: '#061320', padding: '3px', borderRadius: '10px' }}>
+                <button
+                  type="button"
+                  onClick={() => setModoCriar('categoria')}
+                  style={{
+                    flex: 1,
+                    padding: '6px',
+                    borderRadius: '8px',
+                    border: 'none',
+                    fontSize: '12px',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    backgroundColor: modoCriar === 'categoria' ? '#173F5F' : 'transparent',
+                    color: modoCriar === 'categoria' ? '#F8D117' : '#AAB4BE'
+                  }}
+                >
+                  + Nova Categoria
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setModoCriar('natureza')}
+                  style={{
+                    flex: 1,
+                    padding: '6px',
+                    borderRadius: '8px',
+                    border: 'none',
+                    fontSize: '12px',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    backgroundColor: modoCriar === 'natureza' ? '#173F5F' : 'transparent',
+                    color: modoCriar === 'natureza' ? '#F8D117' : '#AAB4BE'
+                  }}
+                >
+                  + Nova Natureza
+                </button>
+              </div>
+
+              {modoCriar === 'categoria' ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                  <div>
+                    <label style={{ fontSize: '11px', fontWeight: 700, color: '#AAB4BE', display: 'block', marginBottom: '4px' }}>
+                      Natureza Associada
+                    </label>
+                    <select
+                      value={novaNatPai || natureza}
+                      onChange={(e) => setNovaNatPai(e.target.value)}
+                      style={{ width: '100%', fontSize: '13px' }}
+                    >
+                      {naturezas.map((nat) => (
+                        <option key={nat.id} value={nat.label}>{nat.label}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label style={{ fontSize: '11px', fontWeight: 700, color: '#AAB4BE', display: 'block', marginBottom: '4px' }}>
+                      Nome da Nova Categoria
+                    </label>
+                    <input
+                      type="text"
+                      value={novoNome}
+                      onChange={(e) => setNovoNome(e.target.value)}
+                      placeholder="Ex: Ferramentas e Peças"
+                      style={{ width: '100%', fontSize: '13px' }}
+                      autoFocus
+                    />
+                  </div>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '70px 1fr', gap: '8px' }}>
+                    <div>
+                      <label style={{ fontSize: '11px', fontWeight: 700, color: '#AAB4BE', display: 'block', marginBottom: '4px' }}>
+                        Emoji
+                      </label>
+                      <input
+                        type="text"
+                        value={novoEmoji}
+                        onChange={(e) => setNovoEmoji(e.target.value)}
+                        style={{ width: '100%', fontSize: '15px', textAlign: 'center' }}
+                      />
+                    </div>
+                    <div>
+                      <label style={{ fontSize: '11px', fontWeight: 700, color: '#AAB4BE', display: 'block', marginBottom: '4px' }}>
+                        Nome da Natureza
+                      </label>
+                      <input
+                        type="text"
+                        value={novoNome}
+                        onChange={(e) => setNovoNome(e.target.value)}
+                        placeholder="Ex: Oficina / Construção"
+                        style={{ width: '100%', fontSize: '13px' }}
+                        autoFocus
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '16px' }}>
+                <button
+                  type="button"
+                  onClick={() => setModalCriarAberto(false)}
+                  className="btn-secondary"
+                  style={{ padding: '6px 12px', fontSize: '12px' }}
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!novoNome.trim()) return;
+                    if (modoCriar === 'categoria') {
+                      const natEscolhida = novaNatPai || natureza;
+                      adicionarCategoria({
+                        natureza: natEscolhida,
+                        nome: novoNome.trim(),
+                        tipo: 'Todos',
+                      });
+                      setNatureza(natEscolhida);
+                      setCategoria(novoNome.trim());
+                    } else {
+                      const emojiEscolhido = novoEmoji.trim() || '📦';
+                      const labelNat = `${emojiEscolhido} ${novoNome.trim()}`;
+                      adicionarNatureza({
+                        nome: novoNome.trim(),
+                        emoji: emojiEscolhido,
+                      });
+                      setNatureza(labelNat);
+                    }
+                    setModalCriarAberto(false);
+                  }}
+                  disabled={!novoNome.trim()}
+                  className="btn-primary"
+                  style={{ padding: '6px 14px', fontSize: '12px', gap: '4px' }}
+                >
+                  <Check size={14} />
+                  <span>Salvar</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
