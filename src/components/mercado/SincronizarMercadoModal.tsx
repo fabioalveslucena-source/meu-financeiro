@@ -21,7 +21,7 @@ interface SincronizarMercadoModalProps {
 }
 
 const STORAGE_KEY_URL_MERCADO = 'mf_url_meu_mercado_v1';
-const URL_PADRAO_MEU_MERCADO = 'https://script.google.com/macros/s/AKfycbyVzn-uiAsqoXOxDGDqeVTTr3pFWPEc6SfqmiTH8j3YTAnr4MPrKRAXtQjbPI7VHp3x9w/exec';
+const URL_PADRAO_MEU_MERCADO = 'https://docs.google.com/spreadsheets/d/1yzFMAn67heVuMMprPVIw5lH5alL7hpi31A1K6AnERZk/edit';
 
 const CODIGO_APPS_SCRIPT = `// ============================================================
 // 🛒 INTEGRAÇÃO OFICIAL: MEU MERCADO → MEU FINANCEIRO
@@ -30,11 +30,9 @@ const CODIGO_APPS_SCRIPT = `// =================================================
 // ============================================================
 
 function doGet(e) {
-  // Se a requisição veio do Meu Financeiro com ?api=extrato
   if (e && e.parameter && (e.parameter.api === 'extrato' || e.parameter.api === 'compras')) {
     return responderApiMeuFinanceiro(e);
   }
-  // Caso contrário, carrega o app visual do Meu Mercado
   return HtmlService
     .createTemplateFromFile('Index')
     .evaluate()
@@ -93,7 +91,7 @@ function responderApiMeuFinanceiro(e) {
       dadosListas.forEach(function(linha) {
         var id = String(linha[0] || '').trim();
         var nome = String(linha[1] || 'Compras de Supermercado').trim();
-        var dataCriacao = linha[2];
+        var dataCriacao = linha[3] || linha[2];
         var dataFechamento = linha[4];
         var status = String(linha[5] || '').toUpperCase();
 
@@ -101,7 +99,7 @@ function responderApiMeuFinanceiro(e) {
         var totalCompra = 0;
         itens.forEach(function(it) { totalCompra += (it.precoTotal || 0); });
 
-        if (id && (status === 'FECHADA' || totalCompra > 0)) {
+        if (id && (status === 'FECHADA' || totalCompra > 0 || itens.length > 0)) {
           var dataFinal = dataFechamento instanceof Date ? dataFechamento : (dataCriacao instanceof Date ? dataCriacao : new Date());
           var ano = dataFinal.getFullYear();
           var mes = String(dataFinal.getMonth() + 1).padStart(2, '0');
@@ -135,6 +133,29 @@ function responderApiMeuFinanceiro(e) {
     })).setMimeType(ContentService.MimeType.JSON);
   }
 }`;
+
+function parseNumeroPtBr(val: any): number {
+  if (typeof val === 'number') return val;
+  if (!val) return 0;
+  const s = String(val).trim().replace(/\s/g, '').replace(/\./g, '').replace(',', '.');
+  const n = parseFloat(s);
+  return isNaN(n) ? 0 : n;
+}
+
+function formatarDataGviz(val: any): string {
+  if (!val) return new Date().toISOString().slice(0, 10);
+  const m = String(val).match(/Date\((\d+),\s*(\d+),\s*(\d+)/);
+  if (m) {
+    const ano = m[1];
+    const mes = String(Number(m[2]) + 1).padStart(2, '0');
+    const dia = String(m[3]).padStart(2, '0');
+    return `${ano}-${mes}-${dia}`;
+  }
+  if (typeof val === 'string' && val.length >= 10 && val.includes('-')) {
+    return val.slice(0, 10);
+  }
+  return new Date().toISOString().slice(0, 10);
+}
 
 export const SincronizarMercadoModal: React.FC<SincronizarMercadoModalProps> = ({
   aberto,
@@ -182,9 +203,9 @@ export const SincronizarMercadoModal: React.FC<SincronizarMercadoModalProps> = (
     mostrarToast('🛒 Compra teste de R$ 184,50 adicionada ao extrato com cupom!', 'sucesso');
   };
 
-  // Leitura direta da Planilha Google (GViz / TQ) sem precisar de Apps Script
+  // Leitura inteligente direta da Planilha Google (GViz / TQ)
   const sincronizarDiretoPlanilha = async (sheetId: string) => {
-    const buscarAba = async (nomesPossiveis: string[]) => {
+    const buscarAba = async (nomesPossiveis: string[], colIdentificadora: string) => {
       for (const nome of nomesPossiveis) {
         try {
           const enc = encodeURIComponent(nome);
@@ -194,8 +215,14 @@ export const SincronizarMercadoModal: React.FC<SincronizarMercadoModalProps> = (
           const t = await r.text();
           const jsonStr = t.substring(t.indexOf('{'), t.lastIndexOf('}') + 1);
           const j = JSON.parse(jsonStr);
-          if (j.status === 'ok' && j.table?.rows) {
-            return j.table.rows.map((row: any) => (row.c || []).map((c: any) => c?.v ?? ''));
+          if (j.status === 'ok' && j.table) {
+            const colLabels = (j.table.cols || []).map((c: any) => String(c?.label || '').toUpperCase());
+            // Valida se o Google realmente retornou a aba correta e não a primeira por padrão
+            const encontrouCol = colLabels.some((lbl: string) => lbl.includes(colIdentificadora.toUpperCase()));
+            if (encontrouCol) {
+              const rows = (j.table.rows || []).map((row: any) => (row.c || []).map((c: any) => c?.v ?? ''));
+              return { cols: colLabels, rows };
+            }
           }
         } catch {
           // tenta o proximo nome
@@ -204,64 +231,98 @@ export const SincronizarMercadoModal: React.FC<SincronizarMercadoModalProps> = (
       return null;
     };
 
-    const linhasListas = await buscarAba(['LISTAS', '📋 LISTAS', 'Listas']);
-    const linhasCompras = await buscarAba(['COMPRAS', '🧾 COMPRAS', 'Compras']);
+    // Tenta abas com emoji exato primeiro para evitar que o Google devolva a aba default CATEGORIAS
+    const dadosListas = await buscarAba(['📋 LISTAS', 'LISTAS', 'Listas'], 'ID_LISTA');
+    const dadosCompras = await buscarAba(['🧾 COMPRAS', 'COMPRAS', 'Compras'], 'ID_COMPRA');
+    const dadosItens = await buscarAba(['🛒 ITENS_LISTA', 'ITENS_LISTA', 'ITENS', 'Itens'], 'ID_ITEM');
 
-    if (!linhasListas && !linhasCompras) {
-      throw new Error('Não foi possível ler as abas LISTAS e COMPRAS. Verifique se a planilha está compartilhada com "Qualquer pessoa com o link pode ver".');
+    if (!dadosListas && !dadosCompras) {
+      throw new Error('Não foi possível localizar as abas 📋 LISTAS ou 🧾 COMPRAS na planilha. Verifique se o link está correto e se o acesso está público.');
     }
 
+    // 1. Mapeia itens de compras por lista
     const comprasPorLista: Record<string, any[]> = {};
-    if (linhasCompras && linhasCompras.length > 0) {
-      linhasCompras.forEach((linha: any[]) => {
+    if (dadosCompras && dadosCompras.rows.length > 0) {
+      dadosCompras.rows.forEach((linha: any[]) => {
         const idLista = String(linha[1] || '').trim();
         const produto = String(linha[3] || '').trim();
-        const qtd = Number(linha[4]) || 1;
-        const unit = Number(linha[5]) || 0;
-        const total = Number(linha[6]) || (qtd * unit);
+        const qtd = parseNumeroPtBr(linha[4]) || 1;
+        const unit = parseNumeroPtBr(linha[5]);
+        const subtotal = parseNumeroPtBr(linha[6]) || (qtd * unit);
+        const dataItem = formatarDataGviz(linha[2]);
 
-        if (!idLista || !produto) return;
-        if (!comprasPorLista[idLista]) {
-          comprasPorLista[idLista] = [];
+        if (!produto) return;
+        const chaveLista = idLista || 'avulso';
+        if (!comprasPorLista[chaveLista]) {
+          comprasPorLista[chaveLista] = [];
         }
-        comprasPorLista[idLista].push({
+        comprasPorLista[chaveLista].push({
           nome: produto,
           quantidade: qtd,
-          precoUnitario: unit,
-          precoTotal: total
+          precoUnitario: unit > 0 ? unit : (subtotal > 0 && qtd > 0 ? subtotal / qtd : 0),
+          precoTotal: subtotal,
+          data: dataItem
         });
       });
     }
 
+    // 2. Se houver itens na aba 🛒 ITENS_LISTA marcados como COMPRADO, complementa
+    if (dadosItens && dadosItens.rows.length > 0) {
+      dadosItens.rows.forEach((linha: any[]) => {
+        const idLista = String(linha[1] || '').trim();
+        const produto = String(linha[3] || '').trim();
+        const qtd = parseNumeroPtBr(linha[4]) || 1;
+        const precoEst = parseNumeroPtBr(linha[6]);
+        const comprado = String(linha[7] || '').toUpperCase() === 'TRUE';
+        const dataItem = formatarDataGviz(linha[8]);
+
+        if (!produto) return;
+        const chaveLista = idLista || 'avulso';
+        if (!comprasPorLista[chaveLista]) {
+          comprasPorLista[chaveLista] = [];
+        }
+
+        // Se o item ainda não estiver nos registros de compras da lista, adiciona
+        const jaExiste = comprasPorLista[chaveLista].some(it => it.nome.toLowerCase() === produto.toLowerCase());
+        if (!jaExiste && comprado) {
+          comprasPorLista[chaveLista].push({
+            nome: produto,
+            quantidade: qtd,
+            precoUnitario: precoEst,
+            precoTotal: qtd * precoEst,
+            data: dataItem
+          });
+        }
+      });
+    }
+
     let importadas = 0;
-    if (linhasListas && linhasListas.length > 0) {
-      linhasListas.forEach((linha: any[]) => {
+
+    // 3. Processa as listas da aba 📋 LISTAS
+    if (dadosListas && dadosListas.rows.length > 0) {
+      dadosListas.rows.forEach((linha: any[]) => {
         const id = String(linha[0] || '').trim();
         const nome = String(linha[1] || 'Compras de Supermercado').trim();
         const status = String(linha[5] || '').toUpperCase();
+        const dataFechamento = formatarDataGviz(linha[4] || linha[3]);
+
         const itens = comprasPorLista[id] || [];
-
         let totalCompra = 0;
-        itens.forEach(it => { totalCompra += it.precoTotal; });
+        itens.forEach(it => { totalCompra += (it.precoTotal || 0); });
 
-        if (id && (status === 'FECHADA' || totalCompra > 0)) {
-          const dataBruta = linha[4] || linha[2] || '';
-          let dataFinal = new Date().toISOString().slice(0, 10);
-          if (typeof dataBruta === 'string' && dataBruta.includes('Date(')) {
-            // formato Date(ano, mes, dia) do gviz
-            const matchDate = dataBruta.match(/Date\((\d+),(\d+),(\d+)\)/);
-            if (matchDate) {
-              const ano = matchDate[1];
-              const mes = String(Number(matchDate[2]) + 1).padStart(2, '0');
-              const dia = String(matchDate[3]).padStart(2, '0');
-              dataFinal = `${ano}-${mes}-${dia}`;
-            }
+        // Importa se tiver itens ou se estiver marcada como FECHADA
+        if (id && (itens.length > 0 || status === 'FECHADA')) {
+          // Determina a data mais recente dos itens se a lista não tiver data de fechamento
+          let dataFinal = dataFechamento;
+          if (!dataFinal || dataFinal === new Date().toISOString().slice(0, 10)) {
+            const dataMaisRecenteItem = itens.find(it => it.data)?.data;
+            if (dataMaisRecenteItem) dataFinal = dataMaisRecenteItem;
           }
 
           adicionarCompraMercado({
             mercadoNome: nome,
             data: dataFinal,
-            valorTotal: totalCompra > 0 ? totalCompra : Number(linha[6]) || 0,
+            valorTotal: totalCompra > 0 ? totalCompra : (itens.length > 0 ? 1 : 0),
             formaPagamento: '💳 Crédito',
             itens: itens
           });
@@ -270,14 +331,30 @@ export const SincronizarMercadoModal: React.FC<SincronizarMercadoModalProps> = (
       });
     }
 
+    // 4. Se houver compras avulsas sem vínculo com listas
+    if (comprasPorLista['avulso'] && comprasPorLista['avulso'].length > 0) {
+      const itensAvulsos = comprasPorLista['avulso'];
+      let totalAvulso = 0;
+      itensAvulsos.forEach(it => { totalAvulso += (it.precoTotal || 0); });
+
+      adicionarCompraMercado({
+        mercadoNome: 'Compras Avulsas de Mercado',
+        data: formatarDataGviz(null),
+        valorTotal: totalAvulso,
+        formaPagamento: '💳 Crédito',
+        itens: itensAvulsos
+      });
+      importadas++;
+    }
+
     if (importadas === 0) {
-      setMensagemStatus('ℹ️ Planilha conectada! Porém não encontramos nenhuma compra fechada nas abas LISTAS e COMPRAS.');
-      mostrarToast('Planilha lida com sucesso, mas sem compras finalizadas.', 'info');
+      setMensagemStatus('ℹ️ Planilha conectada! Porém não encontramos listas ou compras registradas com itens nas abas.');
+      mostrarToast('Planilha lida com sucesso, mas sem compras.', 'info');
       return;
     }
 
-    setMensagemStatus(`✅ ${importadas} compra(s) sincronizada(s) diretamente da Planilha Google!`);
-    mostrarToast(`🛒 ${importadas} compra(s) importadas com sucesso!`, 'sucesso');
+    setMensagemStatus(`✅ ${importadas} compra(s) do Meu Mercado sincronizada(s) com sucesso com todos os cupons detalhados!`);
+    mostrarToast(`🛒 ${importadas} compra(s) importadas para o seu extrato!`, 'sucesso');
   };
 
   // Sincronização via WebApp do Apps Script
@@ -304,8 +381,8 @@ export const SincronizarMercadoModal: React.FC<SincronizarMercadoModalProps> = (
     }
 
     if (json.compras.length === 0) {
-      setMensagemStatus('ℹ️ Conexão estabelecida! Porém não há compras fechadas registradas.');
-      mostrarToast('Nenhuma compra fechada no Meu Mercado.', 'info');
+      setMensagemStatus('ℹ️ Conexão estabelecida! Porém não há compras registradas.');
+      mostrarToast('Nenhuma compra no Meu Mercado.', 'info');
       return;
     }
 
@@ -337,7 +414,6 @@ export const SincronizarMercadoModal: React.FC<SincronizarMercadoModalProps> = (
       setCarregando(true);
       setMensagemStatus('🔄 Conectando aos dados do Meu Mercado...');
 
-      // Verifica se é link direto da Planilha Google (docs.google.com/spreadsheets/d/...)
       const matchSheet = urlLimpa.match(/\/spreadsheets\/d\/([a-zA-Z0-9_-]+)/);
       if (matchSheet && matchSheet[1]) {
         await sincronizarDiretoPlanilha(matchSheet[1]);
@@ -347,9 +423,9 @@ export const SincronizarMercadoModal: React.FC<SincronizarMercadoModalProps> = (
     } catch (err: any) {
       console.error('Erro na sincronização:', err);
       if (err?.message === 'WEBAPP_RETORNOU_HTML' || String(err?.message || '').toLowerCase().includes('failed to fetch')) {
-        setMensagemStatus('⚠️ O Google retornou a página visual do Meu Mercado em vez dos dados da integração.\n\n👉 Para resolver no Apps Script:\n1. Clique em "Copiar Código Apps Script" abaixo.\n2. No Apps Script, cole no final do Codigo.gs e clique no DISQUETE 💾 (Salvar).\n3. Em Implantar > Gerenciar implantações > Editar ✏️, mude a Versão para "Nova versão" e clique em Implantar.\n\n💡 OU MAIS FÁCIL AINDA: Cole aqui o link normal da sua Planilha Google (docs.google.com/spreadsheets/d/...)!');
+        setMensagemStatus('⚠️ O Google retornou a página visual em vez dos dados da integração.\n\n💡 Dica recomendada: Cole o link normal da sua Planilha Google (docs.google.com/spreadsheets/d/...) para sincronizar direto sem precisar de Apps Script!');
       } else {
-        setMensagemStatus(`⚠️ Falha na sincronização: ${err.message || 'Verifique as permissões de acesso.'}`);
+        setMensagemStatus(`⚠️ Falha na sincronização: ${err.message || 'Verifique as permissões de acesso da planilha.'}`);
       }
     } finally {
       setCarregando(false);
@@ -475,7 +551,7 @@ export const SincronizarMercadoModal: React.FC<SincronizarMercadoModalProps> = (
             </span>
           </div>
 
-          {/* Botões Principais de Ação (Sempre Visíveis no Topo) */}
+          {/* Botões Principais de Ação */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '8px' }}>
             <button
               type="button"
