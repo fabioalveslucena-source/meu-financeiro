@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { useFinanceStore } from '../../stores/financeStore';
-import { Calendar, User, Check, Edit3, X, Upload, Camera, Settings, Moon, Sun } from 'lucide-react';
+import { Calendar, User, Check, Edit3, X, Upload, Camera, Settings, Moon, Sun, RotateCw } from 'lucide-react';
 import { ConfiguracoesBaseModal } from '../configuracoes/ConfiguracoesBaseModal';
 import type { SecaoAtiva } from './Sidebar';
 
@@ -17,7 +17,7 @@ const AVATARES_PREDEFINIDOS = [
 ];
 
 export const Header: React.FC<HeaderProps> = () => {
-  const { competenciaAtiva, setCompetenciaAtiva, usuario, setUsuario, tema, alternarTema } = useFinanceStore();
+  const { competenciaAtiva, setCompetenciaAtiva, usuario, setUsuario, tema, alternarTema, sincronizarComNuvem, sincronizandoNuvem } = useFinanceStore();
   const [modalPerfilAberto, setModalPerfilAberto] = useState(false);
   const [modalConfigAberto, setModalConfigAberto] = useState(false);
   const [abaConfigInicial, setAbaConfigInicial] = useState<'cartoes' | 'categorias' | 'banco'>('banco');
@@ -275,8 +275,8 @@ export const Header: React.FC<HeaderProps> = () => {
             </div>
           </div>
 
-          {/* Linha 2: Banco Selecionável Centralizado com Pleno Espaço */}
-          <div style={{ display: 'flex', justifyContent: 'center', width: '100%' }}>
+          {/* Linha 2: Banco Selecionável e Botão Visível de Sincronização em Nuvem */}
+          <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', flexWrap: 'wrap', gap: '8px', width: '100%' }}>
             <div 
               onClick={() => {
                 setAbaConfigInicial('banco');
@@ -284,7 +284,7 @@ export const Header: React.FC<HeaderProps> = () => {
               }}
               style={{ 
                 display: 'inline-flex', 
-                alignItems: 'center',
+                alignItems: 'center', 
                 justifyContent: 'center',
                 gap: '8px',
                 cursor: 'pointer',
@@ -313,6 +313,41 @@ export const Header: React.FC<HeaderProps> = () => {
               <span style={{ color: 'rgba(255, 255, 255, 0.4)', fontSize: '10px' }}>•</span>
               <span style={{ fontSize: '11px', fontWeight: 700, color: '#E7EBF0', letterSpacing: '-0.2px' }}>
                 Meu Financeiro PRO
+              </span>
+            </div>
+
+            {/* Botão de Sincronizar Tudo Agora Sempre Visível */}
+            <div 
+              onClick={() => sincronizarComNuvem()}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                cursor: 'pointer',
+                padding: '5px 12px',
+                borderRadius: '20px',
+                backgroundColor: sincronizandoNuvem ? 'rgba(40, 126, 165, 0.4)' : 'rgba(11, 25, 41, 0.55)',
+                border: '1.5px solid rgba(76, 175, 80, 0.5)',
+                boxShadow: '0 2px 10px rgba(0, 0, 0, 0.25)',
+                transition: 'all 0.15s ease',
+                userSelect: 'none'
+              }}
+              title="Clique para sincronizar todos os dados entre PC e Celular agora"
+            >
+              <RotateCw size={12} color="#4CAF50" className={sincronizandoNuvem ? 'animate-spin' : ''} />
+              <span style={{ fontSize: '11px', fontWeight: 800, color: '#FFFFFF' }}>
+                {sincronizandoNuvem ? 'Sincronizando...' : 'Sincronizar Nuvem'}
+              </span>
+              <span style={{
+                fontSize: '8.5px',
+                fontWeight: 900,
+                padding: '1px 5px',
+                borderRadius: '6px',
+                backgroundColor: 'rgba(76, 175, 80, 0.2)',
+                color: '#4CAF50',
+                border: '1px solid #4CAF50'
+              }}>
+                100% ONLINE
               </span>
             </div>
           </div>
