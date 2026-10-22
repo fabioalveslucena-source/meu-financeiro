@@ -10,7 +10,9 @@ import {
   Copy,
   Code,
   Sparkles,
-  AlertTriangle
+  AlertTriangle,
+  FileSpreadsheet,
+  Globe
 } from 'lucide-react';
 
 interface SincronizarMercadoModalProps {
@@ -24,6 +26,7 @@ const URL_PADRAO_MEU_MERCADO = 'https://script.google.com/macros/s/AKfycbyVzn-ui
 const CODIGO_APPS_SCRIPT = `// ============================================================
 // 🛒 INTEGRAÇÃO OFICIAL: MEU MERCADO → MEU FINANCEIRO
 // Cole este bloco no final do Codigo.gs (ou substitua o doGet)
+// e clique no DISQUETE 💾 (Salvar) antes de implantar!
 // ============================================================
 
 function doGet(e) {
@@ -144,6 +147,7 @@ export const SincronizarMercadoModal: React.FC<SincronizarMercadoModalProps> = (
   });
   const [carregando, setCarregando] = useState(false);
   const [mensagemStatus, setMensagemStatus] = useState<string | null>(null);
+  const [abaAjuda, setAbaAjuda] = useState<'planilha' | 'script'>('planilha');
   const [mostrarCodigo, setMostrarCodigo] = useState(false);
 
   if (!aberto) return null;
@@ -155,89 +159,198 @@ export const SincronizarMercadoModal: React.FC<SincronizarMercadoModalProps> = (
 
   const handleCopiarCodigo = () => {
     navigator.clipboard.writeText(CODIGO_APPS_SCRIPT);
-    mostrarToast('📋 Código copiado! Cole no Codigo.gs do seu Apps Script.', 'sucesso');
+    mostrarToast('📋 Código copiado! Cole no Codigo.gs do Apps Script e clique no disquete (Salvar).', 'sucesso');
   };
 
   const handleInserirExemploTeste = () => {
     adicionarCompraMercado({
-      mercadoNome: 'Supermercado Modelo (Cupom Exemplo)',
+      mercadoNome: 'Supermercado Modelo (Exemplo Teste)',
       data: new Date().toISOString().slice(0, 10),
       valorTotal: 184.50,
       formaPagamento: '💳 Crédito',
       itens: [
-        { nome: 'Arroz Tipo 1 (5kg)', quantidade: 1, precoUnitario: 29.90, precoTotal: 29.90 },
-        { nome: 'Feijão Carioca (1kg)', quantidade: 2, precoUnitario: 8.50, precoTotal: 17.00 },
-        { nome: 'Azeite Extra Virgem (500ml)', quantidade: 1, precoUnitario: 42.00, precoTotal: 42.00 },
-        { nome: 'Café Tradicional (500g)', quantidade: 2, precoUnitario: 18.80, precoTotal: 37.60 },
-        { nome: 'Leite Integral (1L)', quantidade: 6, precoUnitario: 4.80, precoTotal: 28.80 },
-        { nome: 'Detergente Líquido (500ml)', quantidade: 4, precoUnitario: 2.30, precoTotal: 9.20 },
-        { nome: 'Sabão em Pó (1kg)', quantidade: 1, precoUnitario: 20.00, precoTotal: 20.00 },
+        { nome: 'Arroz Branco Tipo 1 (5kg)', quantidade: 1, precoUnitario: 29.90, precoTotal: 29.90 },
+        { nome: 'Feijão Carioca Especial (1kg)', quantidade: 2, precoUnitario: 8.50, precoTotal: 17.00 },
+        { nome: 'Azeite de Oliva Extra Virgem (500ml)', quantidade: 1, precoUnitario: 42.00, precoTotal: 42.00 },
+        { nome: 'Café Torrado e Moído (500g)', quantidade: 2, precoUnitario: 18.80, precoTotal: 37.60 },
+        { nome: 'Leite Integral UHT (1L)', quantidade: 6, precoUnitario: 4.80, precoTotal: 28.80 },
+        { nome: 'Detergente Líquido Neutro (500ml)', quantidade: 4, precoUnitario: 2.30, precoTotal: 9.20 },
+        { nome: 'Sabão em Pó Alta Eficiência (1kg)', quantidade: 1, precoUnitario: 20.00, precoTotal: 20.00 },
       ]
     });
-    setMensagemStatus('✅ Compra de teste inserida com sucesso no Extrato! Toque nela no Extrato para ver os 7 itens do cupom detalhado.');
-    mostrarToast('🛒 Compra teste adicionada com cupom detalhado!', 'sucesso');
+    setMensagemStatus('✅ Compra de teste inserida com sucesso! Você já pode fechar esta janela e ver os 7 itens detalhados no seu Extrato.');
+    mostrarToast('🛒 Compra teste de R$ 184,50 adicionada ao extrato com cupom!', 'sucesso');
   };
 
-  const handleSincronizarWeb = async () => {
+  // Leitura direta da Planilha Google (GViz / TQ) sem precisar de Apps Script
+  const sincronizarDiretoPlanilha = async (sheetId: string) => {
+    const buscarAba = async (nomesPossiveis: string[]) => {
+      for (const nome of nomesPossiveis) {
+        try {
+          const enc = encodeURIComponent(nome);
+          const u = `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:json&sheet=${enc}`;
+          const r = await fetch(u);
+          if (!r.ok) continue;
+          const t = await r.text();
+          const jsonStr = t.substring(t.indexOf('{'), t.lastIndexOf('}') + 1);
+          const j = JSON.parse(jsonStr);
+          if (j.status === 'ok' && j.table?.rows) {
+            return j.table.rows.map((row: any) => (row.c || []).map((c: any) => c?.v ?? ''));
+          }
+        } catch {
+          // tenta o proximo nome
+        }
+      }
+      return null;
+    };
+
+    const linhasListas = await buscarAba(['LISTAS', '📋 LISTAS', 'Listas']);
+    const linhasCompras = await buscarAba(['COMPRAS', '🧾 COMPRAS', 'Compras']);
+
+    if (!linhasListas && !linhasCompras) {
+      throw new Error('Não foi possível ler as abas LISTAS e COMPRAS. Verifique se a planilha está compartilhada com "Qualquer pessoa com o link pode ver".');
+    }
+
+    const comprasPorLista: Record<string, any[]> = {};
+    if (linhasCompras && linhasCompras.length > 0) {
+      linhasCompras.forEach((linha: any[]) => {
+        const idLista = String(linha[1] || '').trim();
+        const produto = String(linha[3] || '').trim();
+        const qtd = Number(linha[4]) || 1;
+        const unit = Number(linha[5]) || 0;
+        const total = Number(linha[6]) || (qtd * unit);
+
+        if (!idLista || !produto) return;
+        if (!comprasPorLista[idLista]) {
+          comprasPorLista[idLista] = [];
+        }
+        comprasPorLista[idLista].push({
+          nome: produto,
+          quantidade: qtd,
+          precoUnitario: unit,
+          precoTotal: total
+        });
+      });
+    }
+
+    let importadas = 0;
+    if (linhasListas && linhasListas.length > 0) {
+      linhasListas.forEach((linha: any[]) => {
+        const id = String(linha[0] || '').trim();
+        const nome = String(linha[1] || 'Compras de Supermercado').trim();
+        const status = String(linha[5] || '').toUpperCase();
+        const itens = comprasPorLista[id] || [];
+
+        let totalCompra = 0;
+        itens.forEach(it => { totalCompra += it.precoTotal; });
+
+        if (id && (status === 'FECHADA' || totalCompra > 0)) {
+          const dataBruta = linha[4] || linha[2] || '';
+          let dataFinal = new Date().toISOString().slice(0, 10);
+          if (typeof dataBruta === 'string' && dataBruta.includes('Date(')) {
+            // formato Date(ano, mes, dia) do gviz
+            const matchDate = dataBruta.match(/Date\((\d+),(\d+),(\d+)\)/);
+            if (matchDate) {
+              const ano = matchDate[1];
+              const mes = String(Number(matchDate[2]) + 1).padStart(2, '0');
+              const dia = String(matchDate[3]).padStart(2, '0');
+              dataFinal = `${ano}-${mes}-${dia}`;
+            }
+          }
+
+          adicionarCompraMercado({
+            mercadoNome: nome,
+            data: dataFinal,
+            valorTotal: totalCompra > 0 ? totalCompra : Number(linha[6]) || 0,
+            formaPagamento: '💳 Crédito',
+            itens: itens
+          });
+          importadas++;
+        }
+      });
+    }
+
+    if (importadas === 0) {
+      setMensagemStatus('ℹ️ Planilha conectada! Porém não encontramos nenhuma compra fechada nas abas LISTAS e COMPRAS.');
+      mostrarToast('Planilha lida com sucesso, mas sem compras finalizadas.', 'info');
+      return;
+    }
+
+    setMensagemStatus(`✅ ${importadas} compra(s) sincronizada(s) diretamente da Planilha Google!`);
+    mostrarToast(`🛒 ${importadas} compra(s) importadas com sucesso!`, 'sucesso');
+  };
+
+  // Sincronização via WebApp do Apps Script
+  const sincronizarViaAppsScript = async (urlLimpa: string) => {
+    const urlFinal = urlLimpa.includes('?') ? `${urlLimpa}&api=extrato` : `${urlLimpa}?api=extrato`;
+    const res = await fetch(urlFinal, {
+      method: 'GET',
+      headers: { 'Accept': 'application/json' }
+    });
+
+    const text = await res.text();
+    let json: any;
+    try {
+      json = JSON.parse(text);
+    } catch {
+      if (text.includes('<!doctype') || text.includes('<html') || text.includes('accounts.google.com') || text.includes('ppConfig')) {
+        throw new Error('WEBAPP_RETORNOU_HTML');
+      }
+      throw new Error('A resposta do script não foi um JSON válido.');
+    }
+
+    if (!json || !json.sucesso || !Array.isArray(json.compras)) {
+      throw new Error(json.erro || 'Formato de resposta inesperado do Google Apps Script.');
+    }
+
+    if (json.compras.length === 0) {
+      setMensagemStatus('ℹ️ Conexão estabelecida! Porém não há compras fechadas registradas.');
+      mostrarToast('Nenhuma compra fechada no Meu Mercado.', 'info');
+      return;
+    }
+
+    let importadas = 0;
+    json.compras.forEach((compra: any) => {
+      adicionarCompraMercado({
+        mercadoNome: compra.nomeLista || 'Meu Mercado',
+        data: compra.data,
+        valorTotal: compra.valorTotal,
+        formaPagamento: '💳 Crédito',
+        itens: compra.itens || []
+      });
+      importadas++;
+    });
+
+    setMensagemStatus(`✅ ${importadas} compra(s) sincronizada(s) com sucesso via WebApp!`);
+    mostrarToast(`🛒 ${importadas} compra(s) integradas ao extrato!`, 'sucesso');
+  };
+
+  const handleSincronizarGeral = async () => {
     const urlLimpa = urlApp.trim();
     if (!urlLimpa) {
-      setMensagemStatus('⚠️ Por favor, cole a URL da WebApp do seu Meu Mercado no campo abaixo para sincronizar.');
-      mostrarToast('Informe a URL da WebApp do Meu Mercado.', 'erro');
+      setMensagemStatus('⚠️ Informe o link da sua Planilha Google OU a URL da WebApp no campo.');
+      mostrarToast('Informe o link da Planilha ou da WebApp.', 'erro');
       return;
     }
 
     try {
       setCarregando(true);
-      setMensagemStatus('🔄 Conectando ao Meu Mercado...');
+      setMensagemStatus('🔄 Conectando aos dados do Meu Mercado...');
 
-      const urlFinal = urlLimpa.includes('?') ? `${urlLimpa}&api=extrato` : `${urlLimpa}?api=extrato`;
-      const res = await fetch(urlFinal, {
-        method: 'GET',
-        headers: { 'Accept': 'application/json' }
-      });
-
-      const text = await res.text();
-      let json: any;
-      try {
-        json = JSON.parse(text);
-      } catch {
-        if (text.includes('<!doctype') || text.includes('<html') || text.includes('accounts.google.com') || text.includes('ppConfig')) {
-          throw new Error('A URL ainda está devolvendo a página web antiga em vez dos dados JSON. No Google Apps Script, vá em "Implantar > Gerenciar implantações > Editar ✏️", no campo Versão selecione obrigatoriamente "Nova versão" e clique em "Implantar".');
-        }
-        throw new Error('A resposta do script não foi um JSON válido. Verifique se a URL termina com /exec');
+      // Verifica se é link direto da Planilha Google (docs.google.com/spreadsheets/d/...)
+      const matchSheet = urlLimpa.match(/\/spreadsheets\/d\/([a-zA-Z0-9_-]+)/);
+      if (matchSheet && matchSheet[1]) {
+        await sincronizarDiretoPlanilha(matchSheet[1]);
+      } else {
+        await sincronizarViaAppsScript(urlLimpa);
       }
-
-      if (!json || !json.sucesso || !Array.isArray(json.compras)) {
-        throw new Error(json.erro || 'Formato de resposta inesperado do Google Apps Script.');
-      }
-
-      if (json.compras.length === 0) {
-        setMensagemStatus('ℹ️ Conexão estabelecida! Porém não há nenhuma compra com status "FECHADA" na aba LISTAS da sua planilha.');
-        mostrarToast('Nenhuma compra fechada encontrada no Meu Mercado.', 'info');
-        return;
-      }
-
-      let importadas = 0;
-      json.compras.forEach((compra: any) => {
-        adicionarCompraMercado({
-          mercadoNome: compra.nomeLista || 'Meu Mercado',
-          data: compra.data,
-          valorTotal: compra.valorTotal,
-          formaPagamento: '💳 Crédito',
-          itens: compra.itens || []
-        });
-        importadas++;
-      });
-
-      setMensagemStatus(`✅ ${importadas} compra(s) sincronizada(s) com sucesso! Todos os cupons e itens foram integrados ao extrato.`);
-      mostrarToast(`🛒 ${importadas} compra(s) do Meu Mercado integradas ao extrato!`, 'sucesso');
     } catch (err: any) {
-      console.error('Erro ao sincronizar com Meu Mercado:', err);
-      const isFailedFetch = String(err?.message || '').toLowerCase().includes('failed to fetch');
-      const msgErro = isFailedFetch
-        ? '⚠️ O Google retornou HTML em vez de JSON (CORS bloqueado). No Google Apps Script da sua planilha, vá em "Implantar > Gerenciar implantações > Editar ✏️", no campo Versão mude para "Nova versão" e salve.'
-        : `⚠️ Falha: ${err.message || 'Verifique a URL e a versão da implantação.'}`;
-      setMensagemStatus(msgErro);
+      console.error('Erro na sincronização:', err);
+      if (err?.message === 'WEBAPP_RETORNOU_HTML' || String(err?.message || '').toLowerCase().includes('failed to fetch')) {
+        setMensagemStatus('⚠️ O Google retornou a página visual do Meu Mercado em vez dos dados da integração.\n\n👉 Para resolver no Apps Script:\n1. Clique em "Copiar Código Apps Script" abaixo.\n2. No Apps Script, cole no final do Codigo.gs e clique no DISQUETE 💾 (Salvar).\n3. Em Implantar > Gerenciar implantações > Editar ✏️, mude a Versão para "Nova versão" e clique em Implantar.\n\n💡 OU MAIS FÁCIL AINDA: Cole aqui o link normal da sua Planilha Google (docs.google.com/spreadsheets/d/...)!');
+      } else {
+        setMensagemStatus(`⚠️ Falha na sincronização: ${err.message || 'Verifique as permissões de acesso.'}`);
+      }
     } finally {
       setCarregando(false);
     }
@@ -259,7 +372,7 @@ export const SincronizarMercadoModal: React.FC<SincronizarMercadoModalProps> = (
       left: 0,
       right: 0,
       bottom: 0,
-      backgroundColor: 'rgba(5, 12, 22, 0.78)',
+      backgroundColor: 'rgba(5, 12, 22, 0.85)',
       backdropFilter: 'blur(8px)',
       display: 'flex',
       alignItems: 'center',
@@ -271,49 +384,45 @@ export const SincronizarMercadoModal: React.FC<SincronizarMercadoModalProps> = (
         className="card"
         style={{
           width: '100%',
-          maxWidth: '540px',
+          maxWidth: '520px',
           maxHeight: '92vh',
           backgroundColor: '#0F2744',
-          borderRadius: '20px',
+          borderRadius: '18px',
           border: '1.5px solid #287EA5',
-          boxShadow: '0 20px 45px rgba(0, 0, 0, 0.65)',
+          boxShadow: '0 20px 45px rgba(0, 0, 0, 0.75)',
           overflowY: 'auto',
           display: 'flex',
-          flexDirection: 'column',
-          gap: '14px'
+          flexDirection: 'column'
         }}
       >
-        {/* Cabeçalho */}
+        {/* Cabeçalho Fixo */}
         <div style={{
-          padding: '16px 20px',
+          padding: '14px 18px',
           background: 'linear-gradient(135deg, #173F5F 0%, #205B7D 60%, #287EA5 100%)',
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
-          color: '#FFFFFF',
-          position: 'sticky',
-          top: 0,
-          zIndex: 10
+          color: '#FFFFFF'
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
             <div style={{
-              width: '38px',
-              height: '38px',
-              borderRadius: '12px',
+              width: '36px',
+              height: '36px',
+              borderRadius: '10px',
               backgroundColor: 'rgba(255, 255, 255, 0.15)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
               flexShrink: 0
             }}>
-              <ShoppingCart size={20} color="#F8D117" />
+              <ShoppingCart size={19} color="#F8D117" />
             </div>
             <div>
-              <h3 style={{ fontSize: '15.5px', fontWeight: 800, margin: 0 }}>
+              <h3 style={{ fontSize: '15px', fontWeight: 800, margin: 0 }}>
                 Sincronizar Meu Mercado
               </h3>
-              <span style={{ fontSize: '11.5px', color: '#E7EBF0', opacity: 0.85 }}>
-                Importar compras com cupom detalhado de itens
+              <span style={{ fontSize: '11px', color: '#E7EBF0', opacity: 0.85 }}>
+                Cupons e itens detalhados integrados ao extrato
               </span>
             </div>
           </div>
@@ -321,10 +430,10 @@ export const SincronizarMercadoModal: React.FC<SincronizarMercadoModalProps> = (
           <button
             onClick={onFechar}
             style={{
-              width: '30px',
-              height: '30px',
+              width: '28px',
+              height: '28px',
               borderRadius: '50%',
-              backgroundColor: 'rgba(0, 0, 0, 0.2)',
+              backgroundColor: 'rgba(0, 0, 0, 0.25)',
               border: 'none',
               color: '#FFFFFF',
               display: 'flex',
@@ -333,173 +442,61 @@ export const SincronizarMercadoModal: React.FC<SincronizarMercadoModalProps> = (
               cursor: 'pointer'
             }}
           >
-            <X size={16} />
+            <X size={15} />
           </button>
         </div>
 
-        {/* Conteúdo */}
-        <div style={{ padding: '0 18px 18px 18px', display: 'flex', flexDirection: 'column', gap: '13px' }}>
+        {/* Corpo do Modal */}
+        <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
           
-          <div style={{
-            padding: '11px 13px',
-            backgroundColor: '#132F4C',
-            borderRadius: '12px',
-            border: '1px solid #1E3A5F',
-            fontSize: '12.5px',
-            color: '#E7EBF0',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '5px'
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 700, color: '#66BB6A' }}>
-              <CheckCircle2 size={15} />
-              <span>Conexão Direta com a Planilha do Meu Mercado</span>
-            </div>
-            <p style={{ margin: 0, color: '#AAB4BE', lineHeight: 1.45, fontSize: '11.5px' }}>
-              Ao sincronizar, suas listas finalizadas no <strong>Meu Mercado</strong> viram despesas no extrato com o <strong>cupom detalhado</strong> (itens, quantidades, preço unitário e total).
-            </p>
-          </div>
-
-          {/* O motivo do "Failed to fetch" e passo a passo claro */}
-          <div style={{
-            padding: '12px 14px',
-            backgroundColor: 'rgba(23, 58, 94, 0.55)',
-            borderRadius: '12px',
-            border: '1px solid #287EA5',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '8px'
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 800, color: '#F8D117', fontSize: '12.5px' }}>
-              <AlertTriangle size={15} />
-              <span>Por que deu erro mesmo com "Qualquer pessoa"?</span>
-            </div>
-            <p style={{ margin: 0, color: '#E7EBF0', fontSize: '11.5px', lineHeight: 1.5 }}>
-              No Google Apps Script, salvar o código <strong>NÃO atualiza a URL da Web automaticamente</strong>. Ele continua servindo a versão congelada anterior que devolve página web em vez de dados JSON.
-            </p>
-            <div style={{
-              backgroundColor: '#0A1929',
-              padding: '10px 12px',
-              borderRadius: '8px',
-              borderLeft: '3px solid #F8D117'
-            }}>
-              <strong style={{ fontSize: '11.5px', color: '#FFFFFF', display: 'block', marginBottom: '4px' }}>
-                Como resolver em 3 passos rápidos:
-              </strong>
-              <ol style={{ margin: 0, paddingLeft: '16px', color: '#AAB4BE', lineHeight: 1.5, fontSize: '11px' }}>
-                <li>Na sua planilha do Meu Mercado, abra <strong>Extensões &gt; Apps Script</strong>.</li>
-                <li>Clique em <strong>Implantar &gt; Gerenciar implantações</strong> e clique no lápis ✏️ (<strong>Editar</strong>).</li>
-                <li><strong style={{ color: '#F8D117' }}>MUITO IMPORTANTE:</strong> No campo <strong>Versão</strong>, clique e mude de "Versão 1" para <span style={{ color: '#66BB6A', fontWeight: 800 }}>"Nova versão"</span>. Mantenha "Quem tem acesso: Qualquer pessoa" e clique em <strong>Implantar</strong>.</li>
-              </ol>
-            </div>
-
-            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '2px' }}>
-              <button
-                type="button"
-                onClick={handleCopiarCodigo}
-                style={{
-                  backgroundColor: '#1E3A5F',
-                  color: '#FFFFFF',
-                  border: '1px solid #287EA5',
-                  borderRadius: '8px',
-                  padding: '6px 10px',
-                  fontSize: '11px',
-                  fontWeight: 700,
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  cursor: 'pointer'
-                }}
-              >
-                <Copy size={13} color="#F8D117" />
-                <span>Copiar Código Apps Script</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setMostrarCodigo(!mostrarCodigo)}
-                style={{
-                  background: 'none',
-                  color: '#5090D3',
-                  border: 'none',
-                  fontSize: '11px',
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '4px'
-                }}
-              >
-                <Code size={13} />
-                <span>{mostrarCodigo ? 'Ocultar código' : 'Ver código que deve estar no Apps Script'}</span>
-              </button>
-            </div>
-
-            {mostrarCodigo && (
-              <pre style={{
-                backgroundColor: '#071320',
-                padding: '10px',
-                borderRadius: '8px',
-                color: '#66BB6A',
-                fontSize: '10.5px',
-                overflowX: 'auto',
-                maxHeight: '160px',
-                border: '1px solid #1E3A5F'
-              }}>
-                {CODIGO_APPS_SCRIPT}
-              </pre>
-            )}
-          </div>
-
-          {/* Campo de URL da WebApp do Meu Mercado */}
+          {/* Campo de URL / Link com Destaque */}
           <div>
-            <label style={{ fontSize: '11.5px', fontWeight: 800, color: '#AAB4BE', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '5px', marginBottom: '6px' }}>
-              <Link size={13} color="#5090D3" />
-              <span>URL da WebApp do Meu Mercado</span>
+            <label style={{ fontSize: '11px', fontWeight: 800, color: '#AAB4BE', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '5px', marginBottom: '5px' }}>
+              <Link size={12} color="#5090D3" />
+              <span>Link da Planilha Google OU URL da WebApp</span>
             </label>
             <input 
               type="text"
-              placeholder="https://script.google.com/macros/s/.../exec"
+              placeholder="Cole aqui docs.google.com/spreadsheets/d/... ou script.google.com/.../exec"
               value={urlApp}
               onChange={(e) => salvarUrl(e.target.value)}
-              style={{ fontSize: '12px', padding: '10px 12px' }}
+              style={{
+                width: '100%',
+                fontSize: '12px',
+                padding: '10px 12px',
+                borderRadius: '10px',
+                border: '1px solid #287EA5',
+                backgroundColor: '#071626',
+                color: '#FFFFFF'
+              }}
             />
+            <span style={{ fontSize: '10.5px', color: '#66BB6A', marginTop: '4px', display: 'block' }}>
+              💡 <strong>Dica fácil:</strong> Você pode colar o link direto da sua <strong>Planilha Google</strong> aberta no navegador!
+            </span>
           </div>
 
-          {mensagemStatus && (
-            <div style={{
-              padding: '10px 12px',
-              borderRadius: '10px',
-              backgroundColor: mensagemStatus.startsWith('✅') ? 'rgba(76, 175, 80, 0.18)' : mensagemStatus.startsWith('ℹ️') ? 'rgba(33, 150, 243, 0.18)' : 'rgba(255, 152, 0, 0.18)',
-              border: `1px solid ${mensagemStatus.startsWith('✅') ? '#4CAF50' : mensagemStatus.startsWith('ℹ️') ? '#2196F3' : '#FF9800'}`,
-              fontSize: '11.5px',
-              fontWeight: 600,
-              color: mensagemStatus.startsWith('✅') ? '#66BB6A' : mensagemStatus.startsWith('ℹ️') ? '#60A5FA' : '#F8D117',
-              lineHeight: 1.45
-            }}>
-              {mensagemStatus}
-            </div>
-          )}
-
-          {/* Botões de Ação */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '2px' }}>
+          {/* Botões Principais de Ação (Sempre Visíveis no Topo) */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '8px' }}>
             <button
               type="button"
-              onClick={handleSincronizarWeb}
+              onClick={handleSincronizarGeral}
               disabled={carregando}
               className="btn-primary"
               style={{
                 width: '100%',
                 padding: '11px',
                 fontSize: '13px',
+                fontWeight: 800,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
                 gap: '8px'
               }}
             >
-              <RefreshCw size={16} className={carregando ? 'animate-spin' : ''} />
-              <span>{carregando ? 'Sincronizando...' : 'Buscar Compras do Meu Mercado'}</span>
+              <RefreshCw size={15} className={carregando ? 'animate-spin' : ''} />
+              <span>{carregando ? 'Buscando Compras...' : 'Buscar Compras do Meu Mercado'}</span>
             </button>
 
-            {/* Botão de Teste Imediato */}
             <button
               type="button"
               onClick={handleInserirExemploTeste}
@@ -507,11 +504,11 @@ export const SincronizarMercadoModal: React.FC<SincronizarMercadoModalProps> = (
                 width: '100%',
                 padding: '9px 12px',
                 backgroundColor: 'rgba(248, 209, 23, 0.12)',
-                border: '1px solid rgba(248, 209, 23, 0.45)',
+                border: '1px solid rgba(248, 209, 23, 0.5)',
                 color: '#F8D117',
                 borderRadius: '10px',
-                fontSize: '12px',
-                fontWeight: 700,
+                fontSize: '11.5px',
+                fontWeight: 800,
                 cursor: 'pointer',
                 display: 'flex',
                 alignItems: 'center',
@@ -522,31 +519,192 @@ export const SincronizarMercadoModal: React.FC<SincronizarMercadoModalProps> = (
               <Sparkles size={14} color="#F8D117" />
               <span>🧪 Carregar Compra de Teste no Extrato (Cupom Completo)</span>
             </button>
+          </div>
 
-            {comprasMercadoAtuais.length > 0 && (
+          {/* Mensagem de Status */}
+          {mensagemStatus && (
+            <div style={{
+              padding: '10px 12px',
+              borderRadius: '10px',
+              backgroundColor: mensagemStatus.startsWith('✅') ? 'rgba(76, 175, 80, 0.15)' : mensagemStatus.startsWith('ℹ️') ? 'rgba(33, 150, 243, 0.15)' : 'rgba(255, 152, 0, 0.15)',
+              border: `1px solid ${mensagemStatus.startsWith('✅') ? '#4CAF50' : mensagemStatus.startsWith('ℹ️') ? '#2196F3' : '#FF9800'}`,
+              fontSize: '11.5px',
+              fontWeight: 600,
+              color: mensagemStatus.startsWith('✅') ? '#66BB6A' : mensagemStatus.startsWith('ℹ️') ? '#60A5FA' : '#F8D117',
+              whiteSpace: 'pre-line',
+              lineHeight: 1.45
+            }}>
+              {mensagemStatus}
+            </div>
+          )}
+
+          {/* Guia com Abas Alternáveis */}
+          <div style={{
+            backgroundColor: '#0A1A2E',
+            borderRadius: '12px',
+            border: '1px solid #1E3A5F',
+            overflow: 'hidden'
+          }}>
+            <div style={{ display: 'flex', borderBottom: '1px solid #1E3A5F' }}>
               <button
                 type="button"
-                onClick={handleLimparComprasMercado}
+                onClick={() => setAbaAjuda('planilha')}
                 style={{
-                  background: 'none',
+                  flex: 1,
+                  padding: '9px',
+                  background: abaAjuda === 'planilha' ? '#173F5F' : 'transparent',
+                  color: abaAjuda === 'planilha' ? '#FFFFFF' : '#AAB4BE',
+                  fontWeight: 700,
+                  fontSize: '11px',
                   border: 'none',
-                  color: '#EF5350',
-                  fontSize: '11.5px',
-                  fontWeight: 600,
                   cursor: 'pointer',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  gap: '4px',
-                  marginTop: '4px',
-                  padding: '6px'
+                  gap: '5px'
                 }}
               >
-                <Trash2 size={13} />
-                <span>Limpar compras do Meu Mercado ({comprasMercadoAtuais.length} ativas)</span>
+                <FileSpreadsheet size={13} color="#4CAF50" />
+                <span>Modo 1: Link da Planilha (Fácil)</span>
               </button>
-            )}
+
+              <button
+                type="button"
+                onClick={() => setAbaAjuda('script')}
+                style={{
+                  flex: 1,
+                  padding: '9px',
+                  background: abaAjuda === 'script' ? '#173F5F' : 'transparent',
+                  color: abaAjuda === 'script' ? '#FFFFFF' : '#AAB4BE',
+                  fontWeight: 700,
+                  fontSize: '11px',
+                  border: 'none',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '5px'
+                }}
+              >
+                <Globe size={13} color="#5090D3" />
+                <span>Modo 2: WebApp Apps Script</span>
+              </button>
+            </div>
+
+            <div style={{ padding: '12px' }}>
+              {abaAjuda === 'planilha' ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '11px', color: '#E7EBF0', lineHeight: 1.45 }}>
+                  <div style={{ fontWeight: 800, color: '#66BB6A', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    <CheckCircle2 size={13} />
+                    <span>Como usar o Link Direto da Planilha (Zero código):</span>
+                  </div>
+                  <ol style={{ margin: 0, paddingLeft: '16px', color: '#AAB4BE' }}>
+                    <li>Abra a planilha do <strong>Meu Mercado</strong> no seu computador.</li>
+                    <li>No topo direito da planilha, clique no botão <strong>Compartilhar</strong>.</li>
+                    <li>Em <i>Acesso geral</i>, marque <strong>Qualquer pessoa com o link pode ler</strong>.</li>
+                    <li>Copie o link do navegador (<code>https://docs.google.com/spreadsheets/d/...</code>) e cole no campo acima!</li>
+                  </ol>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '11px', color: '#E7EBF0', lineHeight: 1.45 }}>
+                  <div style={{ fontWeight: 800, color: '#F8D117', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    <AlertTriangle size={13} />
+                    <span>Como configurar a WebApp no Google Apps Script:</span>
+                  </div>
+                  <ol style={{ margin: 0, paddingLeft: '16px', color: '#AAB4BE' }}>
+                    <li>Abra a planilha &gt; <strong>Extensões &gt; Apps Script</strong>.</li>
+                    <li>Clique no botão <strong>"Copiar Código Apps Script"</strong> abaixo.</li>
+                    <li>No arquivo <code>Codigo.gs</code>, cole no final e clique no <strong>disquete 💾 (Salvar)</strong>.</li>
+                    <li>Clique em <strong>Implantar &gt; Gerenciar implantações &gt; Editar ✏️</strong>.</li>
+                    <li>No campo Versão, selecione obrigatoriamente <strong>"Nova versão"</strong> e clique em <strong>Implantar</strong>.</li>
+                  </ol>
+
+                  <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '4px' }}>
+                    <button
+                      type="button"
+                      onClick={handleCopiarCodigo}
+                      style={{
+                        backgroundColor: '#1E3A5F',
+                        color: '#FFFFFF',
+                        border: '1px solid #287EA5',
+                        borderRadius: '6px',
+                        padding: '6px 10px',
+                        fontSize: '11px',
+                        fontWeight: 700,
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '5px',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      <Copy size={12} color="#F8D117" />
+                      <span>Copiar Código Apps Script</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setMostrarCodigo(!mostrarCodigo)}
+                      style={{
+                        background: 'none',
+                        color: '#5090D3',
+                        border: 'none',
+                        fontSize: '11px',
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '4px'
+                      }}
+                    >
+                      <Code size={12} />
+                      <span>{mostrarCodigo ? 'Ocultar código' : 'Ver código'}</span>
+                    </button>
+                  </div>
+
+                  {mostrarCodigo && (
+                    <pre style={{
+                      backgroundColor: '#071320',
+                      padding: '8px',
+                      borderRadius: '6px',
+                      color: '#66BB6A',
+                      fontSize: '10px',
+                      overflowX: 'auto',
+                      maxHeight: '140px',
+                      border: '1px solid #1E3A5F',
+                      marginTop: '4px'
+                    }}>
+                      {CODIGO_APPS_SCRIPT}
+                    </pre>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
+
+          {/* Limpar Compras se houver */}
+          {comprasMercadoAtuais.length > 0 && (
+            <button
+              type="button"
+              onClick={handleLimparComprasMercado}
+              style={{
+                background: 'none',
+                border: 'none',
+                color: '#EF5350',
+                fontSize: '11px',
+                fontWeight: 600,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '4px',
+                padding: '4px'
+              }}
+            >
+              <Trash2 size={12} />
+              <span>Limpar compras do Meu Mercado ({comprasMercadoAtuais.length} ativas)</span>
+            </button>
+          )}
+
         </div>
       </div>
     </div>
