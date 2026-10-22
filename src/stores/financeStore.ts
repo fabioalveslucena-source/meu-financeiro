@@ -1256,7 +1256,7 @@ export const useFinanceStore = create<FinanceState>((set, get) => {
       } catch (err: any) {
         console.error('Erro na sincronização Firestore:', err);
         set({ sincronizandoNuvem: false });
-        get().mostrarToast('Erro ao conectar com a nuvem Firestore.', 'erro');
+        get().mostrarToast(`Erro ao conectar com a nuvem: ${err?.message || 'Falha de comunicação'}`, 'erro');
         return { sucesso: false, mensagem: err?.message || 'Erro' };
       }
     },

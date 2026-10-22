@@ -17,6 +17,26 @@ import type { UsuarioPerfil } from '../stores/financeStore';
 
 export const MASTER_UID = 'fabio-master-uid';
 
+/**
+ * Remove qualquer campo com valor `undefined` para não violar a regra estrita do Firestore
+ * Converte datas para ISO Strings automaticamente.
+ */
+function sanitizarParaFirestore<T extends Record<string, any>>(obj: T): Record<string, any> {
+  const limpo: Record<string, any> = {};
+  for (const [chave, valor] of Object.entries(obj)) {
+    if (valor !== undefined) {
+      if (valor instanceof Date) {
+        limpo[chave] = valor.toISOString();
+      } else if (typeof valor === 'object' && valor !== null && !Array.isArray(valor)) {
+        limpo[chave] = sanitizarParaFirestore(valor);
+      } else {
+        limpo[chave] = valor;
+      }
+    }
+  }
+  return limpo;
+}
+
 export class FirestoreSyncService {
   private static unsubscribers: Unsubscribe[] = [];
   private static isSyncing = false;
@@ -28,11 +48,12 @@ export class FirestoreSyncService {
     if (!db || !isFirebaseConfigured || !uid) return;
     try {
       const docRef = doc(db, 'usuarios', uid, 'lancamentos', lancamento.id);
-      await setDoc(docRef, {
+      const dadosLimpos = sanitizarParaFirestore({
         ...lancamento,
         data: typeof lancamento.data === 'string' ? lancamento.data : new Date(lancamento.data).toISOString(),
         atualizadoEm: new Date().toISOString()
-      }, { merge: true });
+      });
+      await setDoc(docRef, dadosLimpos, { merge: true });
     } catch (e) {
       console.error('Erro ao salvar lançamento no Firestore:', e);
     }
@@ -57,8 +78,8 @@ export class FirestoreSyncService {
   public static async enviarTodosLancamentos(uid: string = MASTER_UID, lancamentos: Lancamento[]): Promise<number> {
     if (!db || !isFirebaseConfigured || !uid || lancamentos.length === 0) return 0;
     try {
-      // Divide em lotes de 450 (limite do Firestore é 500 por batch)
-      const tamLote = 450;
+      // Divide em lotes de 400 (limite seguro do Firestore é 500 por batch)
+      const tamLote = 400;
       let enviados = 0;
 
       for (let i = 0; i < lancamentos.length; i += tamLote) {
@@ -67,11 +88,12 @@ export class FirestoreSyncService {
 
         for (const item of pedaco) {
           const docRef = doc(db, 'usuarios', uid, 'lancamentos', item.id);
-          batch.set(docRef, {
+          const dadosLimpos = sanitizarParaFirestore({
             ...item,
             data: typeof item.data === 'string' ? item.data : new Date(item.data).toISOString(),
             atualizadoEm: new Date().toISOString()
-          }, { merge: true });
+          });
+          batch.set(docRef, dadosLimpos, { merge: true });
         }
 
         await batch.commit();
@@ -119,7 +141,7 @@ export class FirestoreSyncService {
       const batch = writeBatch(db);
       for (const c of cartoes) {
         const docRef = doc(db, 'usuarios', uid, 'cartoes', c.id);
-        batch.set(docRef, c, { merge: true });
+        batch.set(docRef, sanitizarParaFirestore(c), { merge: true });
       }
       await batch.commit();
     } catch (e) {
@@ -150,7 +172,7 @@ export class FirestoreSyncService {
     if (!db || !isFirebaseConfigured || !uid) return;
     try {
       const docRef = doc(db, 'usuarios', uid, 'perfil', 'dados');
-      await setDoc(docRef, { ...usuario, atualizadoEm: new Date().toISOString() }, { merge: true });
+      await setDoc(docRef, sanitizarParaFirestore({ ...usuario, atualizadoEm: new Date().toISOString() }), { merge: true });
     } catch (e) {
       console.error('Erro ao salvar perfil no Firestore:', e);
     }
@@ -214,7 +236,7 @@ export class FirestoreSyncService {
       // 2. Fazer Merge dos Lançamentos por ID
       const mapaLancamentos = new Map<string, Lancamento>();
       
-      // Adiciona primeiro o que está na nuvem
+      // Adiciona o que está na nuvem
       lancamentosNuvem.forEach((l) => mapaLancamentos.set(l.id, l));
 
       let novosEnviados = 0;
@@ -234,10 +256,11 @@ export class FirestoreSyncService {
         novosEnviados = paraEnviar.length;
       }
 
-      // Se a nuvem estava vazia e enviamos todos os locais, salvar perfil e cartões também
-      if (lancamentosNuvem.length === 0 && estadoLocal.lancamentos.length > 0) {
-        await this.enviarTodosLancamentos(uid, estadoLocal.lancamentos);
+      // Se a nuvem estava sem cartões ou perfil, salvar agora
+      if (cartoesNuvem.length === 0 && estadoLocal.cartoes.length > 0) {
         await this.salvarCartoes(uid, estadoLocal.cartoes);
+      }
+      if (!perfilNuvem && estadoLocal.usuario) {
         await this.salvarPerfil(uid, estadoLocal.usuario);
       }
 
