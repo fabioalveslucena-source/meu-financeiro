@@ -50,8 +50,21 @@ export const SincronizarMercadoModal: React.FC<SincronizarMercadoModalProps> = (
       setMensagemStatus('🔄 Conectando ao Meu Mercado...');
 
       const urlFinal = urlLimpa.includes('?') ? `${urlLimpa}&api=extrato` : `${urlLimpa}?api=extrato`;
-      const res = await fetch(urlFinal);
-      const json = await res.json();
+      const res = await fetch(urlFinal, {
+        method: 'GET',
+        headers: { 'Accept': 'application/json' }
+      });
+
+      const text = await res.text();
+      let json: any;
+      try {
+        json = JSON.parse(text);
+      } catch {
+        if (text.includes('<!doctype') || text.includes('<html') || text.includes('accounts.google.com') || text.includes('ppConfig')) {
+          throw new Error('O Google bloqueou a conexão por falta de permissão pública. Na sua planilha do Meu Mercado, vá em Apps Script > Implantar > Gerenciar Implantações > Editar ✏️ e configure "Quem tem acesso" como "Qualquer pessoa" (Anyone).');
+        }
+        throw new Error('A resposta do script não foi um JSON válido. Verifique se a URL termina com /exec');
+      }
 
       if (!json || !json.sucesso || !Array.isArray(json.compras)) {
         throw new Error(json.erro || 'Formato de resposta inesperado do Google Apps Script.');
@@ -79,7 +92,11 @@ export const SincronizarMercadoModal: React.FC<SincronizarMercadoModalProps> = (
       mostrarToast(`🛒 ${importadas} compra(s) do Meu Mercado integradas ao extrato!`, 'sucesso');
     } catch (err: any) {
       console.error('Erro ao sincronizar com Meu Mercado:', err);
-      setMensagemStatus(`⚠️ Não foi possível sincronizar: ${err.message || 'Verifique a URL e se a implantação está acessível a Qualquer Pessoa.'}`);
+      const isFailedFetch = String(err?.message || '').toLowerCase().includes('failed to fetch');
+      const msgErro = isFailedFetch
+        ? '⚠️ Falha de permissão no Google (Failed to fetch). Na planilha do Meu Mercado, vá em Apps Script > Implantar > Gerenciar Implantações > Editar ✏️ e configure "Quem tem acesso" como "Qualquer pessoa" (Anyone).'
+        : `⚠️ Não foi possível sincronizar: ${err.message || 'Verifique a URL e se a implantação está acessível a Qualquer Pessoa.'}`;
+      setMensagemStatus(msgErro);
     } finally {
       setCarregando(false);
     }
@@ -209,16 +226,18 @@ export const SincronizarMercadoModal: React.FC<SincronizarMercadoModalProps> = (
           }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 800, color: '#5090D3', fontSize: '12px' }}>
               <HelpCircle size={15} />
-              <span>Onde encontrar a URL da WebApp no Meu Mercado:</span>
+              <span>Como configurar a URL do Meu Mercado (em 1 minuto):</span>
             </div>
             <ol style={{ margin: 0, paddingLeft: '18px', color: '#AAB4BE', lineHeight: 1.5, fontSize: '11.5px' }}>
               <li>Abra sua planilha do <strong>Meu Mercado</strong> no Google Planilhas.</li>
-              <li>No menu superior, vá em <strong>Extensões</strong> &gt; <strong>Apps Script</strong>.</li>
+              <li>No menu superior, clique em <strong>Extensões</strong> &gt; <strong>Apps Script</strong>.</li>
               <li>No canto superior direito, clique em <strong>Implantar</strong> &gt; <strong>Gerenciar implantações</strong>.</li>
-              <li>Copie a <strong>URL do app da Web</strong> (terminada em <code>/exec</code>) e cole no campo abaixo.</li>
+              <li>Clique no ícone de lápis ✏️ (<strong>Editar</strong>).</li>
+              <li><strong style={{ color: '#F8D117' }}>PASSO CRUCIAL:</strong> No campo <strong>Quem tem acesso</strong>, selecione <strong>Qualquer pessoa (Anyone)</strong>. Se deixar "Somente eu", o Google bloqueia e dá erro.</li>
+              <li>Clique em <strong>Implantar</strong> e copie a <strong>URL do app da Web</strong> (terminada em <code>/exec</code>).</li>
             </ol>
             <span style={{ fontSize: '11px', color: '#66BB6A', fontWeight: 600, marginTop: '2px' }}>
-              💡 Fica salva no aparelho automaticamente — só precisa colar uma única vez!
+              💡 Fica salva no aparelho automaticamente — só precisa configurar uma única vez!
             </span>
           </div>
 

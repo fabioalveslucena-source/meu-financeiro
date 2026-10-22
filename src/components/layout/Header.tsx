@@ -1,7 +1,8 @@
 import React, { useState, useRef } from 'react';
 import { useFinanceStore } from '../../stores/financeStore';
-import { Calendar, User, Check, Edit3, X, Upload, Camera, Settings, Moon, Sun, RotateCw } from 'lucide-react';
+import { Calendar, User, Check, Edit3, X, Upload, Camera, Settings, Moon, Sun, RotateCw, ShoppingCart } from 'lucide-react';
 import { ConfiguracoesBaseModal } from '../configuracoes/ConfiguracoesBaseModal';
+import { SincronizarMercadoModal } from '../mercado/SincronizarMercadoModal';
 import type { SecaoAtiva } from './Sidebar';
 
 interface HeaderProps {
@@ -20,6 +21,7 @@ export const Header: React.FC<HeaderProps> = () => {
   const { competenciaAtiva, setCompetenciaAtiva, usuario, setUsuario, tema, alternarTema, sincronizarComNuvem, sincronizandoNuvem } = useFinanceStore();
   const [modalPerfilAberto, setModalPerfilAberto] = useState(false);
   const [modalConfigAberto, setModalConfigAberto] = useState(false);
+  const [modalMercadoAberto, setModalMercadoAberto] = useState(false);
   const [abaConfigInicial, setAbaConfigInicial] = useState<'cartoes' | 'categorias' | 'banco'>('banco');
   const [nomeTemp, setNomeTemp] = useState(usuario.nome);
   const [tituloTemp, setTituloTemp] = useState(usuario.titulo);
@@ -338,14 +340,15 @@ export const Header: React.FC<HeaderProps> = () => {
             </div>
           </div>
 
-          {/* Linha 3: Sincronização da Nuvem Centralizada */}
+          {/* Linha 3: Sincronização da Nuvem (Esquerda) e Sincronizar Meu Mercado (Direita) */}
           <div style={{
-            display: 'flex',
-            justifyContent: 'center',
-            alignItems: 'center',
+            display: 'grid',
+            gridTemplateColumns: '1fr 1fr',
+            gap: '8px',
             width: '100%',
             paddingTop: '2px'
           }}>
+            {/* Botão Esquerda: Sincronizar Nuvem */}
             <button 
               type="button"
               onClick={() => sincronizarComNuvem()}
@@ -353,34 +356,89 @@ export const Header: React.FC<HeaderProps> = () => {
                 display: 'inline-flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                gap: '8px',
+                gap: '5px',
                 cursor: 'pointer',
-                padding: '7px 16px',
-                borderRadius: '22px',
+                padding: '7px 8px',
+                borderRadius: '16px',
                 backgroundColor: sincronizandoNuvem ? 'rgba(40, 126, 165, 0.5)' : 'rgba(11, 25, 41, 0.65)',
                 border: '1.5px solid rgba(76, 175, 80, 0.6)',
-                boxShadow: '0 2px 10px rgba(0, 0, 0, 0.3)',
+                boxShadow: '0 2px 8px rgba(0, 0, 0, 0.25)',
                 transition: 'all 0.15s ease',
                 color: '#FFFFFF',
                 width: '100%',
-                maxWidth: '400px'
+                minWidth: 0
               }}
               title="Clique para sincronizar todos os dados entre PC e Celular agora"
             >
-              <RotateCw size={13} color="#4CAF50" className={sincronizandoNuvem ? 'animate-spin' : ''} />
-              <span style={{ fontSize: '11.5px', fontWeight: 800, color: '#FFFFFF' }}>
-                {sincronizandoNuvem ? 'Sincronizando Nuvem...' : 'Sincronizar Nuvem Agora'}
+              <RotateCw size={12} color="#4CAF50" className={sincronizandoNuvem ? 'animate-spin' : ''} style={{ flexShrink: 0 }} />
+              <span style={{ 
+                fontSize: '11px', 
+                fontWeight: 800, 
+                color: '#FFFFFF',
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis'
+              }}>
+                {sincronizandoNuvem ? 'Nuvem...' : 'Sincronizar Nuvem'}
               </span>
               <span style={{
-                fontSize: '9px',
+                fontSize: '8px',
                 fontWeight: 900,
-                padding: '2px 7px',
-                borderRadius: '8px',
+                padding: '1px 5px',
+                borderRadius: '6px',
                 backgroundColor: 'rgba(76, 175, 80, 0.25)',
                 color: '#4CAF50',
-                border: '1px solid #4CAF50'
+                border: '1px solid #4CAF50',
+                flexShrink: 0
               }}>
-                100% ONLINE
+                100%
+              </span>
+            </button>
+
+            {/* Botão Direita: Sincronizar Meu Mercado */}
+            <button 
+              type="button"
+              onClick={() => setModalMercadoAberto(true)}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '5px',
+                cursor: 'pointer',
+                padding: '7px 8px',
+                borderRadius: '16px',
+                backgroundColor: 'rgba(11, 25, 41, 0.65)',
+                border: '1.5px solid rgba(80, 144, 211, 0.6)',
+                boxShadow: '0 2px 8px rgba(0, 0, 0, 0.25)',
+                transition: 'all 0.15s ease',
+                color: '#FFFFFF',
+                width: '100%',
+                minWidth: 0
+              }}
+              title="Sincronizar compras e recibos do Meu Mercado"
+            >
+              <ShoppingCart size={12} color="#5090D3" style={{ flexShrink: 0 }} />
+              <span style={{ 
+                fontSize: '11px', 
+                fontWeight: 800, 
+                color: '#FFFFFF',
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis'
+              }}>
+                Meu Mercado
+              </span>
+              <span style={{
+                fontSize: '8px',
+                fontWeight: 900,
+                padding: '1px 5px',
+                borderRadius: '6px',
+                backgroundColor: 'rgba(80, 144, 211, 0.25)',
+                color: '#5090D3',
+                border: '1px solid #5090D3',
+                flexShrink: 0
+              }}>
+                CONECTAR
               </span>
             </button>
           </div>
@@ -593,6 +651,12 @@ export const Header: React.FC<HeaderProps> = () => {
         aberto={modalConfigAberto}
         onFechar={() => setModalConfigAberto(false)}
         abaInicial={abaConfigInicial}
+      />
+
+      {/* Modal de Sincronização com o Meu Mercado */}
+      <SincronizarMercadoModal
+        aberto={modalMercadoAberto}
+        onFechar={() => setModalMercadoAberto(false)}
       />
     </div>
   );
