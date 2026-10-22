@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Header } from './Header';
 import { BottomNav } from './BottomNav';
 import type { SecaoAtiva } from './Sidebar';
@@ -10,6 +10,7 @@ import { AnalisesView } from '../analises/AnalisesView';
 import { VoiceModal } from '../voz/VoiceModal';
 import { PinLockScreen } from '../seguranca/PinLockScreen';
 import { useFinanceStore } from '../../stores/financeStore';
+import { FirestoreSyncService, MASTER_UID } from '../../services/firestoreSync';
 import type { VozInterpretada } from '../../features/voice/voiceInterpreter';
 
 export const AppShell: React.FC = () => {
@@ -17,7 +18,27 @@ export const AppShell: React.FC = () => {
   const [modalVozAberto, setModalVozAberto] = useState(false);
   const [dadosVozPreenchimento, setDadosVozPreenchimento] = useState<VozInterpretada | null>(null);
 
-  const { toast, limparToast } = useFinanceStore();
+  const { toast, limparToast, sincronizarComNuvem } = useFinanceStore();
+
+  useEffect(() => {
+    // Sincroniza dados com a nuvem Firestore automaticamente ao abrir o app
+    sincronizarComNuvem();
+
+    // Ativa a escuta contínua em tempo real entre todos os aparelhos
+    FirestoreSyncService.iniciarEscutaTempoReal(MASTER_UID, (lancamentosNuvem) => {
+      useFinanceStore.setState((state) => {
+        // Se a quantidade de itens ou IDs forem diferentes, atualiza o estado local
+        if (lancamentosNuvem.length !== state.lancamentos.length) {
+          return { lancamentos: lancamentosNuvem, ultimoEventoTimestamp: Date.now() };
+        }
+        return {};
+      });
+    });
+
+    return () => {
+      FirestoreSyncService.pararSincronizacao();
+    };
+  }, [sincronizarComNuvem]);
 
   const handleConfirmarVoz = (dados: VozInterpretada) => {
     setDadosVozPreenchimento(dados);

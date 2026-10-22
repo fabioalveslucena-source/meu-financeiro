@@ -19,7 +19,8 @@ import {
   Shield,
   Fingerprint,
   Globe,
-  CloudLightning
+  CloudLightning,
+  RotateCw
 } from 'lucide-react';
 import { fazerLoginGoogle } from '../../features/auth/googleAuth';
 import { isFirebaseConfigured } from '../../services/firebase';
@@ -74,7 +75,12 @@ export const ConfiguracoesBaseModal: React.FC<ConfiguracoesBaseModalProps> = ({
     seguranca,
     configurarSeguranca,
     exportarBackupCompleto,
-    restaurarBackup
+    restaurarBackup,
+    lancamentos,
+    sincronizarComNuvem,
+    enviarTudoParaNuvem,
+    baixarTudoDaNuvem,
+    sincronizandoNuvem
   } = useFinanceStore();
 
   const [abaAtiva, setAbaAtiva] = useState<'cartoes' | 'categorias' | 'banco' | 'seguranca' | 'backup' | 'nuvem'>(abaInicial);
@@ -1188,7 +1194,7 @@ export const ConfiguracoesBaseModal: React.FC<ConfiguracoesBaseModalProps> = ({
                 </button>
               </div>
 
-              {/* Status da Conexão Firebase */}
+              {/* Status da Conexão Firebase e Base de Dados */}
               <div style={{
                 padding: '14px',
                 borderRadius: '14px',
@@ -1208,19 +1214,86 @@ export const ConfiguracoesBaseModal: React.FC<ConfiguracoesBaseModalProps> = ({
                     alignItems: 'center',
                     gap: '4px'
                   }}>
-                    <span>{isFirebaseConfigured ? '🟢 Conectado em Produção' : '🟡 Modo Local Seguro (Offline-First)'}</span>
+                    <span>{isFirebaseConfigured ? '🟢 Conectado em Produção' : '🟡 Modo Local'}</span>
                   </span>
                 </div>
 
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span style={{ fontSize: '12px', color: '#AAB4BE' }}>Multi-Dispositivos Ativos:</span>
+                  <span style={{ fontSize: '12px', color: '#AAB4BE' }}>Lançamentos neste Aparelho:</span>
+                  <strong style={{ fontSize: '12px', color: '#F8D117' }}>
+                    {lancamentos.length} movimentações
+                  </strong>
+                </div>
+
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontSize: '12px', color: '#AAB4BE' }}>Multi-Dispositivos Conectados:</span>
                   <span style={{ fontSize: '11px', color: '#FFFFFF', fontWeight: 700 }}>
-                    PC Windows • Mac • Poco X5 Pro • iPhone
+                    PC Windows • Celular Android • Tablet
                   </span>
                 </div>
               </div>
 
-              {/* Instruções para Chaves do Firebase */}
+              {/* Botões de Ação de Sincronização em Nuvem */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                <button
+                  type="button"
+                  disabled={sincronizandoNuvem}
+                  onClick={() => sincronizarComNuvem()}
+                  className="btn-primary"
+                  style={{
+                    padding: '12px',
+                    justifyContent: 'center',
+                    gap: '8px',
+                    fontWeight: 900,
+                    fontSize: '13.5px',
+                    backgroundColor: '#287EA5',
+                    boxShadow: '0 4px 14px rgba(40, 126, 165, 0.4)'
+                  }}
+                >
+                  <RotateCw size={16} className={sincronizandoNuvem ? 'animate-spin' : ''} />
+                  <span>{sincronizandoNuvem ? 'Sincronizando com a Nuvem...' : '🔄 Sincronizar Tudo Agora (PC ↔ Celular)'}</span>
+                </button>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                  <button
+                    type="button"
+                    disabled={sincronizandoNuvem}
+                    onClick={() => enviarTudoParaNuvem()}
+                    className="btn-secondary"
+                    style={{
+                      padding: '10px 8px',
+                      justifyContent: 'center',
+                      gap: '6px',
+                      fontSize: '11.5px',
+                      fontWeight: 700
+                    }}
+                    title="Envia todos os lançamentos deste aparelho para a nuvem"
+                  >
+                    <UploadCloud size={14} color="#4CAF50" />
+                    <span>Enviar para Nuvem</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    disabled={sincronizandoNuvem}
+                    onClick={() => baixarTudoDaNuvem()}
+                    className="btn-secondary"
+                    style={{
+                      padding: '10px 8px',
+                      justifyContent: 'center',
+                      gap: '6px',
+                      fontSize: '11.5px',
+                      fontWeight: 700
+                    }}
+                    title="Baixa todos os lançamentos salvos na nuvem para este aparelho"
+                  >
+                    <DownloadCloud size={14} color="#5090D3" />
+                    <span>Baixar da Nuvem</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Orientações para sincronização */}
               <div style={{
                 padding: '14px',
                 borderRadius: '14px',
@@ -1231,9 +1304,9 @@ export const ConfiguracoesBaseModal: React.FC<ConfiguracoesBaseModalProps> = ({
                 lineHeight: 1.5
               }}>
                 <strong style={{ color: '#F8D117', display: 'block', marginBottom: '4px' }}>
-                  💡 Integração com a sua Conta Google Pro:
+                  ☁️ Como funciona a sincronização entre PC e Celular:
                 </strong>
-                Para conectar ao seu projeto no Firebase Console (console.firebase.google.com), as credenciais podem ser inseridas no arquivo <code>.env</code> do projeto (<code>VITE_FIREBASE_API_KEY</code> e <code>VITE_FIREBASE_PROJECT_ID</code>). O sistema sincroniza automaticamente todas as movimentações financeiras em menos de 300ms entre todos os aparelhos!
+                Ao abrir o aplicativo em qualquer aparelho, ele conecta automaticamente ao Google Cloud Firestore. Se você realizou lançamentos no computador (como os meses de novembro/dezembro), basta clicar em <strong>"🔄 Sincronizar Tudo Agora"</strong> ou <strong>"Enviar para Nuvem"</strong> no computador uma vez para que o celular receba todos os dados instantaneamente!
               </div>
             </div>
           )}

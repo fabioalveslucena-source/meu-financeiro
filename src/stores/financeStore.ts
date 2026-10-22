@@ -22,6 +22,7 @@ import {
   CONTAS_PADRAO 
 } from '../services/mockData';
 import { competenciaAtual } from '../lib/formatters';
+import { FirestoreSyncService, MASTER_UID } from '../services/firestoreSync';
 
 export interface RealtimeLog {
   id: string;
@@ -126,6 +127,12 @@ interface FinanceState {
   exportarBackupCompleto: () => void;
   restaurarBackup: (conteudoJson: string) => { sucesso: boolean; mensagem: string };
   importarLancamentosEmLote: (transacoes: TransacaoImportada[]) => { sucesso: boolean; count: number };
+
+  // Sincronização em Nuvem (Cloud Firestore)
+  sincronizandoNuvem: boolean;
+  sincronizarComNuvem: () => Promise<{ sucesso: boolean; mensagem: string }>;
+  enviarTudoParaNuvem: () => Promise<void>;
+  baixarTudoDaNuvem: () => Promise<void>;
 }
 
 const STORAGE_KEY_LANCAMENTOS = 'mf_lancamentos_v3';
@@ -418,6 +425,7 @@ export const useFinanceStore = create<FinanceState>((set, get) => {
       set((state) => {
         const novoUsuario = { ...state.usuario, ...dados };
         salvarNoStorage(STORAGE_KEY_USUARIO, novoUsuario);
+        FirestoreSyncService.salvarPerfil(MASTER_UID, novoUsuario);
         return { usuario: novoUsuario };
       });
     },
@@ -508,6 +516,7 @@ export const useFinanceStore = create<FinanceState>((set, get) => {
       set((state) => {
         const novosCartoes = state.cartoes.map((c) => c.id === id ? { ...c, ...dados } : c);
         salvarNoStorage(STORAGE_KEY_CARTOES, novosCartoes);
+        FirestoreSyncService.salvarCartoes(MASTER_UID, novosCartoes);
         return { cartoes: novosCartoes, ultimoEventoTimestamp: Date.now() };
       });
       get().mostrarToast('Cartão atualizado com sucesso!', 'sucesso');
@@ -523,6 +532,7 @@ export const useFinanceStore = create<FinanceState>((set, get) => {
       set((state) => {
         const novosCartoes = [...state.cartoes, novo];
         salvarNoStorage(STORAGE_KEY_CARTOES, novosCartoes);
+        FirestoreSyncService.salvarCartoes(MASTER_UID, novosCartoes);
         return { cartoes: novosCartoes, ultimoEventoTimestamp: Date.now() };
       });
       get().mostrarToast(`Cartão "${novo.nome}" cadastrado com sucesso!`, 'sucesso');
@@ -532,6 +542,7 @@ export const useFinanceStore = create<FinanceState>((set, get) => {
       set((state) => {
         const novosCartoes = state.cartoes.filter((c) => c.id !== id);
         salvarNoStorage(STORAGE_KEY_CARTOES, novosCartoes);
+        FirestoreSyncService.salvarCartoes(MASTER_UID, novosCartoes);
         return { cartoes: novosCartoes, ultimoEventoTimestamp: Date.now() };
       });
       get().mostrarToast('Cartão removido.', 'info');
@@ -661,6 +672,7 @@ export const useFinanceStore = create<FinanceState>((set, get) => {
       const lancamentosAtualizados = [...novos, ...get().lancamentos];
       set({ lancamentos: lancamentosAtualizados, ultimoEventoTimestamp: Date.now() });
       salvarNoStorage(STORAGE_KEY_LANCAMENTOS, lancamentosAtualizados);
+      novos.forEach((n) => FirestoreSyncService.salvarLancamento(MASTER_UID, n));
 
       const msg = totalParcelas > 1 
         ? `Compra parcelada em ${totalParcelas}x adicionada!`
@@ -705,6 +717,7 @@ export const useFinanceStore = create<FinanceState>((set, get) => {
 
       set({ lancamentos: novaLista, ultimoEventoTimestamp: Date.now() });
       salvarNoStorage(STORAGE_KEY_LANCAMENTOS, novaLista);
+      FirestoreSyncService.salvarLancamento(MASTER_UID, itemAtualizado);
       get().mostrarToast('Lançamento atualizado com sucesso!', 'sucesso');
       get().adicionarLogRealtime(
         `[UPDATE] ${itemAtualizado.descricao}`,
@@ -735,10 +748,14 @@ export const useFinanceStore = create<FinanceState>((set, get) => {
       let detalheLog = '';
       if (excluirTodasParcelas && item.compraId) {
         novaLista = lancamentos.filter((l) => l.compraId !== item.compraId);
+        lancamentos
+          .filter((l) => l.compraId === item.compraId)
+          .forEach((l) => FirestoreSyncService.excluirLancamento(MASTER_UID, l.id));
         detalheLog = `Todas as parcelas da compra "${item.descricao}" foram removidas.`;
         get().mostrarToast('Todas as parcelas da compra foram removidas.', 'info');
       } else {
         novaLista = lancamentos.filter((l) => l.id !== id);
+        FirestoreSyncService.excluirLancamento(MASTER_UID, id);
         detalheLog = `Item "${item.descricao}" (R$ ${item.valor.toFixed(2)}) excluído.`;
         get().mostrarToast('Lançamento excluído com sucesso.', 'info');
       }
@@ -1199,6 +1216,91 @@ export const useFinanceStore = create<FinanceState>((set, get) => {
       get().mostrarToast(`✓ ${count} movimentações importadas para o extrato!`, 'sucesso');
 
       return { sucesso: true, count };
+    },
+
+    // Sincronização em Nuvem (Cloud Firestore)
+    sincronizandoNuvem: false,
+
+    sincronizarComNuvem: async () => {
+      set({ sincronizandoNuvem: true });
+      const { lancamentos, cartoes, usuario, categorias, naturezas } = get();
+      try {
+        const res = await FirestoreSyncService.sincronizarTudo(MASTER_UID, {
+          lancamentos,
+          cartoes,
+          usuario,
+          categorias,
+          naturezas
+        });
+
+        salvarNoStorage(STORAGE_KEY_LANCAMENTOS, res.lancamentosSincronizados);
+        salvarNoStorage(STORAGE_KEY_CARTOES, res.cartoesSincronizados);
+        if (res.usuarioSincronizado) {
+          salvarNoStorage(STORAGE_KEY_USUARIO, res.usuarioSincronizado);
+        }
+
+        set({
+          lancamentos: res.lancamentosSincronizados,
+          cartoes: res.cartoesSincronizados,
+          usuario: res.usuarioSincronizado || usuario,
+          sincronizandoNuvem: false,
+          ultimoEventoTimestamp: Date.now()
+        });
+
+        const msg = res.novosImportados > 0 || res.novosEnviados > 0
+          ? `Nuvem sincronizada! (${res.novosImportados} recebidos, ${res.novosEnviados} enviados)`
+          : `Nuvem 100% atualizada! (${res.lancamentosSincronizados.length} lançamentos)`;
+
+        get().mostrarToast(msg, 'sucesso');
+        return { sucesso: true, mensagem: msg };
+      } catch (err: any) {
+        console.error('Erro na sincronização Firestore:', err);
+        set({ sincronizandoNuvem: false });
+        get().mostrarToast('Erro ao conectar com a nuvem Firestore.', 'erro');
+        return { sucesso: false, mensagem: err?.message || 'Erro' };
+      }
+    },
+
+    enviarTudoParaNuvem: async () => {
+      set({ sincronizandoNuvem: true });
+      const { lancamentos, cartoes, usuario } = get();
+      try {
+        await FirestoreSyncService.enviarTodosLancamentos(MASTER_UID, lancamentos);
+        await FirestoreSyncService.salvarCartoes(MASTER_UID, cartoes);
+        await FirestoreSyncService.salvarPerfil(MASTER_UID, usuario);
+        set({ sincronizandoNuvem: false });
+        get().mostrarToast(`✓ ${lancamentos.length} lançamentos enviados para a nuvem!`, 'sucesso');
+      } catch (err) {
+        set({ sincronizandoNuvem: false });
+        get().mostrarToast('Erro ao enviar dados para a nuvem.', 'erro');
+      }
+    },
+
+    baixarTudoDaNuvem: async () => {
+      set({ sincronizandoNuvem: true });
+      try {
+        const lancamentosNuvem = await FirestoreSyncService.baixarTodosLancamentos(MASTER_UID);
+        const cartoesNuvem = await FirestoreSyncService.baixarCartoes(MASTER_UID);
+        const perfilNuvem = await FirestoreSyncService.baixarPerfil(MASTER_UID);
+
+        if (lancamentosNuvem.length > 0) {
+          salvarNoStorage(STORAGE_KEY_LANCAMENTOS, lancamentosNuvem);
+          set({ lancamentos: lancamentosNuvem });
+        }
+        if (cartoesNuvem.length > 0) {
+          salvarNoStorage(STORAGE_KEY_CARTOES, cartoesNuvem);
+          set({ cartoes: cartoesNuvem });
+        }
+        if (perfilNuvem) {
+          salvarNoStorage(STORAGE_KEY_USUARIO, perfilNuvem);
+          set({ usuario: perfilNuvem });
+        }
+        set({ sincronizandoNuvem: false, ultimoEventoTimestamp: Date.now() });
+        get().mostrarToast(`✓ ${lancamentosNuvem.length} lançamentos baixados da nuvem!`, 'sucesso');
+      } catch (err) {
+        set({ sincronizandoNuvem: false });
+        get().mostrarToast('Erro ao baixar dados da nuvem.', 'erro');
+      }
     },
   };
 });
