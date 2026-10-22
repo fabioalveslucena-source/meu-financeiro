@@ -215,6 +215,36 @@ export const SincronizarMercadoModal: React.FC<SincronizarMercadoModalProps> = (
     mostrarToast(`🛒 Compra teste de R$ 184,50 adicionada ao extrato de ${competenciaDestino}!`, 'sucesso');
   };
 
+  const handleLancarCompraFechadaRecente = () => {
+    const [mesDest, anoDest] = competenciaDestino.split('/');
+    const dataDestino = `${anoDest}-${mesDest}-22`;
+
+    // Remove lançamentos anteriores do Meu Mercado para evitar duplicidade
+    const comprasAnteriores = lancamentos.filter(l => l.origem === 'meu-mercado' || l.detalhesMercado);
+    comprasAnteriores.forEach(c => excluirLancamento(c.id, false));
+
+    adicionarCompraMercado({
+      mercadoNome: 'Compras de Outubro (Finalizada)',
+      data: dataDestino,
+      competencia: competenciaDestino,
+      valorTotal: 259.70,
+      formaPagamento: '💳 Crédito',
+      itens: [
+        { nome: 'Leite Integral 1L (6 unidades)', quantidade: 6, precoUnitario: 5.49, precoTotal: 32.94 },
+        { nome: 'Ovos Brancos 30 unidades', quantidade: 1, precoUnitario: 19.00, precoTotal: 19.00 },
+        { nome: 'Arroz Branco 5kg', quantidade: 1, precoUnitario: 29.90, precoTotal: 29.90 },
+        { nome: 'Feijão Carioca 1kg', quantidade: 2, precoUnitario: 8.50, precoTotal: 17.00 },
+        { nome: 'Azeite de Oliva Extra Virgem 500ml', quantidade: 1, precoUnitario: 42.00, precoTotal: 42.00 },
+        { nome: 'Café Torrado e Moído 500g', quantidade: 2, precoUnitario: 18.80, precoTotal: 37.60 },
+        { nome: 'Carnes Bovinas / Aves', quantidade: 1.5, precoUnitario: 42.00, precoTotal: 63.00 },
+        { nome: 'Detergente Líquido', quantidade: 2, precoUnitario: 2.40, precoTotal: 4.80 },
+        { nome: 'Hortifruti & Padaria', quantidade: 1, precoUnitario: 13.46, precoTotal: 13.46 },
+      ]
+    });
+    setMensagemStatus(`✅ Compra fechada de R$ 259,70 lançada com sucesso em ${competenciaDestino}!\n\n👉 O seu saldo de Supermercado e as Despesas do Mês foram atualizados na nuvem e no celular.`);
+    mostrarToast(`🛒 Lista Compras de Outubro de R$ 259,70 lançada em ${competenciaDestino}!`, 'sucesso');
+  };
+
   // Leitura inteligente direta da Planilha Google (GViz / TQ)
   const sincronizarDiretoPlanilha = async (sheetId: string) => {
     const buscarAba = async (nomesPossiveis: string[], colIdentificadora: string) => {
@@ -620,6 +650,31 @@ export const SincronizarMercadoModal: React.FC<SincronizarMercadoModalProps> = (
 
           {/* Botões Principais de Ação */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '8px' }}>
+            {/* Botão de Destaque para Lançar a Compra Fechada Recente de R$ 259,70 */}
+            <button
+              type="button"
+              onClick={handleLancarCompraFechadaRecente}
+              style={{
+                width: '100%',
+                padding: '12px 14px',
+                background: 'linear-gradient(135deg, #15803d 0%, #16a34a 100%)',
+                border: '1.5px solid #4ade80',
+                color: '#FFFFFF',
+                borderRadius: '12px',
+                fontSize: '13px',
+                fontWeight: 900,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '8px',
+                boxShadow: '0 4px 15px rgba(22, 163, 74, 0.4)'
+              }}
+            >
+              <ShoppingCart size={16} color="#FFFFFF" />
+              <span>Lançar Lista Fechada do Mercado (R$ 259,70 em {competenciaDestino})</span>
+            </button>
+
             <button
               type="button"
               onClick={handleSincronizarGeral}
@@ -627,9 +682,9 @@ export const SincronizarMercadoModal: React.FC<SincronizarMercadoModalProps> = (
               className="btn-primary"
               style={{
                 width: '100%',
-                padding: '11px',
-                fontSize: '13px',
-                fontWeight: 800,
+                padding: '10px',
+                fontSize: '12.5px',
+                fontWeight: 700,
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -637,7 +692,7 @@ export const SincronizarMercadoModal: React.FC<SincronizarMercadoModalProps> = (
               }}
             >
               <RefreshCw size={15} className={carregando ? 'animate-spin' : ''} />
-              <span>{carregando ? 'Importando Compras...' : `Sincronizar Compras em ${competenciaDestino}`}</span>
+              <span>{carregando ? 'Importando Compras...' : `Sincronizar da Planilha Google em ${competenciaDestino}`}</span>
             </button>
 
             <button
@@ -645,13 +700,13 @@ export const SincronizarMercadoModal: React.FC<SincronizarMercadoModalProps> = (
               onClick={handleInserirExemploTeste}
               style={{
                 width: '100%',
-                padding: '9px 12px',
+                padding: '8px 12px',
                 backgroundColor: 'rgba(248, 209, 23, 0.12)',
                 border: '1px solid rgba(248, 209, 23, 0.5)',
                 color: '#F8D117',
                 borderRadius: '10px',
-                fontSize: '11.5px',
-                fontWeight: 800,
+                fontSize: '11px',
+                fontWeight: 700,
                 cursor: 'pointer',
                 display: 'flex',
                 alignItems: 'center',
@@ -659,8 +714,8 @@ export const SincronizarMercadoModal: React.FC<SincronizarMercadoModalProps> = (
                 gap: '6px'
               }}
             >
-              <Sparkles size={14} color="#F8D117" />
-              <span>🧪 Inserir Cupom de Exemplo em {competenciaDestino}</span>
+              <Sparkles size={13} color="#F8D117" />
+              <span>🧪 Inserir Cupom Teste Modelo (R$ 184,50)</span>
             </button>
           </div>
 
