@@ -57,13 +57,89 @@ export function converterTextoParaNumero(texto: string): number | null {
   return encontrou ? total : null;
 }
 
+export interface InfoMultiplicadorVoz {
+  qtd: number;
+  unitario: number;
+  total: number;
+  unidadeNome?: string;
+  itemNome: string;
+}
+
+export function converterPalavraParaNumero(p: string): number | null {
+  if (!p) return null;
+  const limpo = p.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
+  if (TABELA_NUMEROS[limpo] !== undefined) return TABELA_NUMEROS[limpo];
+  const num = parseFloat(limpo.replace(',', '.'));
+  return isNaN(num) ? null : num;
+}
+
+export function detectarMultiplicadorVoz(texto: string): InfoMultiplicadorVoz | null {
+  if (!texto) return null;
+
+  // Padrão 1: Com unidade explícita ("três sacos de cimento, 90 reais cada", "3 caixas de piso a 45 cada", etc)
+  const regexComUnidade = /(?:(\d+|um|uma|dois|duas|tres|três|quatro|cinco|seis|meia|sete|oito|nove|dez|doze|vinte)\s+)?(sacos?|unidades?|peças?|pecas?|caixas?|latas?|metros?|kilos?|quilos?|itens?|pacotes?|rolos?|barras?|tubos?|fardos?)\s+(?:de\s+)?([a-z0-9\s]+?)[,;\s]+(?:a|por|de)?\s*(\d+(?:[.,]\d{1,2})?|[a-z]+)\s*(?:reais|real)?\s*(?:cada(?:\s+um|\s+uma)?|a\s+unidade|por\s+unidade)\b/i;
+  
+  // Padrão 2: Sem unidade explícita ("duas chaves de fenda 15 reais cada", "3 disjuntores 25 reais cada")
+  const regexSemUnidade = /(\d+|um|uma|dois|duas|tres|três|quatro|cinco|seis|meia|sete|oito|nove|dez|doze|vinte)\s+([a-z0-9\s]+?)[,;\s]+(?:a|por|de)?\s*(\d+(?:[.,]\d{1,2})?|[a-z]+)\s*(?:reais|real)?\s*(?:cada(?:\s+um|\s+uma)?|a\s+unidade|por\s+unidade)\b/i;
+
+  let match = texto.match(regexComUnidade);
+  if (match) {
+    const qtdRaw = match[1] || '1';
+    const unidade = match[2];
+    const item = match[3].trim();
+    const valRaw = match[4];
+
+    const qtd = converterPalavraParaNumero(qtdRaw) || 1;
+    const valUnit = converterPalavraParaNumero(valRaw) || 0;
+
+    if (valUnit > 0) {
+      return {
+        qtd,
+        unitario: valUnit,
+        total: Math.round(qtd * valUnit * 100) / 100,
+        unidadeNome: unidade,
+        itemNome: item
+      };
+    }
+  }
+
+  match = texto.match(regexSemUnidade);
+  if (match) {
+    const qtdRaw = match[1];
+    const item = match[2].trim();
+    const valRaw = match[3];
+
+    if (item && !['vezes', 'parcelas', 'dias', 'meses', 'horas'].includes(item.toLowerCase())) {
+      const qtd = converterPalavraParaNumero(qtdRaw) || 1;
+      const valUnit = converterPalavraParaNumero(valRaw) || 0;
+
+      if (valUnit > 0) {
+        return {
+          qtd,
+          unitario: valUnit,
+          total: Math.round(qtd * valUnit * 100) / 100,
+          itemNome: item
+        };
+      }
+    }
+  }
+
+  return null;
+}
+
 export function extrairValorVoz(texto: string): number | null {
   if (!texto) return null;
 
-  // 1. Unificar vírgula com espaço: "12, 80" -> "12,80"
+  // 1. Detectar multiplicação de quantidade por valor unitário (ex: "três sacos de cimento, 90 reais cada" => 270)
+  const mult = detectarMultiplicadorVoz(texto);
+  if (mult && mult.total > 0) {
+    return mult.total;
+  }
+
+  // 2. Unificar vírgula com espaço: "12, 80" -> "12,80"
   let s = texto.replace(/(\d+)\s*,\s*(\d{1,2})/g, '$1,$2');
 
-  // 2. Composto falado: "12 e 80", "12 com 80", "12 vírgula 80", "12 reais e 80 centavos", "12 reais e 80"
+  // 3. Composto falado: "12 e 80", "12 com 80", "12 vírgula 80", "12 reais e 80 centavos", "12 reais e 80"
   const matchComposto = s.match(/(?:r\$|reais?)?\s*(\d+)\s*(?:reais|real)?\s*(?:e|com|vírgula|virgula)\s*(\d{1,2})\s*(?:centavos|reais|pila|conto)?/i);
   if (matchComposto) {
     const inteiro = parseInt(matchComposto[1], 10);
@@ -74,21 +150,29 @@ export function extrairValorVoz(texto: string): number | null {
     if (!isNaN(total) && total > 0) return total;
   }
 
-  // 3. Dígito direto com decimais (ex: "12,80", "12.80", "12,8", "12.8")
+  // 4. Número explicitamente acompanhado da palavra "reais" (Prioridade sobre contadores ou quantidades soltas)
+  // Ex: "3 sacos de cimento 90 reais" -> extrai 90, e NÃO 3!
+  const matchReais = s.match(/(\d+(?:[.,]\d{1,2})?)\s*(?:reais|real|pila|conto)\b/i);
+  if (matchReais && matchReais[1]) {
+    const num = parseFloat(matchReais[1].replace(',', '.'));
+    if (!isNaN(num) && num > 0) return num;
+  }
+
+  // 5. Dígito direto com decimais (ex: "12,80", "12.80", "12,8", "12.8")
   const matchDecimal = s.match(/(?:r\$|reais?)?\s*(\d+[.,]\d{1,2})\s*(?:reais|real|pila|conto)?/i);
   if (matchDecimal && matchDecimal[1]) {
     const num = parseFloat(matchDecimal[1].replace(',', '.'));
     if (!isNaN(num) && num > 0) return num;
   }
 
-  // 4. Dígito inteiro (ex: "12 reais", "12 conto", "12")
+  // 6. Dígito inteiro (ex: "12 reais", "12 conto", "12")
   const matchInteiro = s.match(/(?:r\$|reais?)?\s*(\d+)\s*(?:reais|real|pila|conto)?/i);
   if (matchInteiro && matchInteiro[1]) {
     const num = parseInt(matchInteiro[1], 10);
     if (!isNaN(num) && num > 0) return num;
   }
 
-  // 5. Tentar número por extenso
+  // 7. Tentar número por extenso
   const norm = normalizarTexto(texto);
   const extenso = converterTextoParaNumero(norm);
   if (extenso && extenso > 0) return extenso;
@@ -293,54 +377,73 @@ export function interpretarComandoVoz(frase: string): VozInterpretada {
     return { sucesso: false, textoOriginal: '' };
   }
 
+  const mult = detectarMultiplicadorVoz(frase);
   const tipo = identificarTipoVoz(frase);
-  const valor = extrairValorVoz(frase);
+  const valor = mult ? mult.total : extrairValorVoz(frase);
   const parcelas = identificarParcelasVoz(frase);
   const pagamento = identificarPagamentoVoz(frase, parcelas);
   const { natureza, categoria } = identificarNaturezaECategoria(frase, tipo);
 
-  // Sanitização inteligente da descrição: remove moedas, números, formas de pagamento, parcelas e verbos financeiros
-  let s = frase
-    .replace(/(?<!\d)[,.;:!?](?!\d)/gu, ' ')
-    .replace(/r\$/gi, ' ');
+  let descricao = '';
 
-  // 1. Formas de pagamento completas ("no débito", "via pix", "em 2x")
-  s = s.replace(/(?:é|e|foi|será|sera|no|na|em|via|pelo|pela|com|de)?\s*(?:débito|debito|crédito|credito|cartão|cartao|pix|dinheiro|espécie|especie|boleto)\b/giu, ' ');
+  if (mult) {
+    // Quando detecta quantidade x unitário ("3 sacos de cimento, 90 reais cada")
+    const itemLimpo = mult.itemNome
+      .replace(/^(?:de|da|do)\s+/i, '')
+      .replace(/\s+(?:de|da|do)$/i, '')
+      .trim();
+    const itemCap = itemLimpo.charAt(0).toUpperCase() + itemLimpo.slice(1);
+    const unitarioFormatado = mult.unitario.toFixed(2).replace('.', ',');
 
-  // 2. Parcelas
-  s = s.replace(/(?:em|de|para)?\s*\d{1,2}\s*x\b/giu, ' ');
-  s = s.replace(/(?:em|de|para)?\s*(?:\d{1,2}|uma|um|duas|dois|tres|três|quatro|cinco|seis|sete|oito|nove|dez|doze)?\s*(?:vezes|parcelas|prestações|prestacoes)\b/giu, ' ');
-  s = s.replace(/\bparcelad[oa](?:\s+em)?\b/giu, ' ');
-
-  // 3. Remover valores compostos falados (ex: "12 e 80", "12 com 80", "12 reais e 80 centavos")
-  s = s.replace(/\b\d+\s*(?:reais|real)?\s*(?:e|com|vírgula|virgula)\s*\d{1,2}\s*(?:centavos|reais|pila|conto)?\b/giu, ' ');
-
-  // 4. Remover valores normais e moedas
-  s = s.replace(/\b\d+(?:[.,]\s*\d{1,2})?\s*(?:reais?|real|pila|conto|centavos?)?\b/giu, ' ');
-  s = s.replace(/\b(?:brl|usd|eur|reais?|real|pila|conto|centavos?)\b/giu, ' ');
-
-  // 5. Remover verbos financeiros comuns
-  s = s.replace(/\b(?:gastei|paguei|gasto|gastos|comprei|compra|recebi|ganhei|investi|aporte|lancei|lançar|coloquei)\b/giu, ' ');
-
-  // 6. Remover pontuações residuais
-  s = s.replace(/[^\p{L}\p{N}\s-]/gu, ' ');
-  s = s.replace(/\s+/g, ' ').trim();
-
-  // 7. Remover conectivos soltos apenas no início ou fim para preservar expressões compostas como "Chave de fenda"
-  s = s.replace(/^(?:de|da|do|em|no|na|com|para|pra|por)\s+/i, '');
-  s = s.replace(/\s+(?:de|da|do|em|no|na|com|para|pra|por)$/i, '');
-
-  let descricao = s;
-
-  // Se ficou vazio, com menos de 2 caracteres ou apenas "mercado/supermercado", usar diretamente a categoria identificada
-  const limpaNorm = normalizarTexto(descricao);
-  const catNorm = normalizarTexto(categoria);
-
-  if (!descricao || descricao.length < 2 || limpaNorm === 'supermercado' || limpaNorm === 'mercado' || limpaNorm === catNorm) {
-    descricao = categoria;
+    if (mult.unidadeNome) {
+      descricao = `${mult.qtd} ${mult.unidadeNome} de ${itemCap} (R$ ${unitarioFormatado} cada)`;
+    } else {
+      descricao = `${mult.qtd}x ${itemCap} (R$ ${unitarioFormatado} cada)`;
+    }
   } else {
-    // Capitalizar primeira letra preservando nomes compostos
-    descricao = descricao.charAt(0).toUpperCase() + descricao.slice(1);
+    // Sanitização inteligente da descrição: remove moedas, números, formas de pagamento, parcelas e verbos financeiros
+    let s = frase
+      .replace(/(?<!\d)[,.;:!?](?!\d)/gu, ' ')
+      .replace(/r\$/gi, ' ');
+
+    // 1. Formas de pagamento completas ("no débito", "via pix", "em 2x")
+    s = s.replace(/(?:é|e|foi|será|sera|no|na|em|via|pelo|pela|com|de)?\s*(?:débito|debito|crédito|credito|cartão|cartao|pix|dinheiro|espécie|especie|boleto)\b/giu, ' ');
+
+    // 2. Parcelas
+    s = s.replace(/(?:em|de|para)?\s*\d{1,2}\s*x\b/giu, ' ');
+    s = s.replace(/(?:em|de|para)?\s*(?:\d{1,2}|uma|um|duas|dois|tres|três|quatro|cinco|seis|sete|oito|nove|dez|doze)?\s*(?:vezes|parcelas|prestações|prestacoes)\b/giu, ' ');
+    s = s.replace(/\bparcelad[oa](?:\s+em)?\b/giu, ' ');
+
+    // 3. Remover valores compostos falados (ex: "12 e 80", "12 com 80", "12 reais e 80 centavos")
+    s = s.replace(/\b\d+\s*(?:reais|real)?\s*(?:e|com|vírgula|virgula)\s*\d{1,2}\s*(?:centavos|reais|pila|conto)?\b/giu, ' ');
+
+    // 4. Remover valores normais e moedas
+    s = s.replace(/\b\d+(?:[.,]\s*\d{1,2})?\s*(?:reais?|real|pila|conto|centavos?)?\b/giu, ' ');
+    s = s.replace(/\b(?:brl|usd|eur|reais?|real|pila|conto|centavos?)\b/giu, ' ');
+
+    // 5. Remover verbos financeiros comuns e palavras residuais como "cada"
+    s = s.replace(/\b(?:gastei|paguei|gasto|gastos|comprei|compra|recebi|ganhei|investi|aporte|lancei|lançar|coloquei|cada)\b/giu, ' ');
+
+    // 6. Remover pontuações residuais
+    s = s.replace(/[^\p{L}\p{N}\s-]/gu, ' ');
+    s = s.replace(/\s+/g, ' ').trim();
+
+    // 7. Remover conectivos soltos apenas no início ou fim para preservar expressões compostas como "Chave de fenda"
+    s = s.replace(/^(?:de|da|do|em|no|na|com|para|pra|por)\s+/i, '');
+    s = s.replace(/\s+(?:de|da|do|em|no|na|com|para|pra|por)$/i, '');
+
+    descricao = s;
+
+    // Se ficou vazio, com menos de 2 caracteres ou apenas "mercado/supermercado", usar diretamente a categoria identificada
+    const limpaNorm = normalizarTexto(descricao);
+    const catNorm = normalizarTexto(categoria);
+
+    if (!descricao || descricao.length < 2 || limpaNorm === 'supermercado' || limpaNorm === 'mercado' || limpaNorm === catNorm) {
+      descricao = categoria;
+    } else {
+      // Capitalizar primeira letra preservando nomes compostos
+      descricao = descricao.charAt(0).toUpperCase() + descricao.slice(1);
+    }
   }
 
   return {

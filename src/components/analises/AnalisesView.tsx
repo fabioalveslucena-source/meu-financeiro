@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { useFinanceStore } from '../../stores/financeStore';
 import { formatarMoeda } from '../../lib/formatters';
-import { ChevronDown, ChevronUp, Layers, PieChart, ArrowUpRight, ArrowDownRight, TrendingUp } from 'lucide-react';
+import { ChevronDown, ChevronUp, Layers, PieChart as PieIcon, ArrowUpRight, ArrowDownRight, TrendingUp } from 'lucide-react';
+import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip } from 'recharts';
 
 const CORES_NATUREZA: Record<string, string> = {
   '🏠 Moradia': '#287EA5',
@@ -21,6 +22,9 @@ const CORES_NATUREZA: Record<string, string> = {
 export const AnalisesView: React.FC = () => {
   const { lancamentos, competenciaAtiva, obterResumoLivroCaixa } = useFinanceStore();
   const resumo = obterResumoLivroCaixa(competenciaAtiva);
+
+  // Aba selecionada: 'lista' (detalhamento por natureza) ou 'pizza' (gráfico de pizza/donut)
+  const [abaVisualizacao, setAbaVisualizacao] = useState<'lista' | 'pizza'>('lista');
 
   // Estado para armazenar quais naturezas estão expandidas no accordion
   const [naturezasExpandidas, setNaturezasExpandidas] = useState<Record<string, boolean>>({
@@ -249,14 +253,157 @@ export const AnalisesView: React.FC = () => {
         </div>
       </div>
 
-      {/* Bloco Único Consolidado de Distribuição por Natureza */}
+      {/* Seletor de Tipo de Gráfico / Visualização (apenas um visível por vez) */}
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        backgroundColor: '#0F2744',
+        padding: '4px',
+        borderRadius: '14px',
+        border: '1px solid #1E3A5F',
+        gap: '4px'
+      }}>
+        <button
+          type="button"
+          onClick={() => setAbaVisualizacao('lista')}
+          style={{
+            flex: 1,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '6px',
+            padding: '10px 12px',
+            borderRadius: '10px',
+            border: 'none',
+            backgroundColor: abaVisualizacao === 'lista' ? '#173F5F' : 'transparent',
+            color: abaVisualizacao === 'lista' ? '#F8D117' : '#AAB4BE',
+            fontWeight: abaVisualizacao === 'lista' ? 800 : 600,
+            fontSize: '13px',
+            cursor: 'pointer',
+            transition: 'all 0.2s ease'
+          }}
+        >
+          <Layers size={16} />
+          <span>Detalhamento por Natureza</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setAbaVisualizacao('pizza')}
+          style={{
+            flex: 1,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '6px',
+            padding: '10px 12px',
+            borderRadius: '10px',
+            border: 'none',
+            backgroundColor: abaVisualizacao === 'pizza' ? '#173F5F' : 'transparent',
+            color: abaVisualizacao === 'pizza' ? '#F8D117' : '#AAB4BE',
+            fontWeight: abaVisualizacao === 'pizza' ? 800 : 600,
+            fontSize: '13px',
+            cursor: 'pointer',
+            transition: 'all 0.2s ease'
+          }}
+        >
+          <PieIcon size={16} />
+          <span>Gráfico de Pizza</span>
+        </button>
+      </div>
+
+      {/* Visualização de Dados (Apenas uma ativa por vez) */}
       {dadosNaturezas.length === 0 ? (
         <div className="card" style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-secondary)' }}>
-          <PieChart size={36} color="var(--text-tertiary)" style={{ margin: '0 auto 0.75rem auto' }} />
+          <PieIcon size={36} color="var(--text-tertiary)" style={{ margin: '0 auto 0.75rem auto' }} />
           <h4 style={{ margin: '0 0 6px 0', color: 'var(--text-primary)' }}>Nenhuma despesa encontrada</h4>
           <p style={{ margin: 0, fontSize: '0.875rem' }}>Cadastre um novo lançamento para visualizar a distribuição dos seus gastos.</p>
         </div>
+      ) : abaVisualizacao === 'pizza' ? (
+        /* =====================================================
+             🥧 GRÁFICO DE PIZZA (DONUT) COM RECHARTS
+           ===================================================== */
+        <div style={{
+          backgroundColor: '#0F2744',
+          border: '1px solid #1E3A5F',
+          borderRadius: '16px',
+          padding: '20px 16px',
+          boxShadow: '0 4px 20px rgba(0, 0, 0, 0.25)',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          gap: '16px'
+        }}>
+          <div style={{ width: '100%', textAlign: 'center' }}>
+            <span style={{ fontSize: '11px', fontWeight: 800, color: '#AAB4BE', textTransform: 'uppercase', letterSpacing: '0.6px' }}>
+              Divisão Proporcional das Despesas • {competenciaAtiva}
+            </span>
+          </div>
+
+          <div style={{ width: '100%', height: 320 }}>
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie
+                  data={dadosNaturezas}
+                  dataKey="total"
+                  nameKey="natureza"
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={65}
+                  outerRadius={105}
+                  paddingAngle={3}
+                >
+                  {dadosNaturezas.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={entry.cor} stroke="#0B1C2E" strokeWidth={2} />
+                  ))}
+                </Pie>
+                <Tooltip
+                  formatter={(val: any) => [formatarMoeda(Number(val)), 'Total Gasto']}
+                  contentStyle={{ backgroundColor: '#0B1C2E', borderColor: '#1E3A5F', borderRadius: '10px', color: '#FFFFFF', fontSize: '12px', fontWeight: 700 }}
+                  itemStyle={{ color: '#F8D117' }}
+                />
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
+
+          {/* Legenda com percentuais e valores por natureza */}
+          <div style={{
+            width: '100%',
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
+            gap: '8px'
+          }}>
+            {dadosNaturezas.map((entry) => (
+              <div
+                key={entry.natureza}
+                style={{
+                  backgroundColor: '#132F4C',
+                  border: '1px solid #1E3A5F',
+                  borderRadius: '10px',
+                  padding: '8px 10px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px'
+                }}
+              >
+                <div style={{ width: '12px', height: '12px', borderRadius: '4px', backgroundColor: entry.cor, flexShrink: 0 }} />
+                <div style={{ flex: 1, minWidth: 0, overflow: 'hidden' }}>
+                  <div style={{ fontSize: '11px', fontWeight: 800, color: '#FFFFFF', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    {entry.natureza}
+                  </div>
+                  <div style={{ fontSize: '10.5px', color: '#5090D3', fontWeight: 700, display: 'flex', justifyContent: 'space-between' }}>
+                    <span>{formatarMoeda(entry.total)}</span>
+                    <span style={{ color: '#F8D117' }}>{entry.percentualTotal.toFixed(0)}%</span>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
       ) : (
+        /* =====================================================
+             📊 DETALHAMENTO EM LISTA ACCORDION (ORIGINAL)
+           ===================================================== */
         <div style={{
           backgroundColor: '#0F2744',
           border: '1px solid #1E3A5F',

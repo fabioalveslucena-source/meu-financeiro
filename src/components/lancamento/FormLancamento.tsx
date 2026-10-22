@@ -407,48 +407,53 @@ export const FormLancamento: React.FC<FormLancamentoProps> = ({
             </div>
           )}
 
-          {/* Natureza e Categoria com Botão Discreto de Criação */}
+          {/* Natureza e Categoria com Botões Discretos de Criação */}
           <div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-              <span style={{ fontSize: '11px', fontWeight: 800, color: '#607789', textTransform: 'uppercase' }}>
-                Classificação
-              </span>
-              <button
-                type="button"
-                onClick={() => {
-                  setNovaNatPai(natureza);
-                  setNovoNome('');
-                  setModalCriarAberto(true);
-                }}
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  color: '#5090D3',
-                  fontSize: '11px',
-                  fontWeight: 700,
-                  cursor: 'pointer',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '3px',
-                  padding: '2px 4px',
-                  opacity: 0.9
-                }}
-                title="Criar nova categoria ou natureza personalizada"
-              >
-                <Plus size={12} />
-                <span>Nova categoria / natureza</span>
-              </button>
-            </div>
-
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
               <div>
-                <label style={{ fontSize: '10.5px', fontWeight: 700, color: '#AAB4BE', textTransform: 'uppercase', display: 'block', marginBottom: '4px' }}>
-                  Natureza
-                </label>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                  <label style={{ fontSize: '10.5px', fontWeight: 700, color: '#AAB4BE', textTransform: 'uppercase' }}>
+                    Natureza
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setModoCriar('natureza');
+                      setNovoNome('');
+                      setNovoEmoji('📦');
+                      setModalCriarAberto(true);
+                    }}
+                    style={{
+                      background: 'rgba(40, 126, 165, 0.15)',
+                      border: '1px solid rgba(80, 144, 211, 0.35)',
+                      borderRadius: '6px',
+                      color: '#5090D3',
+                      fontSize: '10px',
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '2px',
+                      padding: '2px 6px',
+                      transition: 'all 0.15s ease'
+                    }}
+                    title="Criar nova natureza de gastos"
+                  >
+                    <Plus size={10} />
+                    <span>+ Nova</span>
+                  </button>
+                </div>
                 <select 
                   value={natureza} 
                   onChange={(e) => {
                     const novaNat = e.target.value;
+                    if (novaNat === '__NOVA_NATUREZA__') {
+                      setModoCriar('natureza');
+                      setNovoNome('');
+                      setNovoEmoji('📦');
+                      setModalCriarAberto(true);
+                      return;
+                    }
                     setNatureza(novaNat);
                     const fil = categorias.filter(c => c.natureza === novaNat && (c.tipo === tipo || c.tipo === 'Todos'));
                     if (fil.length > 0) {
@@ -462,16 +467,56 @@ export const FormLancamento: React.FC<FormLancamentoProps> = ({
                       {nat.label}
                     </option>
                   ))}
+                  <option value="__NOVA_NATUREZA__">➕ Criar nova natureza...</option>
                 </select>
               </div>
 
               <div>
-                <label style={{ fontSize: '10.5px', fontWeight: 700, color: '#AAB4BE', textTransform: 'uppercase', display: 'block', marginBottom: '4px' }}>
-                  Categoria
-                </label>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                  <label style={{ fontSize: '10.5px', fontWeight: 700, color: '#AAB4BE', textTransform: 'uppercase' }}>
+                    Categoria
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setModoCriar('categoria');
+                      setNovaNatPai(natureza);
+                      setNovoNome('');
+                      setModalCriarAberto(true);
+                    }}
+                    style={{
+                      background: 'rgba(40, 126, 165, 0.15)',
+                      border: '1px solid rgba(80, 144, 211, 0.35)',
+                      borderRadius: '6px',
+                      color: '#5090D3',
+                      fontSize: '10px',
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '2px',
+                      padding: '2px 6px',
+                      transition: 'all 0.15s ease'
+                    }}
+                    title="Criar nova categoria nesta natureza"
+                  >
+                    <Plus size={10} />
+                    <span>+ Nova</span>
+                  </button>
+                </div>
                 <select 
                   value={categoria} 
-                  onChange={(e) => setCategoria(e.target.value)}
+                  onChange={(e) => {
+                    const novaCat = e.target.value;
+                    if (novaCat === '__NOVA_CATEGORIA__') {
+                      setModoCriar('categoria');
+                      setNovaNatPai(natureza);
+                      setNovoNome('');
+                      setModalCriarAberto(true);
+                      return;
+                    }
+                    setCategoria(novaCat);
+                  }}
                   style={{ fontSize: '13px', fontWeight: 600 }}
                 >
                   {categoriasFiltradas.map((cat) => (
@@ -479,6 +524,7 @@ export const FormLancamento: React.FC<FormLancamentoProps> = ({
                       {cat.nome}
                     </option>
                   ))}
+                  <option value="__NOVA_CATEGORIA__">➕ Criar nova categoria...</option>
                 </select>
               </div>
             </div>

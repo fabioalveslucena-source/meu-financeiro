@@ -182,7 +182,7 @@ export const LivroCaixaView: React.FC = () => {
         gridTemplateColumns: 'repeat(2, 1fr)',
         gap: '10px'
       }}>
-        {/* Linha 1: Saldo Anterior */}
+        {/* Linha 1: Saldo Anterior e Investimentos */}
         <div style={{
           padding: '12px 14px',
           borderRadius: '12px',
@@ -201,7 +201,25 @@ export const LivroCaixaView: React.FC = () => {
           </p>
         </div>
 
-        {/* Linha 1: Receitas */}
+        <div style={{
+          padding: '12px 14px',
+          borderRadius: '12px',
+          backgroundColor: 'rgba(40, 126, 165, 0.14)',
+          border: '1px solid rgba(40, 126, 165, 0.35)',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '4px'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <span style={{ fontSize: '11px', fontWeight: 700, color: '#82B1FF', textTransform: 'uppercase' }}>Investimentos</span>
+            <PiggyBank size={16} color="#5090D3" />
+          </div>
+          <p style={{ fontSize: '16px', fontWeight: 900, margin: 0, color: '#82B1FF' }}>
+            {formatarMoeda(resumo.totalInvestimentos)}
+          </p>
+        </div>
+
+        {/* Linha 2: Receitas e Despesas (juntas na mesma linha) */}
         <div style={{
           padding: '12px 14px',
           borderRadius: '12px',
@@ -220,7 +238,6 @@ export const LivroCaixaView: React.FC = () => {
           </p>
         </div>
 
-        {/* Linha 2: Despesas */}
         <div style={{
           padding: '12px 14px',
           borderRadius: '12px',
@@ -236,25 +253,6 @@ export const LivroCaixaView: React.FC = () => {
           </div>
           <p style={{ fontSize: '16px', fontWeight: 900, margin: 0, color: '#F44336' }}>
             - {formatarMoeda(resumo.totalDespesas)}
-          </p>
-        </div>
-
-        {/* Linha 2: Investimentos */}
-        <div style={{
-          padding: '12px 14px',
-          borderRadius: '12px',
-          backgroundColor: 'rgba(40, 126, 165, 0.14)',
-          border: '1px solid rgba(40, 126, 165, 0.35)',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '4px'
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <span style={{ fontSize: '11px', fontWeight: 700, color: '#82B1FF', textTransform: 'uppercase' }}>Investimentos</span>
-            <PiggyBank size={16} color="#5090D3" />
-          </div>
-          <p style={{ fontSize: '16px', fontWeight: 900, margin: 0, color: '#82B1FF' }}>
-            {formatarMoeda(resumo.totalInvestimentos)}
           </p>
         </div>
 
