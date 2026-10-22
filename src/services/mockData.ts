@@ -112,9 +112,15 @@ export const CATEGORIAS_PADRAO: Categoria[] = [
   { id: 'cat-m4', userId: 'default-user', natureza: '🏠 Moradia', nome: 'Água e Gás', tipo: 'Despesa', ativa: true },
   { id: 'cat-m5', userId: 'default-user', natureza: '🏠 Moradia', nome: 'Manutenção e Reformas', tipo: 'Despesa', ativa: true },
   { id: 'cat-m9', userId: 'default-user', natureza: '🏠 Moradia', nome: 'Ferramentas e Materiais', tipo: 'Despesa', ativa: true },
+  { id: 'cat-m10', userId: 'default-user', natureza: '🏠 Moradia', nome: 'Imóveis e Aluguéis', tipo: 'Despesa', ativa: true },
   { id: 'cat-m6', userId: 'default-user', natureza: '🏠 Moradia', nome: 'IPTU e Taxas', tipo: 'Despesa', ativa: true },
   { id: 'cat-m7', userId: 'default-user', natureza: '🏠 Moradia', nome: 'Móveis e Decoração', tipo: 'Despesa', ativa: true },
   { id: 'cat-m8', userId: 'default-user', natureza: '🏠 Moradia', nome: 'Serviços de Limpeza / Diarista', tipo: 'Despesa', ativa: true },
+
+  // 🏢 Imóveis
+  { id: 'cat-im1', userId: 'default-user', natureza: '🏢 Imóveis', nome: 'Aluguel / Condomínio', tipo: 'Despesa', ativa: true },
+  { id: 'cat-im2', userId: 'default-user', natureza: '🏢 Imóveis', nome: 'IPTU e Taxas', tipo: 'Despesa', ativa: true },
+  { id: 'cat-im3', userId: 'default-user', natureza: '🏢 Imóveis', nome: 'Manutenção e Reformas', tipo: 'Despesa', ativa: true },
 
   // 🛒 Alimentação
   { id: 'cat-a1', userId: 'default-user', natureza: '🛒 Alimentação', nome: 'Supermercado', tipo: 'Despesa', ativa: true },
@@ -129,7 +135,8 @@ export const CATEGORIAS_PADRAO: Categoria[] = [
   { id: 'cat-t2', userId: 'default-user', natureza: '🚗 Transporte', nome: 'Uber / Táxi / 99', tipo: 'Despesa', ativa: true },
   { id: 'cat-t3', userId: 'default-user', natureza: '🚗 Transporte', nome: 'Seguro Veicular', tipo: 'Despesa', ativa: true },
   { id: 'cat-t4', userId: 'default-user', natureza: '🚗 Transporte', nome: 'IPVA e Licenciamento', tipo: 'Despesa', ativa: true },
-  { id: 'cat-t5', userId: 'default-user', natureza: '🚗 Transporte', nome: 'Manutenção e Mecânica', tipo: 'Despesa', ativa: true },
+  { id: 'cat-t5', userId: 'default-user', natureza: '🚗 Transporte', nome: 'Manutenção Veicular', tipo: 'Despesa', ativa: true },
+  { id: 'cat-t5b', userId: 'default-user', natureza: '🚗 Transporte', nome: 'Manutenção e Mecânica', tipo: 'Despesa', ativa: true },
   { id: 'cat-t6', userId: 'default-user', natureza: '🚗 Transporte', nome: 'Estacionamento e Pedágio', tipo: 'Despesa', ativa: true },
   { id: 'cat-t7', userId: 'default-user', natureza: '🚗 Transporte', nome: 'Lavagem Automotiva', tipo: 'Despesa', ativa: true },
 

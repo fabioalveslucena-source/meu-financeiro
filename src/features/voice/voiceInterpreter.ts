@@ -73,55 +73,80 @@ export function converterPalavraParaNumero(p: string): number | null {
   return isNaN(num) ? null : num;
 }
 
+function extrairPrecoFinal(str: string): { val: number; antes?: string } | null {
+  if (!str) return null;
+  const s = str.trim().replace(/[,;]+$/, '');
+
+  // 1. Composto falado ou escrito: "5 e 80", "6 e 70", "5 reais e 80 centavos", "5,80 BRL", "6,70"
+  const matchComposto = s.match(/(?:r\$|brl)?\s*(\d+)\s*(?:reais|real|brl)?\s*(?:e|com|vírgula|virgula|,|\.)\s*(\d{1,2})\s*(?:centavos|reais|real|brl)?$/i);
+  if (matchComposto) {
+    const int = parseInt(matchComposto[1], 10);
+    const centStr = matchComposto[2].length === 1 ? matchComposto[2] + '0' : matchComposto[2];
+    const cent = parseInt(centStr, 10);
+    const val = int + (cent / 100);
+    const antes = s.slice(0, matchComposto.index).trim();
+    return { val, antes };
+  }
+
+  // 2. Centavos direto: "50 centavos", "80 centavos"
+  const matchCent = s.match(/(\d+)\s*centavos?$/i);
+  if (matchCent) {
+    const val = parseInt(matchCent[1], 10) / 100;
+    const antes = s.slice(0, matchCent.index).trim();
+    return { val, antes };
+  }
+
+  // 3. Simples com moeda ou número decimal/inteiro: "90 BRL", "90 reais", "90,00", "90"
+  const matchMoeda = s.match(/(?:r\$|brl)?\s*(\d+(?:[.,]\d{1,2})?)\s*(?:reais|real|brl|pila|conto)?$/i);
+  if (matchMoeda) {
+    const val = parseFloat(matchMoeda[1].replace(',', '.'));
+    const antes = s.slice(0, matchMoeda.index).trim();
+    return { val, antes };
+  }
+
+  return null;
+}
+
 export function detectarMultiplicadorVoz(texto: string): InfoMultiplicadorVoz | null {
   if (!texto) return null;
 
-  // Padrão 1: Com unidade explícita ("três sacos de cimento, 90 reais cada", "3 caixas de piso a 45 cada", etc)
-  const regexComUnidade = /(?:(\d+|um|uma|dois|duas|tres|três|quatro|cinco|seis|meia|sete|oito|nove|dez|doze|vinte)\s+)?(sacos?|unidades?|peças?|pecas?|caixas?|latas?|metros?|kilos?|quilos?|itens?|pacotes?|rolos?|barras?|tubos?|fardos?)\s+(?:de\s+)?([a-z0-9\s]+?)[,;\s]+(?:a|por|de)?\s*(\d+(?:[.,]\d{1,2})?|[a-z]+)\s*(?:reais|real)?\s*(?:cada(?:\s+um|\s+uma)?|a\s+unidade|por\s+unidade)\b/i;
-  
-  // Padrão 2: Sem unidade explícita ("duas chaves de fenda 15 reais cada", "3 disjuntores 25 reais cada")
-  const regexSemUnidade = /(\d+|um|uma|dois|duas|tres|três|quatro|cinco|seis|meia|sete|oito|nove|dez|doze|vinte)\s+([a-z0-9\s]+?)[,;\s]+(?:a|por|de)?\s*(\d+(?:[.,]\d{1,2})?|[a-z]+)\s*(?:reais|real)?\s*(?:cada(?:\s+um|\s+uma)?|a\s+unidade|por\s+unidade)\b/i;
+  // Encontrar o padrão "X ... cada"
+  const matchCada = texto.match(/^(.*?)[,;\s]+(?:a|por|de)?\s*(.+?)\s*(?:cada(?:\s+um|\s+uma)?|a\s+unidade|por\s+unidade)[.\s]*$/i);
+  if (!matchCada) return null;
 
-  let match = texto.match(regexComUnidade);
-  if (match) {
-    const qtdRaw = match[1] || '1';
-    const unidade = match[2];
-    const item = match[3].trim();
-    const valRaw = match[4];
+  const precoInfo = extrairPrecoFinal(matchCada[2]);
+  if (!precoInfo || precoInfo.val <= 0) return null;
 
-    const qtd = converterPalavraParaNumero(qtdRaw) || 1;
-    const valUnit = converterPalavraParaNumero(valRaw) || 0;
+  const unitario = precoInfo.val;
+  let resto = (matchCada[1] + ' ' + (precoInfo.antes || '')).trim().replace(/[,;]+$/, '').trim();
 
-    if (valUnit > 0) {
-      return {
-        qtd,
-        unitario: valUnit,
-        total: Math.round(qtd * valUnit * 100) / 100,
-        unidadeNome: unidade,
-        itemNome: item
-      };
-    }
+  // Extrair quantidade do início
+  let qtd = 1;
+  const matchQtd = resto.match(/^(\d+|um|uma|dois|duas|tres|três|quatro|cinco|seis|meia|sete|oito|nove|dez|doze|vinte)\s+/i);
+  if (matchQtd) {
+    const qStr = matchQtd[1].toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    qtd = TABELA_NUMEROS[qStr] !== undefined ? TABELA_NUMEROS[qStr] : parseInt(qStr, 10);
+    resto = resto.slice(matchQtd[0].length).trim();
   }
 
-  match = texto.match(regexSemUnidade);
-  if (match) {
-    const qtdRaw = match[1];
-    const item = match[2].trim();
-    const valRaw = match[3];
+  // Extrair unidade de medida opcional (sacos, latas, garrafas, caixas, etc)
+  let unidade: string | undefined = undefined;
+  const matchUnidade = resto.match(/^(sacos?|unidades?|peças?|pecas?|caixas?|latas?|metros?|kilos?|quilos?|kg|itens?|pacotes?|rolos?|barras?|tubos?|fardos?|garrafas?)\s+(?:de\s+)?/i);
+  if (matchUnidade) {
+    unidade = matchUnidade[1];
+    resto = resto.slice(matchUnidade[0].length).trim();
+  }
 
-    if (item && !['vezes', 'parcelas', 'dias', 'meses', 'horas'].includes(item.toLowerCase())) {
-      const qtd = converterPalavraParaNumero(qtdRaw) || 1;
-      const valUnit = converterPalavraParaNumero(valRaw) || 0;
+  resto = resto.replace(/^(?:de|da|do)\s+/i, '').replace(/[,;]+$/, '').trim();
 
-      if (valUnit > 0) {
-        return {
-          qtd,
-          unitario: valUnit,
-          total: Math.round(qtd * valUnit * 100) / 100,
-          itemNome: item
-        };
-      }
-    }
+  if (resto && !['vezes', 'parcelas', 'dias', 'meses', 'horas'].includes(resto.toLowerCase())) {
+    return {
+      qtd,
+      unitario,
+      total: Math.round(qtd * unitario * 100) / 100,
+      unidadeNome: unidade,
+      itemNome: resto
+    };
   }
 
   return null;
@@ -130,7 +155,7 @@ export function detectarMultiplicadorVoz(texto: string): InfoMultiplicadorVoz | 
 export function extrairValorVoz(texto: string): number | null {
   if (!texto) return null;
 
-  // 1. Detectar multiplicação de quantidade por valor unitário (ex: "três sacos de cimento, 90 reais cada" => 270)
+  // 1. Detectar multiplicação de quantidade por valor unitário
   const mult = detectarMultiplicadorVoz(texto);
   if (mult && mult.total > 0) {
     return mult.total;
@@ -140,7 +165,7 @@ export function extrairValorVoz(texto: string): number | null {
   let s = texto.replace(/(\d+)\s*,\s*(\d{1,2})/g, '$1,$2');
 
   // 3. Composto falado: "12 e 80", "12 com 80", "12 vírgula 80", "12 reais e 80 centavos", "12 reais e 80"
-  const matchComposto = s.match(/(?:r\$|reais?)?\s*(\d+)\s*(?:reais|real)?\s*(?:e|com|vírgula|virgula)\s*(\d{1,2})\s*(?:centavos|reais|pila|conto)?/i);
+  const matchComposto = s.match(/(?:r\$|brl|reais?)?\s*(\d+)\s*(?:reais|real|brl)?\s*(?:e|com|vírgula|virgula)\s*(\d{1,2})\s*(?:centavos|reais|real|brl|pila|conto)?/i);
   if (matchComposto) {
     const inteiro = parseInt(matchComposto[1], 10);
     let centavosStr = matchComposto[2];
@@ -150,9 +175,8 @@ export function extrairValorVoz(texto: string): number | null {
     if (!isNaN(total) && total > 0) return total;
   }
 
-  // 4. Número explicitamente acompanhado da palavra "reais" (Prioridade sobre contadores ou quantidades soltas)
-  // Ex: "3 sacos de cimento 90 reais" -> extrai 90, e NÃO 3!
-  const matchReais = s.match(/(\d+(?:[.,]\d{1,2})?)\s*(?:reais|real|pila|conto)\b/i);
+  // 4. Número explicitamente acompanhado da palavra "reais", "brl" ou "r$"
+  const matchReais = s.match(/(\d+(?:[.,]\d{1,2})?)\s*(?:reais|real|brl|r\$|pila|conto)\b/i);
   if (matchReais && matchReais[1]) {
     const num = parseFloat(matchReais[1].replace(',', '.'));
     if (!isNaN(num) && num > 0) return num;
@@ -242,14 +266,36 @@ export function identificarNaturezaECategoria(texto: string, tipo: TipoLancament
     { regex: /\b(curso|treinamento|workshop|aula)\b/, naturezaLabel: '📚 Educação', categoriaNome: 'Cursos e Treinamentos' },
     { regex: /\b(livro|didatico|papelaria|material escolar)\b/, naturezaLabel: '📚 Educação', categoriaNome: 'Livros e Material Didático' },
     
-    // Alimentação
+    // Alimentação & Bebidas (Supermercado, Alimentos e Bebidas em Geral)
+    { 
+      regex: /\b(cerveja|cervejas|chope|chopp|refrigerante|suco|bebida|bebidas|vinho|vodka|whisky|agua mineral|energetico)\b/, 
+      naturezaLabel: '🛒 Alimentação', 
+      categoriaNome: 'Supermercado' 
+    },
+    { 
+      regex: /\b(extrato de tomate|tomate|tomates|molho|arroz|feijao|macarrao|leite|cafe|acucar|oleo|azeite|farinha|manteiga|queijo|presunto|frango|carne|peixe|verdura|legume|fruta|iogurte|bolacha|biscoito|sabonete|detergente|amaciante|desinfetante|papel higienico)\b/, 
+      naturezaLabel: '🛒 Alimentação', 
+      categoriaNome: 'Supermercado' 
+    },
     { regex: /\b(mercado|supermercado|compras|feira|acougue|padaria)\b/, naturezaLabel: '🛒 Alimentação', categoriaNome: 'Supermercado' },
     { regex: /\b(almoço|almoco|jantar|restaurante|lanche|delivery|ifood|pizza|hamburguer)\b/, naturezaLabel: '🛒 Alimentação', categoriaNome: 'Restaurante / Delivery' },
     
-    // Transporte
+    // Transporte & Manutenção Veicular
+    { 
+      regex: /\b(manutencao veicular|veicular|oficina|mecanica|mecanico|revisao|troca de oleo|oleo do motor|pneu|pneus|alinhamento|balanceamento|funilaria|autopecas|auto pecas|bateria|freio|pastilha|suspensao)\b/, 
+      naturezaLabel: '🚗 Transporte', 
+      categoriaNome: 'Manutenção Veicular' 
+    },
     { regex: /\b(combustivel|gasolina|etanol|alcool|posto|abasteci)\b/, naturezaLabel: '🚗 Transporte', categoriaNome: 'Combustível' },
     { regex: /\b(uber|taxi|corrida|99)\b/, naturezaLabel: '🚗 Transporte', categoriaNome: 'Uber / Táxi / 99' },
-    { regex: /\b(ipva|seguro veiculo|mecanico|pneu|revisao)\b/, naturezaLabel: '🚗 Transporte', categoriaNome: 'Manutenção e Mecânica' },
+    { regex: /\b(ipva|seguro veiculo)\b/, naturezaLabel: '🚗 Transporte', categoriaNome: 'Seguro Veicular' },
+    
+    // Imóveis e Moradia
+    { 
+      regex: /\b(imoveis|imovel|aluguel|condominio|iptu|imobiliaria|taxa condominial)\b/, 
+      naturezaLabel: '🏠 Moradia', 
+      categoriaNome: 'Imóveis e Aluguéis' 
+    },
     
     // Ferramentas, Oficina, Elétrica, Hidráulica, Jardim e EPIs (Solicitado expressamente pelo usuário)
     { 

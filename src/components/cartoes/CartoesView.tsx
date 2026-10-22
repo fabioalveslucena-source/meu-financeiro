@@ -180,11 +180,11 @@ export const CartoesView: React.FC = () => {
               {/* Compras Parceladas Ativas */}
               <div>
                 <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', display: 'block', marginBottom: '0.5rem' }}>
-                  Parcelamentos Ativos ({parcelamentos.length})
+                  Parcelamentos Ativos ({parcelamentos.length}) • Fatura {competenciaAtiva}
                 </span>
                 {parcelamentos.length === 0 ? (
                   <p style={{ fontSize: '0.8rem', color: 'var(--text-tertiary)', margin: 0, fontStyle: 'italic' }}>
-                    Nenhuma compra parcelada registrada neste cartão.
+                    Nenhuma parcela pendente na fatura de {competenciaAtiva}.
                   </p>
                 ) : (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>

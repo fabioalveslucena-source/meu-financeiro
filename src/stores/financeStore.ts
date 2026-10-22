@@ -804,21 +804,79 @@ export const useFinanceStore = create<FinanceState>((set, get) => {
         const limiteDisponivel = Math.max(0, cartao.limite - totalComprometido);
         const percentualUsado = Math.min(100, Math.round((totalComprometido / cartao.limite) * 100));
 
+        // Identificar os parcelamentos ativos incidentes na competência ativa selecionada
         const parcelamentosMap = new Map<string, any>();
+
+        // Agrupar todos os lançamentos parcelados deste cartão por compraId
+        const comprasAgrupadas = new Map<string, Lancamento[]>();
         lancamentosCartao
           .filter((l) => l.compraId && l.parcela)
           .forEach((l) => {
-            if (!parcelamentosMap.has(l.compraId!)) {
-              parcelamentosMap.set(l.compraId!, {
-                descricao: l.descricao,
-                valorTotal: (l.valor || 0) * (l.totalParcelas || 1),
-                valorParcela: l.valor,
-                parcelaAtual: l.parcela,
-                totalParcelas: l.totalParcelas || 1,
-                compraId: l.compraId!,
+            const lista = comprasAgrupadas.get(l.compraId!) || [];
+            lista.push(l);
+            comprasAgrupadas.set(l.compraId!, lista);
+          });
+
+        comprasAgrupadas.forEach((parcelasDaCompra, compraId) => {
+          // Ordenar parcelas numericamente (1, 2, 3...)
+          parcelasDaCompra.sort((a, b) => (a.parcela || 1) - (b.parcela || 1));
+          
+          // 1. Procurar a parcela correspondente à competência ativa selecionada no cabeçalho
+          const parcelaNaCompetencia = parcelasDaCompra.find((l) => l.competencia === competenciaAtiva);
+          
+          if (parcelaNaCompetencia) {
+            // Existe parcela incidindo na fatura deste mês específico (ex: 1/2 no mês 10, 2/2 no mês 11)
+            parcelamentosMap.set(compraId, {
+              descricao: parcelaNaCompetencia.descricao,
+              valorTotal: (parcelaNaCompetencia.valor || 0) * (parcelaNaCompetencia.totalParcelas || 1),
+              valorParcela: parcelaNaCompetencia.valor,
+              parcelaAtual: parcelaNaCompetencia.parcela,
+              totalParcelas: parcelaNaCompetencia.totalParcelas || 1,
+              compraId,
+              competencia: parcelaNaCompetencia.competencia,
+            });
+          } else {
+            // Se a competência selecionada for antes do fim das parcelas, calcular a parcela vigente
+            const primeiraParcela = parcelasDaCompra[0];
+            const ultimaParcela = parcelasDaCompra[parcelasDaCompra.length - 1];
+
+            const [mesAtivo, anoAtivo] = competenciaAtiva.split('/').map(Number);
+            const valAtivo = anoAtivo * 12 + mesAtivo;
+
+            const [mesPrim, anoPrim] = primeiraParcela.competencia.split('/').map(Number);
+            const valPrim = anoPrim * 12 + mesPrim;
+
+            const [mesUlt, anoUlt] = ultimaParcela.competencia.split('/').map(Number);
+            const valUlt = anoUlt * 12 + mesUlt;
+
+            if (valAtivo < valPrim) {
+              parcelamentosMap.set(compraId, {
+                descricao: primeiraParcela.descricao,
+                valorTotal: (primeiraParcela.valor || 0) * (primeiraParcela.totalParcelas || 1),
+                valorParcela: primeiraParcela.valor,
+                parcelaAtual: 1,
+                totalParcelas: primeiraParcela.totalParcelas || 1,
+                compraId,
+                competencia: primeiraParcela.competencia,
+              });
+            } else if (valAtivo <= valUlt) {
+              const parcelaVigente = parcelasDaCompra.find((l) => {
+                const [m, a] = l.competencia.split('/').map(Number);
+                return (a * 12 + m) >= valAtivo;
+              }) || primeiraParcela;
+
+              parcelamentosMap.set(compraId, {
+                descricao: parcelaVigente.descricao,
+                valorTotal: (parcelaVigente.valor || 0) * (parcelaVigente.totalParcelas || 1),
+                valorParcela: parcelaVigente.valor,
+                parcelaAtual: parcelaVigente.parcela,
+                totalParcelas: parcelaVigente.totalParcelas || 1,
+                compraId,
+                competencia: parcelaVigente.competencia,
               });
             }
-          });
+          }
+        });
 
         return {
           cartao,

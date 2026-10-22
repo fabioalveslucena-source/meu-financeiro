@@ -26,6 +26,8 @@ export function useVoiceRecognition(onResultadoFinal?: (res: VozInterpretada) =>
   const [resultado, setResultado] = useState<VozInterpretada | null>(null);
   const [erro, setErro] = useState<string | null>(null);
   const recognitionRef = useRef<any>(null);
+  const silencioTimerRef = useRef<any>(null);
+  const textoAtualRef = useRef<string>('');
 
   const SpeechRecognition = typeof window !== 'undefined' 
     ? (window.SpeechRecognition || window.webkitSpeechRecognition) 
@@ -33,12 +35,32 @@ export function useVoiceRecognition(onResultadoFinal?: (res: VozInterpretada) =>
 
   const suportado = Boolean(SpeechRecognition);
 
+  const limparTimerSilencio = useCallback(() => {
+    if (silencioTimerRef.current) {
+      clearTimeout(silencioTimerRef.current);
+      silencioTimerRef.current = null;
+    }
+  }, []);
+
   const pararGravacao = useCallback(() => {
-    if (recognitionRef.current && estaOuvindo) {
-      recognitionRef.current.stop();
+    limparTimerSilencio();
+    if (recognitionRef.current) {
+      try {
+        recognitionRef.current.stop();
+      } catch (_) {}
     }
     setEstaOuvindo(false);
-  }, [estaOuvindo]);
+
+    // Finalizar com o texto acumulado até o momento
+    const textoFinal = textoAtualRef.current.trim();
+    if (textoFinal) {
+      const interpretado = interpretarComandoVoz(textoFinal);
+      setResultado(interpretado);
+      if (onResultadoFinal && interpretado.sucesso) {
+        onResultadoFinal(interpretado);
+      }
+    }
+  }, [limparTimerSilencio, onResultadoFinal]);
 
   const iniciarGravacao = useCallback(() => {
     if (!SpeechRecognition) {
@@ -46,14 +68,16 @@ export function useVoiceRecognition(onResultadoFinal?: (res: VozInterpretada) =>
       return;
     }
 
+    limparTimerSilencio();
     setErro(null);
     setTranscricao('');
     setResultado(null);
+    textoAtualRef.current = '';
 
     try {
       const recognition = new SpeechRecognition();
       recognition.lang = 'pt-BR';
-      recognition.continuous = false;
+      recognition.continuous = true; // Permite pausas naturais entre palavras
       recognition.interimResults = true;
       recognition.maxAlternatives = 1;
 
@@ -62,22 +86,25 @@ export function useVoiceRecognition(onResultadoFinal?: (res: VozInterpretada) =>
       };
 
       recognition.onresult = (event: any) => {
-        let textoAtual = '';
-        for (let i = event.resultIndex; i < event.results.length; i++) {
-          textoAtual += event.results[i][0].transcript;
+        let textoCompleto = '';
+        for (let i = 0; i < event.results.length; i++) {
+          textoCompleto += event.results[i][0].transcript + ' ';
         }
-        setTranscricao(textoAtual);
+        textoCompleto = textoCompleto.trim();
+        textoAtualRef.current = textoCompleto;
+        setTranscricao(textoCompleto);
 
-        if (event.results[0].isFinal) {
-          const interpretado = interpretarComandoVoz(textoAtual);
+        // Interpretar em tempo real para o usuário visualizar o entendimento instantâneo
+        const interpretado = interpretarComandoVoz(textoCompleto);
+        if (interpretado.sucesso || textoCompleto.length > 5) {
           setResultado(interpretado);
-          if (interpretado.sucesso && typeof navigator !== 'undefined' && 'vibrate' in navigator) {
-            try { navigator.vibrate(40); } catch (_) {}
-          }
-          if (onResultadoFinal) {
-            onResultadoFinal(interpretado);
-          }
         }
+
+        // Renovar timer de pausa: aguarda 1.8 segundos de silêncio antes de finalizar automaticamente
+        limparTimerSilencio();
+        silencioTimerRef.current = setTimeout(() => {
+          pararGravacao();
+        }, 1800);
       };
 
       recognition.onerror = (event: any) => {
@@ -85,7 +112,10 @@ export function useVoiceRecognition(onResultadoFinal?: (res: VozInterpretada) =>
         if (event.error === 'not-allowed') {
           setErro('Permissão de microfone negada. Conceda acesso nas configurações do navegador.');
         } else if (event.error === 'no-speech') {
-          setErro('Nenhuma fala foi detectada. Tente falar mais próximo do microfone.');
+          // No-speech é ignorado suavemente se houver texto já falado
+          if (!textoAtualRef.current) {
+            setErro('Nenhuma fala detectada. Clique no microfone e tente falar novamente.');
+          }
         } else {
           setErro(`Erro no microfone: ${event.error}`);
         }
@@ -94,6 +124,12 @@ export function useVoiceRecognition(onResultadoFinal?: (res: VozInterpretada) =>
 
       recognition.onend = () => {
         setEstaOuvindo(false);
+        // Garantir que a transcrição final é processada
+        const finalTexto = textoAtualRef.current.trim();
+        if (finalTexto) {
+          const interpretado = interpretarComandoVoz(finalTexto);
+          setResultado(interpretado);
+        }
       };
 
       recognitionRef.current = recognition;
@@ -103,21 +139,24 @@ export function useVoiceRecognition(onResultadoFinal?: (res: VozInterpretada) =>
       setErro('Não foi possível iniciar o microfone.');
       setEstaOuvindo(false);
     }
-  }, [SpeechRecognition, onResultadoFinal]);
+  }, [SpeechRecognition, limparTimerSilencio, pararGravacao]);
 
   const limparResultado = useCallback(() => {
+    limparTimerSilencio();
+    textoAtualRef.current = '';
     setTranscricao('');
     setResultado(null);
     setErro(null);
-  }, []);
+  }, [limparTimerSilencio]);
 
   useEffect(() => {
     return () => {
+      limparTimerSilencio();
       if (recognitionRef.current) {
         recognitionRef.current.abort();
       }
     };
-  }, []);
+  }, [limparTimerSilencio]);
 
   return {
     estaOuvindo,

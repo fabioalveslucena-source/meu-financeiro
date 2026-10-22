@@ -16,6 +16,7 @@ export interface Categoria {
 
 export const NATUREZAS_PADRAO: Natureza[] = [
   { id: 'moradia', nome: 'Moradia', emoji: '🏠', label: '🏠 Moradia' },
+  { id: 'imoveis', nome: 'Imóveis', emoji: '🏢', label: '🏢 Imóveis' },
   { id: 'alimentacao', nome: 'Alimentação', emoji: '🛒', label: '🛒 Alimentação' },
   { id: 'transporte', nome: 'Transporte', emoji: '🚗', label: '🚗 Transporte' },
   { id: 'saude', nome: 'Saúde', emoji: '🏥', label: '🏥 Saúde' },

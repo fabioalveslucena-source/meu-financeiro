@@ -6,6 +6,7 @@ import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip } from 'recharts';
 
 const CORES_NATUREZA: Record<string, string> = {
   '🏠 Moradia': '#287EA5',
+  '🏢 Imóveis': '#1976D2',
   '🛒 Alimentação': '#10B981',
   '🚗 Transporte': '#F59E0B',
   '📚 Educação': '#8B5CF6',

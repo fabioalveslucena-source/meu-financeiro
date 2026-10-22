@@ -189,6 +189,14 @@ export const VoiceModal: React.FC<VoiceModalProps> = ({
               <div><strong>Valor:</strong> {formatarMoeda(resultado.valor || 0)}</div>
               <div><strong>Natureza:</strong> {resultado.natureza}</div>
               <div><strong>Pagamento:</strong> {resultado.pagamento}</div>
+              {resultado.categoria ? (
+                <div style={{ gridColumn: 'span 2' }}><strong>Categoria:</strong> {resultado.categoria}</div>
+              ) : null}
+              {resultado.descricao ? (
+                <div style={{ gridColumn: 'span 2', color: '#81C784', fontWeight: 600 }}>
+                  <strong>Descrição:</strong> {resultado.descricao}
+                </div>
+              ) : null}
               {resultado.parcelas && resultado.parcelas > 1 ? (
                 <div style={{ gridColumn: 'span 2', color: '#F8D117', fontWeight: 700 }}>
                   <strong>💳 Parcelamento no Cartão:</strong> {resultado.parcelas}x de {formatarMoeda((resultado.valor || 0) / resultado.parcelas)}
