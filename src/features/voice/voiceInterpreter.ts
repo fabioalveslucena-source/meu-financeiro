@@ -110,8 +110,8 @@ function extrairPrecoFinal(str: string): { val: number; antes?: string } | null 
 export function detectarMultiplicadorVoz(texto: string): InfoMultiplicadorVoz | null {
   if (!texto) return null;
 
-  // Encontrar o padrão "X ... cada"
-  const matchCada = texto.match(/^(.*?)[,;\s]+(?:a|por|de)?\s*(.+?)\s*(?:cada(?:\s+um|\s+uma)?|a\s+unidade|por\s+unidade)[.\s]*$/i);
+  // Encontrar o padrão "X ... cada" aceitando sufixos após cada (ex: "3 sacos de cimento, 90 BRL cada, 3 vezes no cartão")
+  const matchCada = texto.match(/^(.*?)[,;\s]+(?:a|por|de)?\s*([0-9a-zA-Z\s.,$]+?)\s*(?:cada(?:\s+um|\s+uma)?|a\s+unidade|por\s+unidade)\b(?:\s*[,;]?\s*(.*))?$/i);
   if (!matchCada) return null;
 
   const precoInfo = extrairPrecoFinal(matchCada[2]);
@@ -280,54 +280,52 @@ export function identificarNaturezaECategoria(texto: string, tipo: TipoLancament
     { regex: /\b(mercado|supermercado|compras|feira|acougue|padaria)\b/, naturezaLabel: '🛒 Alimentação', categoriaNome: 'Supermercado' },
     { regex: /\b(almoço|almoco|jantar|restaurante|lanche|delivery|ifood|pizza|hamburguer)\b/, naturezaLabel: '🛒 Alimentação', categoriaNome: 'Restaurante / Delivery' },
     
-    // Transporte & Manutenção Veicular
+    // Manutenção Veicular (Oficina, Mecânica, Peças de Carro e Moto)
     { 
-      regex: /\b(manutencao veicular|veicular|oficina|mecanica|mecanico|revisao|troca de oleo|oleo do motor|pneu|pneus|alinhamento|balanceamento|funilaria|autopecas|auto pecas|bateria|freio|pastilha|suspensao)\b/, 
-      naturezaLabel: '🚗 Transporte', 
-      categoriaNome: 'Manutenção Veicular' 
+      regex: /\b(manutencao veicular|veicular|oficina|mecanica|mecanico|revisao|troca de oleo|oleo do motor|pneu|pneus|alinhamento|balanceamento|funilaria|autopecas|auto pecas|bateria do carro|freio|pastilha|suspensao)\b/, 
+      naturezaLabel: '🔧 Manutenção Veicular', 
+      categoriaNome: 'Oficina e Mecânica' 
     },
     { regex: /\b(combustivel|gasolina|etanol|alcool|posto|abasteci)\b/, naturezaLabel: '🚗 Transporte', categoriaNome: 'Combustível' },
     { regex: /\b(uber|taxi|corrida|99)\b/, naturezaLabel: '🚗 Transporte', categoriaNome: 'Uber / Táxi / 99' },
     { regex: /\b(ipva|seguro veiculo)\b/, naturezaLabel: '🚗 Transporte', categoriaNome: 'Seguro Veicular' },
     
-    // Imóveis e Moradia
+    // Imóveis (Materiais de Construção, Ferramentas, Elétrica, Hidráulica, Aluguel e Reformas)
     { 
-      regex: /\b(imoveis|imovel|aluguel|condominio|iptu|imobiliaria|taxa condominial)\b/, 
-      naturezaLabel: '🏠 Moradia', 
-      categoriaNome: 'Imóveis e Aluguéis' 
+      regex: /\b(cimento|argamassa|rejunte|tijolo|bloco|lixa|tinta|pincel|rolo de pintura|verniz|thinner|silicone|veda rosca|parafuso|prego|bucha|dobradica|fechadura|torneira|cano|tubo|conexao|sifao|registro|valvula|pvc)\b/, 
+      naturezaLabel: '🏢 Imóveis', 
+      categoriaNome: 'Ferramentas e Materiais' 
     },
-    
-    // Ferramentas, Oficina, Elétrica, Hidráulica, Jardim e EPIs (Solicitado expressamente pelo usuário)
     { 
       regex: /\b(chave de fenda|chave philips|chave fenda|chave inglesa|chave estrela|chave combinada|chave allen|alicate|martelo|furadeira|parafusadeira|serrote|serra|trena|broca|marreta|esmerilhadeira|lixadeira|nivel|estilete|multimetro)\b/, 
-      naturezaLabel: '🏠 Moradia', 
+      naturezaLabel: '🏢 Imóveis', 
       categoriaNome: 'Ferramentas e Materiais' 
     },
     { 
       regex: /\b(disjuntor|interruptor|tomada|fiação|fiacao|fio eletrico|fio|cabo eletrico|fita isolante|conduite|lampada|lampadas|reator|extensao|plugue|bocal|soquete|fusivel)\b/, 
-      naturezaLabel: '🏠 Moradia', 
+      naturezaLabel: '🏢 Imóveis', 
       categoriaNome: 'Ferramentas e Materiais' 
     },
     { 
       regex: /\b(enxada|enxadao|pa|rastelo|ancinho|foice|mangueira|podador|pulverizador|regador|tesoura de poda|adubo|fertilizante|terra vegetal)\b/, 
-      naturezaLabel: '🏠 Moradia', 
+      naturezaLabel: '🏢 Imóveis', 
       categoriaNome: 'Ferramentas e Materiais' 
     },
     { 
       regex: /\b(luvas latex|luva latex|luva de latex|luvas de latex|luva nitrilica|luva de raspa|luva|luvas|oculos de protecao|mascara|bota de seguranca|bota de borracha|capacete|protetor auricular|epi)\b/, 
-      naturezaLabel: '🏠 Moradia', 
+      naturezaLabel: '🏢 Imóveis', 
       categoriaNome: 'Ferramentas e Materiais' 
     },
     { 
-      regex: /\b(torneira|cano|tubo|conexao|sifao|registro|valvula|pvc|cimento|argamassa|rejunte|tijolo|bloco|lixa|tinta|pincel|rolo de pintura|verniz|thinner|silicone|veda rosca|parafuso|prego|bucha|dobradica|fechadura)\b/, 
-      naturezaLabel: '🏠 Moradia', 
-      categoriaNome: 'Ferramentas e Materiais' 
+      regex: /\b(imoveis|imovel|aluguel|condominio|iptu|imobiliaria|taxa condominial|reforma|pedreiro|pintor)\b/, 
+      naturezaLabel: '🏢 Imóveis', 
+      categoriaNome: 'Aluguel / Condomínio' 
     },
 
-    // Moradia (Contas e Serviços Gerais)
-    { regex: /\b(aluguel|condominio|iptu)\b/, naturezaLabel: '🏠 Moradia', categoriaNome: 'Aluguel / Condomínio' },
+    // Moradia (Contas de Consumo Residencial)
     { regex: /\b(luz|energia|enel|cemig)\b/, naturezaLabel: '🏠 Moradia', categoriaNome: 'Energia Elétrica' },
     { regex: /\b(internet|wifi|fibra|claro|vivo|tv)\b/, naturezaLabel: '🏠 Moradia', categoriaNome: 'Internet / TV a Cabo' },
+    { regex: /\b(agua|gas|encanado)\b/, naturezaLabel: '🏠 Moradia', categoriaNome: 'Água e Gás' },
     { regex: /\b(agua|gas|encanado)\b/, naturezaLabel: '🏠 Moradia', categoriaNome: 'Água e Gás' },
     
     // Saúde

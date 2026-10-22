@@ -243,6 +243,44 @@ function migrarLancamentos(lancamentos: Lancamento[]): Lancamento[] {
   return lista;
 }
 
+function migrarNaturezas(naturezas: Natureza[]): Natureza[] {
+  const lista = [...naturezas];
+
+  // Garantir '🏢 Imóveis'
+  if (!lista.some(n => n.label.includes('Imóveis') || n.id === 'imoveis')) {
+    lista.unshift({ id: 'imoveis', nome: 'Imóveis', emoji: '🏢', label: '🏢 Imóveis' });
+  }
+
+  // Garantir '🔧 Manutenção Veicular'
+  if (!lista.some(n => n.label.includes('Manutenção Veicular') || n.id === 'manutencao-veicular')) {
+    lista.splice(1, 0, { id: 'manutencao-veicular', nome: 'Manutenção Veicular', emoji: '🔧', label: '🔧 Manutenção Veicular' });
+  }
+
+  return lista;
+}
+
+function migrarCategorias(categorias: Categoria[]): Categoria[] {
+  const lista = [...categorias];
+  const novas = [
+    { id: 'cat-im1', userId: 'default-user', natureza: '🏢 Imóveis', nome: 'Ferramentas e Materiais', tipo: 'Despesa' as const, ativa: true },
+    { id: 'cat-im2', userId: 'default-user', natureza: '🏢 Imóveis', nome: 'Aluguel / Condomínio', tipo: 'Despesa' as const, ativa: true },
+    { id: 'cat-im3', userId: 'default-user', natureza: '🏢 Imóveis', nome: 'Manutenção e Reformas', tipo: 'Despesa' as const, ativa: true },
+    { id: 'cat-im4', userId: 'default-user', natureza: '🏢 Imóveis', nome: 'IPTU e Taxas', tipo: 'Despesa' as const, ativa: true },
+    { id: 'cat-mv1', userId: 'default-user', natureza: '🔧 Manutenção Veicular', nome: 'Oficina e Mecânica', tipo: 'Despesa' as const, ativa: true },
+    { id: 'cat-mv2', userId: 'default-user', natureza: '🔧 Manutenção Veicular', nome: 'Peças e Acessórios', tipo: 'Despesa' as const, ativa: true },
+    { id: 'cat-mv3', userId: 'default-user', natureza: '🔧 Manutenção Veicular', nome: 'Revisão e Troca de Óleo', tipo: 'Despesa' as const, ativa: true },
+    { id: 'cat-mv4', userId: 'default-user', natureza: '🔧 Manutenção Veicular', nome: 'Pneus e Alinhamento', tipo: 'Despesa' as const, ativa: true },
+  ];
+
+  novas.forEach(n => {
+    if (!lista.some(c => c.nome === n.nome && c.natureza === n.natureza)) {
+      lista.push(n);
+    }
+  });
+
+  return lista;
+}
+
 function carregarDoStorage<T>(chave: string, padrao: T): T {
   try {
     const salvo = localStorage.getItem(chave);
@@ -263,6 +301,12 @@ function carregarDoStorage<T>(chave: string, padrao: T): T {
     }
     if (chave === STORAGE_KEY_LANCAMENTOS) {
       return migrarLancamentos(lista as unknown as Lancamento[]) as unknown as T;
+    }
+    if (chave === STORAGE_KEY_NATUREZAS) {
+      return migrarNaturezas(lista as unknown as Natureza[]) as unknown as T;
+    }
+    if (chave === STORAGE_KEY_CATEGORIAS) {
+      return migrarCategorias(lista as unknown as Categoria[]) as unknown as T;
     }
     return lista;
   } catch {
