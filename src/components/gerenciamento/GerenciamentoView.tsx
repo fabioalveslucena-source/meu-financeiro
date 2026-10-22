@@ -12,6 +12,7 @@ import {
   ShoppingCart
 } from 'lucide-react';
 import { ReciboMercadoModal } from '../mercado/ReciboMercadoModal';
+import { DetalhesLancamentoModal } from '../extrato/DetalhesLancamentoModal';
 
 export const GerenciamentoView: React.FC = () => {
   const { 
@@ -30,6 +31,7 @@ export const GerenciamentoView: React.FC = () => {
 
   const [itemParaExcluir, setItemParaExcluir] = useState<Lancamento | null>(null);
   const [itemParaEditar, setItemParaEditar] = useState<Lancamento | null>(null);
+  const [lancamentoDetalhes, setLancamentoDetalhes] = useState<Lancamento | null>(null);
   const [descricaoEdicao, setDescricaoEdicao] = useState('');
   const [valorEdicao, setValorEdicao] = useState('');
   const [lancamentoMercado, setLancamentoMercado] = useState<Lancamento | null>(null);
@@ -165,7 +167,11 @@ export const GerenciamentoView: React.FC = () => {
                 gap: '1rem',
                 flexWrap: 'wrap'
               }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                <div 
+                  onClick={() => setLancamentoDetalhes(item)}
+                  style={{ display: 'flex', alignItems: 'center', gap: '1rem', cursor: 'pointer', flex: 1, minWidth: 0 }}
+                  title="Toque para ver os detalhes completos deste lançamento"
+                >
                   <div style={{
                     width: '42px',
                     height: '42px',
@@ -174,14 +180,15 @@ export const GerenciamentoView: React.FC = () => {
                     alignItems: 'center',
                     justifyContent: 'center',
                     fontSize: '1.25rem',
-                    backgroundColor: isReceita ? 'var(--color-receita-bg)' : isDespesa ? 'var(--color-despesa-bg)' : 'var(--color-investimento-bg)'
+                    backgroundColor: isReceita ? 'var(--color-receita-bg)' : isDespesa ? 'var(--color-despesa-bg)' : 'var(--color-investimento-bg)',
+                    flexShrink: 0
                   }}>
                     {isReceita ? '🟢' : isDespesa ? '🔴' : '🔵'}
                   </div>
 
-                  <div>
+                  <div style={{ minWidth: 0, flex: 1 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
-                      <h4 style={{ margin: 0, fontSize: '1rem', fontWeight: 700 }}>
+                      <h4 style={{ margin: 0, fontSize: '1rem', fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis' }}>
                         {item.descricao}
                       </h4>
                       {item.parcela && item.totalParcelas && item.totalParcelas > 1 ? (
@@ -406,6 +413,18 @@ export const GerenciamentoView: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Modal de Detalhes Explodidos do Lançamento */}
+      <DetalhesLancamentoModal
+        lancamento={lancamentoDetalhes}
+        aoFechar={() => setLancamentoDetalhes(null)}
+        aoEditar={(l) => iniciarEdicao(l)}
+        aoExcluir={(l) => setItemParaExcluir(l)}
+        aoAbrirCupomMercado={(l) => {
+          setLancamentoDetalhes(null);
+          setLancamentoMercado(l);
+        }}
+      />
 
       {/* Modal de Detalhes da Compra do Meu Mercado */}
       <ReciboMercadoModal

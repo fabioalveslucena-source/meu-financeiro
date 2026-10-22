@@ -19,12 +19,14 @@ import {
 } from 'lucide-react';
 import type { Lancamento } from '../../types';
 import { ReciboMercadoModal } from '../mercado/ReciboMercadoModal';
+import { DetalhesLancamentoModal } from '../extrato/DetalhesLancamentoModal';
 
 export const LivroCaixaView: React.FC = () => {
   const { competenciaAtiva, obterResumoLivroCaixa, lancamentos, usuario } = useFinanceStore();
   const [gerandoPdf, setGerandoPdf] = useState(false);
   const [modoVisualizacao, setModoVisualizacao] = useState<'extrato' | 'tabela'>('extrato');
   const [lancamentoMercado, setLancamentoMercado] = useState<Lancamento | null>(null);
+  const [lancamentoDetalhes, setLancamentoDetalhes] = useState<Lancamento | null>(null);
 
   const resumo = obterResumoLivroCaixa(competenciaAtiva);
 
@@ -307,8 +309,8 @@ export const LivroCaixaView: React.FC = () => {
             <h3 style={{ fontSize: '1rem', fontWeight: 700, margin: 0 }}>
               Extrato de Lançamentos
             </h3>
-            <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
-              Saldo consolidado a cada fechamento de dia
+            <span style={{ fontSize: '0.8rem', color: '#5090D3', fontWeight: 600 }}>
+              Toque em qualquer linha para ver os detalhes explodidos
             </span>
           </div>
 
@@ -391,6 +393,7 @@ export const LivroCaixaView: React.FC = () => {
                   return (
                     <div 
                       key={item.id} 
+                      onClick={() => setLancamentoDetalhes(item)}
                       style={{
                         padding: '12px 16px',
                         borderBottom: itemIdx < grupo.itens.length - 1 ? '1px solid rgba(30, 58, 95, 0.4)' : 'none',
@@ -398,8 +401,11 @@ export const LivroCaixaView: React.FC = () => {
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'space-between',
-                        gap: '12px'
+                        gap: '12px',
+                        cursor: 'pointer',
+                        transition: 'background-color 0.15s ease'
                       }}
+                      title="Toque para ver os detalhes completos deste lançamento"
                     >
                       {/* Coluna Esquerda: Exatamente 2 Linhas */}
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', flex: 1, minWidth: 0 }}>
@@ -587,10 +593,13 @@ export const LivroCaixaView: React.FC = () => {
                       return (
                         <tr
                           key={item.id}
+                          onClick={() => setLancamentoDetalhes(item)}
                           style={{
                             borderBottom: idx === grupo.itens.length - 1 ? 'none' : '1px solid var(--border-subtle)',
-                            backgroundColor: idx % 2 === 1 ? 'rgba(19, 47, 76, 0.25)' : 'transparent'
+                            backgroundColor: idx % 2 === 1 ? 'rgba(19, 47, 76, 0.25)' : 'transparent',
+                            cursor: 'pointer'
                           }}
+                          title="Toque para ver os detalhes completos deste lançamento"
                         >
                           <td style={{ padding: '0.75rem 0.85rem', whiteSpace: 'nowrap' }}>
                             {formatarData(item.data)}
@@ -709,6 +718,16 @@ export const LivroCaixaView: React.FC = () => {
           </div>
         )}
       </div>
+
+      {/* Modal de Detalhes Explodidos do Lançamento */}
+      <DetalhesLancamentoModal
+        lancamento={lancamentoDetalhes}
+        aoFechar={() => setLancamentoDetalhes(null)}
+        aoAbrirCupomMercado={(l) => {
+          setLancamentoDetalhes(null);
+          setLancamentoMercado(l);
+        }}
+      />
 
       {/* Modal de Detalhes da Compra do Meu Mercado */}
       <ReciboMercadoModal

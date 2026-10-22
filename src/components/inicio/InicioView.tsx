@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import type { Lancamento } from '../../types';
 import { ReciboMercadoModal } from '../mercado/ReciboMercadoModal';
+import { DetalhesLancamentoModal } from '../extrato/DetalhesLancamentoModal';
 
 interface InicioViewProps {
   onIrParaLancar?: () => void;
@@ -52,6 +53,7 @@ export const InicioView: React.FC<InicioViewProps> = ({
   const [mostrarParcelamentos, setMostrarParcelamentos] = useState(false);
   const [mostrarUltimasMovimentacoes, setMostrarUltimasMovimentacoes] = useState(false);
   const [lancamentoMercado, setLancamentoMercado] = useState<Lancamento | null>(null);
+  const [lancamentoDetalhes, setLancamentoDetalhes] = useState<Lancamento | null>(null);
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
@@ -624,16 +626,23 @@ export const InicioView: React.FC<InicioViewProps> = ({
                   const corValor = isReceita ? '#4CAF50' : item.tipo === 'Investimento' ? '#5090D3' : '#F44336';
 
                   return (
-                    <div key={item.id} style={{
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'center',
-                      padding: '10px 14px',
-                      borderRadius: '12px',
-                      backgroundColor: '#132F4C',
-                      border: '1px solid #1E3A5F',
-                      gap: '12px'
-                    }}>
+                    <div 
+                      key={item.id} 
+                      onClick={() => setLancamentoDetalhes(item)}
+                      style={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        padding: '10px 14px',
+                        borderRadius: '12px',
+                        backgroundColor: '#132F4C',
+                        border: '1px solid #1E3A5F',
+                        gap: '12px',
+                        cursor: 'pointer',
+                        transition: 'background-color 0.15s ease'
+                      }}
+                      title="Toque para ver os detalhes completos deste lançamento"
+                    >
                       {/* Coluna Esquerda: Exatamente 2 linhas */}
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', flex: 1, minWidth: 0 }}>
                         {/* Linha 1: Data + Descrição + Parcelamento (apenas se parcelado) */}
@@ -767,6 +776,16 @@ export const InicioView: React.FC<InicioViewProps> = ({
           </div>
         )}
       </div>
+
+      {/* Modal de Detalhes Explodidos do Lançamento */}
+      <DetalhesLancamentoModal
+        lancamento={lancamentoDetalhes}
+        aoFechar={() => setLancamentoDetalhes(null)}
+        aoAbrirCupomMercado={(l) => {
+          setLancamentoDetalhes(null);
+          setLancamentoMercado(l);
+        }}
+      />
 
       {/* Modal de Detalhes da Compra do Meu Mercado */}
       <ReciboMercadoModal

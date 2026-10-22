@@ -235,9 +235,170 @@ const Barra3D: React.FC<Barra3DProps> = ({
   );
 };
 
+// Componente para desenhar cada Barra 3D Horizontal (Visão Panorâmica 100% Tela Cheia sem rolagem lateral)
+interface BarraHorizontal3DProps {
+  natureza: string;
+  total: number;
+  percentual: number;
+  cor: string;
+  proporcao: number;
+  selecionada: boolean;
+  onSelecionar: () => void;
+  subcategorias?: { nome: string; total: number; quantidade: number; percentualNatureza: number }[];
+}
+
+const BarraHorizontal3D: React.FC<BarraHorizontal3DProps> = ({
+  natureza,
+  total,
+  percentual,
+  cor,
+  proporcao,
+  selecionada,
+  onSelecionar,
+  subcategorias,
+}) => {
+  const emoji = natureza.split(' ')[0] || '🏷️';
+  const labelLimpo = natureza.replace(/^[^\w\s]+\s*/, '').trim();
+  const larguraPct = Math.max(8, Math.min(100, Math.round(proporcao * 100)));
+
+  return (
+    <div
+      onClick={onSelecionar}
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '7px',
+        padding: '12px 14px',
+        borderRadius: '16px',
+        backgroundColor: selecionada ? 'rgba(23, 63, 95, 0.85)' : 'rgba(19, 47, 76, 0.55)',
+        border: `1.5px solid ${selecionada ? '#F8D117' : 'rgba(30, 58, 95, 0.8)'}`,
+        boxShadow: selecionada ? `0 0 16px ${cor}40, 0 4px 14px rgba(0,0,0,0.3)` : '0 2px 8px rgba(0,0,0,0.2)',
+        cursor: 'pointer',
+        transition: 'all 0.2s ease',
+        userSelect: 'none',
+        width: '100%'
+      }}
+      title={`Toque para auditar ${natureza}: ${formatarMoeda(total)} (${percentual.toFixed(1)}%)`}
+    >
+      {/* Topo da Barra: Rótulo com Emoji à Esquerda e Valores em Destaque à Direita */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '6px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
+          <span style={{ fontSize: '18px', flexShrink: 0 }}>{emoji}</span>
+          <strong style={{ 
+            fontSize: '13.5px', 
+            fontWeight: 800, 
+            color: selecionada ? '#F8D117' : '#FFFFFF',
+            whiteSpace: 'nowrap',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis'
+          }}>
+            {labelLimpo}
+          </strong>
+        </div>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
+          <span style={{
+            fontSize: '10.5px',
+            fontWeight: 900,
+            padding: '2px 7px',
+            borderRadius: '6px',
+            backgroundColor: selecionada ? 'rgba(248, 209, 23, 0.25)' : 'rgba(255, 255, 255, 0.08)',
+            color: selecionada ? '#F8D117' : '#AAB4BE'
+          }}>
+            {percentual.toFixed(1)}%
+          </span>
+
+          <strong style={{
+            fontSize: '14.5px',
+            fontWeight: 900,
+            color: '#FFFFFF'
+          }}>
+            {formatarMoeda(total)}
+          </strong>
+        </div>
+      </div>
+
+      {/* Barra em Estilo 3D Isométrico com Profundidade, Chanfro e Iluminação Superior */}
+      <div style={{ position: 'relative', width: '100%', height: '22px', marginTop: '2px' }}>
+        {/* Trilho de Fundo em 3D sutil */}
+        <div style={{
+          position: 'absolute',
+          inset: 0,
+          backgroundColor: 'rgba(11, 25, 41, 0.7)',
+          borderRadius: '8px',
+          border: '1px solid rgba(255, 255, 255, 0.08)'
+        }} />
+
+        {/* Barra 3D Tridimensional Colorida com Profundidade e Volume */}
+        <div style={{
+          position: 'relative',
+          width: `${larguraPct}%`,
+          height: '100%',
+          borderRadius: '8px',
+          background: `linear-gradient(180deg, ${cor} 0%, ${cor}CC 55%, #0B1C2E 100%)`,
+          boxShadow: `0 4px 14px ${cor}50, inset 0 2px 3px rgba(255, 255, 255, 0.6), inset 0 -2px 4px rgba(0, 0, 0, 0.6)`,
+          border: `1px solid ${selecionada ? '#F8D117' : cor}`,
+          transition: 'width 0.4s ease'
+        }}>
+          {/* Brilho Superior 3D Refletido */}
+          <div style={{
+            position: 'absolute',
+            top: '1px',
+            left: '4px',
+            right: '4px',
+            height: '3px',
+            borderRadius: '4px',
+            background: 'linear-gradient(90deg, rgba(255,255,255,0.7) 0%, rgba(255,255,255,0.15) 100%)'
+          }} />
+        </div>
+      </div>
+
+      {/* Resumo instantâneo das subcategorias quando a barra estiver selecionada */}
+      {selecionada && subcategorias && subcategorias.length > 0 && (
+        <div style={{
+          marginTop: '6px',
+          paddingTop: '8px',
+          borderTop: '1px solid rgba(255, 255, 255, 0.12)',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '5px'
+        }}>
+          <span style={{ fontSize: '10.5px', fontWeight: 800, color: '#F8D117', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+            Subcategorias de {labelLimpo}:
+          </span>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '6px' }}>
+            {subcategorias.slice(0, 4).map((sub, i) => (
+              <div key={i} style={{
+                backgroundColor: 'rgba(11, 25, 41, 0.6)',
+                padding: '5px 8px',
+                borderRadius: '8px',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                fontSize: '11px',
+                border: '1px solid rgba(255, 255, 255, 0.05)'
+              }}>
+                <span style={{ color: '#D0DCE5', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {sub.nome}
+                </span>
+                <strong style={{ color: '#FFFFFF', marginLeft: '6px', flexShrink: 0 }}>
+                  {formatarMoeda(sub.total)}
+                </strong>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
 export const AnalisesView: React.FC = () => {
   const { lancamentos, competenciaAtiva, obterResumoLivroCaixa } = useFinanceStore();
   const resumo = obterResumoLivroCaixa(competenciaAtiva);
+
+  // Formato do gráfico 3D: 'panoramico' (100% largura de tela sem scroll horizontal) ou 'colunas' (colunas verticais)
+  const [formatoGrafico3D, setFormatoGrafico3D] = useState<'panoramico' | 'colunas'>('panoramico');
 
   // Aba selecionada: 'grafico3d' (gráfico de barras 3D com detalhamento) ou 'lista' (accordion de todas as naturezas)
   const [abaVisualizacao, setAbaVisualizacao] = useState<'grafico3d' | 'lista'>('grafico3d');
@@ -607,10 +768,10 @@ export const AnalisesView: React.FC = () => {
               justifyContent: 'space-between',
               alignItems: 'center',
               marginBottom: '16px',
-              paddingBottom: '10px',
+              paddingBottom: '12px',
               borderBottom: '1px solid #1E3A5F',
               flexWrap: 'wrap',
-              gap: '8px'
+              gap: '10px'
             }}>
               <div>
                 <span style={{ fontSize: '11px', fontWeight: 800, color: '#AAB4BE', textTransform: 'uppercase', letterSpacing: '0.6px' }}>
@@ -621,48 +782,123 @@ export const AnalisesView: React.FC = () => {
                 </p>
               </div>
 
-              <span style={{
-                fontSize: '11px',
-                fontWeight: 800,
-                color: '#F8D117',
-                backgroundColor: 'rgba(248, 209, 23, 0.15)',
-                padding: '3px 8px',
-                borderRadius: '8px',
-                border: '1px solid rgba(248, 209, 23, 0.3)'
+              {/* Seletor de Modo de Visualização do Gráfico 3D (Panorâmico sem rolagem vs Colunas) */}
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                backgroundColor: '#132F4C',
+                padding: '3px',
+                borderRadius: '12px',
+                border: '1px solid #1E3A5F',
+                gap: '3px'
               }}>
-                {dadosNaturezas.length} Naturezas Ativas
-              </span>
+                <button
+                  type="button"
+                  onClick={() => setFormatoGrafico3D('panoramico')}
+                  style={{
+                    padding: '5px 10px',
+                    borderRadius: '9px',
+                    border: 'none',
+                    backgroundColor: formatoGrafico3D === 'panoramico' ? '#287EA5' : 'transparent',
+                    color: formatoGrafico3D === 'panoramico' ? '#FFFFFF' : '#AAB4BE',
+                    fontSize: '11px',
+                    fontWeight: 800,
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                    transition: 'all 0.15s ease'
+                  }}
+                  title="Visualizar todas as categorias na tela cheia sem precisar arrastar para o lado"
+                >
+                  <span>📱 Tela Cheia</span>
+                  <span style={{ fontSize: '9px', opacity: 0.85 }}>(Sem Rolar)</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setFormatoGrafico3D('colunas')}
+                  style={{
+                    padding: '5px 10px',
+                    borderRadius: '9px',
+                    border: 'none',
+                    backgroundColor: formatoGrafico3D === 'colunas' ? '#287EA5' : 'transparent',
+                    color: formatoGrafico3D === 'colunas' ? '#FFFFFF' : '#AAB4BE',
+                    fontSize: '11px',
+                    fontWeight: 800,
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                    transition: 'all 0.15s ease'
+                  }}
+                  title="Visualizar em formato de colunas verticais tridimensionais"
+                >
+                  <BarChart3 size={12} />
+                  <span>Colunas 3D</span>
+                </button>
+              </div>
             </div>
 
-            {/* Container com scroll horizontal caso haja muitas barras */}
-            <div style={{
-              overflowX: 'auto',
-              padding: '10px 4px 16px 4px',
-              display: 'flex',
-              gap: '14px',
-              alignItems: 'flex-end',
-              justifyContent: dadosNaturezas.length <= 4 ? 'space-around' : 'flex-start',
-              WebkitOverflowScrolling: 'touch',
-              minHeight: '270px'
-            }}>
-              {dadosNaturezas.map((item) => {
-                const alturaCalculada = Math.round((item.total / maiorValor) * 145);
-                const selecionada = itemAtivo3D?.natureza === item.natureza;
+            {/* MODO 1: PANORÂMICO 100% TELA CHEIA (SEM ROLAGEM LATERAL) */}
+            {formatoGrafico3D === 'panoramico' ? (
+              <div style={{
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '10px',
+                width: '100%',
+                padding: '4px 0'
+              }}>
+                {dadosNaturezas.map((item) => {
+                  const proporcao = maiorValor > 0 ? item.total / maiorValor : 0;
+                  const selecionada = itemAtivo3D?.natureza === item.natureza;
 
-                return (
-                  <Barra3D
-                    key={item.natureza}
-                    natureza={item.natureza}
-                    total={item.total}
-                    percentual={item.percentualTotal}
-                    cor={item.cor}
-                    alturaPx={alturaCalculada}
-                    selecionada={selecionada}
-                    onSelecionar={() => setNaturezaSelecionada3D(item.natureza)}
-                  />
-                );
-              })}
-            </div>
+                  return (
+                    <BarraHorizontal3D
+                      key={item.natureza}
+                      natureza={item.natureza}
+                      total={item.total}
+                      percentual={item.percentualTotal}
+                      cor={item.cor}
+                      proporcao={proporcao}
+                      selecionada={selecionada}
+                      onSelecionar={() => setNaturezaSelecionada3D(item.natureza)}
+                      subcategorias={item.categorias}
+                    />
+                  );
+                })}
+              </div>
+            ) : (
+              /* MODO 2: BARRAS VERTICAIS 3D (EM COLUNAS) */
+              <div style={{
+                overflowX: 'auto',
+                padding: '10px 4px 16px 4px',
+                display: 'flex',
+                gap: '14px',
+                alignItems: 'flex-end',
+                justifyContent: dadosNaturezas.length <= 4 ? 'space-around' : 'flex-start',
+                WebkitOverflowScrolling: 'touch',
+                minHeight: '270px'
+              }}>
+                {dadosNaturezas.map((item) => {
+                  const alturaCalculada = Math.round((item.total / maiorValor) * 145);
+                  const selecionada = itemAtivo3D?.natureza === item.natureza;
+
+                  return (
+                    <Barra3D
+                      key={item.natureza}
+                      natureza={item.natureza}
+                      total={item.total}
+                      percentual={item.percentualTotal}
+                      cor={item.cor}
+                      alturaPx={alturaCalculada}
+                      selecionada={selecionada}
+                      onSelecionar={() => setNaturezaSelecionada3D(item.natureza)}
+                    />
+                  );
+                })}
+              </div>
+            )}
           </div>
 
           {/* =====================================================
