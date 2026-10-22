@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { useFinanceStore } from '../../stores/financeStore';
-import { Calendar, User, Check, Edit3, X, Upload, Camera, Settings, Moon, Sun } from 'lucide-react';
+import { Calendar, User, Check, Edit3, X, Upload, Camera, Settings, Moon, Sun, RotateCw } from 'lucide-react';
 import { ConfiguracoesBaseModal } from '../configuracoes/ConfiguracoesBaseModal';
 import type { SecaoAtiva } from './Sidebar';
 
@@ -248,6 +248,31 @@ export const Header: React.FC<HeaderProps> = () => {
                 }}
               >
                 {tema === 'dark' ? <Moon size={15} /> : <Sun size={15} />}
+              </button>
+
+              {/* Botão de Atualizar / Recarregar App (Força nova versão) */}
+              <button
+                type="button"
+                onClick={() => {
+                  window.location.reload();
+                }}
+                title="Recarregar e atualizar versão do aplicativo"
+                style={{
+                  width: '32px',
+                  height: '32px',
+                  borderRadius: '10px',
+                  backgroundColor: 'rgba(11, 25, 41, 0.55)',
+                  border: '1px solid rgba(255, 255, 255, 0.18)',
+                  color: '#5090D3',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  cursor: 'pointer',
+                  transition: 'all 0.15s ease',
+                  flexShrink: 0
+                }}
+              >
+                <RotateCw size={15} />
               </button>
 
               {/* Botão de Configurações da Base de Dados (Engrenagem Sempre Visível) */}
