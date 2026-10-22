@@ -83,6 +83,7 @@ interface FinanceState {
   adicionarCompraMercado: (dados: {
     mercadoNome?: string;
     data: string; // YYYY-MM-DD
+    competencia?: string; // MM/YYYY
     valorTotal: number;
     formaPagamento: FormaPagamento;
     cartao?: string;
@@ -481,7 +482,7 @@ export const useFinanceStore = create<FinanceState>((set, get) => {
       const { lancamentos, usuario, adicionarLogRealtime, mostrarToast } = get();
       const dataObj = new Date(dados.data + 'T12:00:00');
       const [ano, mes] = dados.data.split('-');
-      const competencia = `${mes}/${ano}`;
+      const competencia = dados.competencia || `${mes}/${ano}`;
 
       const novoLancamento: Lancamento = {
         id: `mercado_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
@@ -515,12 +516,15 @@ export const useFinanceStore = create<FinanceState>((set, get) => {
       salvarNoStorage(STORAGE_KEY_LANCAMENTOS, novaLista);
       set({ lancamentos: novaLista, ultimoEventoTimestamp: Date.now() });
 
+      // Salva na nuvem Firestore para refletir no PC e Celular
+      FirestoreSyncService.salvarLancamento(usuario.uid || MASTER_UID, novoLancamento);
+
       adicionarLogRealtime(
         '[MEU MERCADO] Compra Integrada',
-        `${dados.mercadoNome || 'Supermercado'}: R$ ${dados.valorTotal.toFixed(2)} (${dados.itens.length} itens).`,
+        `${dados.mercadoNome || 'Supermercado'}: R$ ${dados.valorTotal.toFixed(2)} (${dados.itens.length} itens) em ${competencia}.`,
         'sucesso'
       );
-      mostrarToast(`🛒 Compra de ${dados.mercadoNome || 'Supermercado'} integrada com sucesso!`, 'sucesso');
+      mostrarToast(`🛒 Compra de ${dados.mercadoNome || 'Supermercado'} (R$ ${dados.valorTotal.toFixed(2)}) lançada em ${competencia}!`, 'sucesso');
       return { sucesso: true, mensagem: 'Compra integrada com sucesso' };
     },
 

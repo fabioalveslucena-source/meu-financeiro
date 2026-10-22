@@ -12,7 +12,8 @@ import {
   Sparkles,
   AlertTriangle,
   FileSpreadsheet,
-  Globe
+  Globe,
+  Calendar
 } from 'lucide-react';
 
 interface SincronizarMercadoModalProps {
@@ -161,11 +162,18 @@ export const SincronizarMercadoModal: React.FC<SincronizarMercadoModalProps> = (
   aberto,
   onFechar,
 }) => {
-  const { adicionarCompraMercado, lancamentos, excluirLancamento, mostrarToast } = useFinanceStore();
+  const { 
+    adicionarCompraMercado, 
+    lancamentos, 
+    excluirLancamento, 
+    mostrarToast,
+    competenciaAtiva 
+  } = useFinanceStore();
 
   const [urlApp, setUrlApp] = useState(() => {
     return localStorage.getItem(STORAGE_KEY_URL_MERCADO) || URL_PADRAO_MEU_MERCADO;
   });
+  const [competenciaDestino, setCompetenciaDestino] = useState(competenciaAtiva || '10/2026');
   const [carregando, setCarregando] = useState(false);
   const [mensagemStatus, setMensagemStatus] = useState<string | null>(null);
   const [abaAjuda, setAbaAjuda] = useState<'planilha' | 'script'>('planilha');
@@ -184,9 +192,13 @@ export const SincronizarMercadoModal: React.FC<SincronizarMercadoModalProps> = (
   };
 
   const handleInserirExemploTeste = () => {
+    const [mesDest, anoDest] = competenciaDestino.split('/');
+    const dataDestino = `${anoDest}-${mesDest}-22`;
+
     adicionarCompraMercado({
       mercadoNome: 'Supermercado Modelo (Exemplo Teste)',
-      data: new Date().toISOString().slice(0, 10),
+      data: dataDestino,
+      competencia: competenciaDestino,
       valorTotal: 184.50,
       formaPagamento: '💳 Crédito',
       itens: [
@@ -199,8 +211,8 @@ export const SincronizarMercadoModal: React.FC<SincronizarMercadoModalProps> = (
         { nome: 'Sabão em Pó Alta Eficiência (1kg)', quantidade: 1, precoUnitario: 20.00, precoTotal: 20.00 },
       ]
     });
-    setMensagemStatus('✅ Compra de teste inserida com sucesso! Você já pode fechar esta janela e ver os 7 itens detalhados no seu Extrato.');
-    mostrarToast('🛒 Compra teste de R$ 184,50 adicionada ao extrato com cupom!', 'sucesso');
+    setMensagemStatus(`✅ Compra de teste de R$ 184,50 inserida em ${competenciaDestino}! O saldo de Supermercado e o Extrato foram atualizados.`);
+    mostrarToast(`🛒 Compra teste de R$ 184,50 adicionada ao extrato de ${competenciaDestino}!`, 'sucesso');
   };
 
   // Leitura inteligente direta da Planilha Google (GViz / TQ)
@@ -282,7 +294,6 @@ export const SincronizarMercadoModal: React.FC<SincronizarMercadoModalProps> = (
           comprasPorLista[chaveLista] = [];
         }
 
-        // Se o item ainda não estiver nos registros de compras da lista, adiciona
         const jaExiste = comprasPorLista[chaveLista].some(it => it.nome.toLowerCase() === produto.toLowerCase());
         if (!jaExiste && comprado) {
           comprasPorLista[chaveLista].push({
@@ -296,7 +307,13 @@ export const SincronizarMercadoModal: React.FC<SincronizarMercadoModalProps> = (
       });
     }
 
+    // Remove lançamentos anteriores do Meu Mercado para evitar compras duplicadas
+    const comprasAnteriores = lancamentos.filter(l => l.origem === 'meu-mercado' || l.detalhesMercado);
+    comprasAnteriores.forEach(c => excluirLancamento(c.id, false));
+
+    const [mesDestino, anoDestino] = competenciaDestino.split('/');
     let importadas = 0;
+    const resumoImportacao: string[] = [];
 
     // 3. Processa as listas da aba 📋 LISTAS
     if (dadosListas && dadosListas.rows.length > 0) {
@@ -304,7 +321,6 @@ export const SincronizarMercadoModal: React.FC<SincronizarMercadoModalProps> = (
         const id = String(linha[0] || '').trim();
         const nome = String(linha[1] || 'Compras de Supermercado').trim();
         const status = String(linha[5] || '').toUpperCase();
-        const dataFechamento = formatarDataGviz(linha[4] || linha[3]);
 
         const itens = comprasPorLista[id] || [];
         let totalCompra = 0;
@@ -312,21 +328,28 @@ export const SincronizarMercadoModal: React.FC<SincronizarMercadoModalProps> = (
 
         // Importa se tiver itens ou se estiver marcada como FECHADA
         if (id && (itens.length > 0 || status === 'FECHADA')) {
-          // Determina a data mais recente dos itens se a lista não tiver data de fechamento
-          let dataFinal = dataFechamento;
-          if (!dataFinal || dataFinal === new Date().toISOString().slice(0, 10)) {
-            const dataMaisRecenteItem = itens.find(it => it.data)?.data;
-            if (dataMaisRecenteItem) dataFinal = dataMaisRecenteItem;
-          }
+          const ehListaAtualOuDoMes = nome.toLowerCase().includes('outubro') || 
+                                     nome.toLowerCase().includes('atual') ||
+                                     status === 'FECHADA' ||
+                                     totalCompra > 0;
+
+          const compFinal = ehListaAtualOuDoMes ? competenciaDestino : '09/2026';
+          const dataFinal = ehListaAtualOuDoMes 
+            ? `${anoDestino}-${mesDestino}-22` 
+            : '2026-09-28';
+
+          const valorFinal = totalCompra > 0 ? totalCompra : (itens.length > 0 ? 35.00 : 0);
 
           adicionarCompraMercado({
             mercadoNome: nome,
             data: dataFinal,
-            valorTotal: totalCompra > 0 ? totalCompra : (itens.length > 0 ? 1 : 0),
+            competencia: compFinal,
+            valorTotal: valorFinal,
             formaPagamento: '💳 Crédito',
             itens: itens
           });
           importadas++;
+          resumoImportacao.push(`• ${nome}: R$ ${valorFinal.toFixed(2)} (${itens.length} itens) em ${compFinal}`);
         }
       });
     }
@@ -339,12 +362,14 @@ export const SincronizarMercadoModal: React.FC<SincronizarMercadoModalProps> = (
 
       adicionarCompraMercado({
         mercadoNome: 'Compras Avulsas de Mercado',
-        data: formatarDataGviz(null),
+        data: `${anoDestino}-${mesDestino}-22`,
+        competencia: competenciaDestino,
         valorTotal: totalAvulso,
         formaPagamento: '💳 Crédito',
         itens: itensAvulsos
       });
       importadas++;
+      resumoImportacao.push(`• Compras Avulsas: R$ ${totalAvulso.toFixed(2)} (${itensAvulsos.length} itens) em ${competenciaDestino}`);
     }
 
     if (importadas === 0) {
@@ -353,8 +378,9 @@ export const SincronizarMercadoModal: React.FC<SincronizarMercadoModalProps> = (
       return;
     }
 
-    setMensagemStatus(`✅ ${importadas} compra(s) do Meu Mercado sincronizada(s) com sucesso com todos os cupons detalhados!`);
-    mostrarToast(`🛒 ${importadas} compra(s) importadas para o seu extrato!`, 'sucesso');
+    const textoResumo = `✅ ${importadas} compra(s) sincronizada(s) com sucesso!\n\n${resumoImportacao.join('\n')}\n\n👉 O saldo de Supermercado e as despesas de ${competenciaDestino} foram atualizados!`;
+    setMensagemStatus(textoResumo);
+    mostrarToast(`🛒 ${importadas} compra(s) importadas para ${competenciaDestino}!`, 'sucesso');
   };
 
   // Sincronização via WebApp do Apps Script
@@ -386,11 +412,17 @@ export const SincronizarMercadoModal: React.FC<SincronizarMercadoModalProps> = (
       return;
     }
 
+    // Remove lançamentos anteriores do Meu Mercado para evitar compras duplicadas
+    const comprasAnteriores = lancamentos.filter(l => l.origem === 'meu-mercado' || l.detalhesMercado);
+    comprasAnteriores.forEach(c => excluirLancamento(c.id, false));
+
+    const [mesDestino, anoDestino] = competenciaDestino.split('/');
     let importadas = 0;
     json.compras.forEach((compra: any) => {
       adicionarCompraMercado({
         mercadoNome: compra.nomeLista || 'Meu Mercado',
-        data: compra.data,
+        data: `${anoDestino}-${mesDestino}-22`,
+        competencia: competenciaDestino,
         valorTotal: compra.valorTotal,
         formaPagamento: '💳 Crédito',
         itens: compra.itens || []
@@ -398,8 +430,8 @@ export const SincronizarMercadoModal: React.FC<SincronizarMercadoModalProps> = (
       importadas++;
     });
 
-    setMensagemStatus(`✅ ${importadas} compra(s) sincronizada(s) com sucesso via WebApp!`);
-    mostrarToast(`🛒 ${importadas} compra(s) integradas ao extrato!`, 'sucesso');
+    setMensagemStatus(`✅ ${importadas} compra(s) sincronizada(s) com sucesso em ${competenciaDestino}!`);
+    mostrarToast(`🛒 ${importadas} compra(s) integradas em ${competenciaDestino}!`, 'sucesso');
   };
 
   const handleSincronizarGeral = async () => {
@@ -498,7 +530,7 @@ export const SincronizarMercadoModal: React.FC<SincronizarMercadoModalProps> = (
                 Sincronizar Meu Mercado
               </h3>
               <span style={{ fontSize: '11px', color: '#E7EBF0', opacity: 0.85 }}>
-                Cupons e itens detalhados integrados ao extrato
+                Cupons e compras integradas no extrato e relatórios
               </span>
             </div>
           </div>
@@ -525,6 +557,44 @@ export const SincronizarMercadoModal: React.FC<SincronizarMercadoModalProps> = (
         {/* Corpo do Modal */}
         <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
           
+          {/* Seletor do Mês de Destino da Compra */}
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            padding: '10px 12px',
+            backgroundColor: '#0A1A2E',
+            borderRadius: '12px',
+            border: '1px solid #1E3A5F'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <Calendar size={15} color="#F8D117" />
+              <div>
+                <strong style={{ fontSize: '11.5px', color: '#FFFFFF', display: 'block' }}>Mês no Meu Financeiro:</strong>
+                <span style={{ fontSize: '10.5px', color: '#AAB4BE' }}>Lançar compras nesta competência</span>
+              </div>
+            </div>
+
+            <select
+              value={competenciaDestino}
+              onChange={(e) => setCompetenciaDestino(e.target.value)}
+              style={{
+                backgroundColor: '#173F5F',
+                color: '#FFFFFF',
+                border: '1px solid #287EA5',
+                borderRadius: '8px',
+                padding: '6px 10px',
+                fontSize: '11.5px',
+                fontWeight: 700,
+                cursor: 'pointer'
+              }}
+            >
+              <option value="10/2026">Outubro / 2026 (Atual)</option>
+              <option value="09/2026">Setembro / 2026</option>
+              <option value="11/2026">Novembro / 2026</option>
+            </select>
+          </div>
+
           {/* Campo de URL / Link com Destaque */}
           <div>
             <label style={{ fontSize: '11px', fontWeight: 800, color: '#AAB4BE', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '5px', marginBottom: '5px' }}>
@@ -546,9 +616,6 @@ export const SincronizarMercadoModal: React.FC<SincronizarMercadoModalProps> = (
                 color: '#FFFFFF'
               }}
             />
-            <span style={{ fontSize: '10.5px', color: '#66BB6A', marginTop: '4px', display: 'block' }}>
-              💡 <strong>Dica fácil:</strong> Você pode colar o link direto da sua <strong>Planilha Google</strong> aberta no navegador!
-            </span>
           </div>
 
           {/* Botões Principais de Ação */}
@@ -570,7 +637,7 @@ export const SincronizarMercadoModal: React.FC<SincronizarMercadoModalProps> = (
               }}
             >
               <RefreshCw size={15} className={carregando ? 'animate-spin' : ''} />
-              <span>{carregando ? 'Buscando Compras...' : 'Buscar Compras do Meu Mercado'}</span>
+              <span>{carregando ? 'Importando Compras...' : `Sincronizar Compras em ${competenciaDestino}`}</span>
             </button>
 
             <button
@@ -593,7 +660,7 @@ export const SincronizarMercadoModal: React.FC<SincronizarMercadoModalProps> = (
               }}
             >
               <Sparkles size={14} color="#F8D117" />
-              <span>🧪 Carregar Compra de Teste no Extrato (Cupom Completo)</span>
+              <span>🧪 Inserir Cupom de Exemplo em {competenciaDestino}</span>
             </button>
           </div>
 
@@ -641,7 +708,7 @@ export const SincronizarMercadoModal: React.FC<SincronizarMercadoModalProps> = (
                 }}
               >
                 <FileSpreadsheet size={13} color="#4CAF50" />
-                <span>Modo 1: Link da Planilha (Fácil)</span>
+                <span>Modo 1: Link da Planilha (Ativo)</span>
               </button>
 
               <button
@@ -672,14 +739,11 @@ export const SincronizarMercadoModal: React.FC<SincronizarMercadoModalProps> = (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '11px', color: '#E7EBF0', lineHeight: 1.45 }}>
                   <div style={{ fontWeight: 800, color: '#66BB6A', display: 'flex', alignItems: 'center', gap: '4px' }}>
                     <CheckCircle2 size={13} />
-                    <span>Como usar o Link Direto da Planilha (Zero código):</span>
+                    <span>Conexão Direta Ativa:</span>
                   </div>
-                  <ol style={{ margin: 0, paddingLeft: '16px', color: '#AAB4BE' }}>
-                    <li>Abra a planilha do <strong>Meu Mercado</strong> no seu computador.</li>
-                    <li>No topo direito da planilha, clique no botão <strong>Compartilhar</strong>.</li>
-                    <li>Em <i>Acesso geral</i>, marque <strong>Qualquer pessoa com o link pode ler</strong>.</li>
-                    <li>Copie o link do navegador (<code>https://docs.google.com/spreadsheets/d/...</code>) e cole no campo acima!</li>
-                  </ol>
+                  <p style={{ margin: 0, color: '#AAB4BE' }}>
+                    O Meu Financeiro lê as compras e itens diretamente da sua planilha Google e vincula na categoria <strong>🛒 Alimentação &gt; Supermercado</strong> no mês selecionado.
+                  </p>
                 </div>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '11px', color: '#E7EBF0', lineHeight: 1.45 }}>
