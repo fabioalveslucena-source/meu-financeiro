@@ -20,13 +20,43 @@ export interface UseVoiceRecognitionReturn {
   limparResultado: () => void;
 }
 
+/**
+ * Remove duplicações consecutivas causadas por bugs de streaming no Android WebView
+ */
+function removerRepeticoes(texto: string): string {
+  if (!texto) return '';
+  const trimmed = texto.trim();
+  const partes = trimmed.split(/\s+/);
+  
+  // Se houver repetição exata da frase inteira (ex: "A B C A B C")
+  if (partes.length >= 4 && partes.length % 2 === 0) {
+    const meio = partes.length / 2;
+    const p1 = partes.slice(0, meio).join(' ');
+    const p2 = partes.slice(meio).join(' ');
+    if (p1.toLowerCase() === p2.toLowerCase()) {
+      return p1;
+    }
+  }
+
+  // Filtrar palavras consecutivas duplicadas (ex: "cimento cimento")
+  const filtradas: string[] = [];
+  for (let i = 0; i < partes.length; i++) {
+    if (i === 0 || partes[i].toLowerCase() !== partes[i - 1].toLowerCase()) {
+      filtradas.push(partes[i]);
+    }
+  }
+  return filtradas.join(' ');
+}
+
 export function useVoiceRecognition(onResultadoFinal?: (res: VozInterpretada) => void): UseVoiceRecognitionReturn {
   const [estaOuvindo, setEstaOuvindo] = useState(false);
   const [transcricao, setTranscricao] = useState('');
   const [resultado, setResultado] = useState<VozInterpretada | null>(null);
   const [erro, setErro] = useState<string | null>(null);
+
   const recognitionRef = useRef<any>(null);
-  const silencioTimerRef = useRef<any>(null);
+  const debounceTimerRef = useRef<any>(null);
+  const maxTimerRef = useRef<any>(null);
   const textoAtualRef = useRef<string>('');
 
   const SpeechRecognition = typeof window !== 'undefined' 
@@ -35,15 +65,34 @@ export function useVoiceRecognition(onResultadoFinal?: (res: VozInterpretada) =>
 
   const suportado = Boolean(SpeechRecognition);
 
-  const limparTimerSilencio = useCallback(() => {
-    if (silencioTimerRef.current) {
-      clearTimeout(silencioTimerRef.current);
-      silencioTimerRef.current = null;
+  const limparTimers = useCallback(() => {
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+      debounceTimerRef.current = null;
+    }
+    if (maxTimerRef.current) {
+      clearTimeout(maxTimerRef.current);
+      maxTimerRef.current = null;
     }
   }, []);
 
+  const finalizarComTexto = useCallback((texto: string) => {
+    const textoLimpo = removerRepeticoes(texto);
+    if (!textoLimpo) return;
+
+    try {
+      const interpretado = interpretarComandoVoz(textoLimpo);
+      setResultado(interpretado);
+      if (onResultadoFinal && interpretado.sucesso) {
+        onResultadoFinal(interpretado);
+      }
+    } catch (e) {
+      console.error('Erro ao interpretar comando de voz:', e);
+    }
+  }, [onResultadoFinal]);
+
   const pararGravacao = useCallback(() => {
-    limparTimerSilencio();
+    limparTimers();
     if (recognitionRef.current) {
       try {
         recognitionRef.current.stop();
@@ -51,16 +100,11 @@ export function useVoiceRecognition(onResultadoFinal?: (res: VozInterpretada) =>
     }
     setEstaOuvindo(false);
 
-    // Finalizar com o texto acumulado até o momento
-    const textoFinal = textoAtualRef.current.trim();
-    if (textoFinal) {
-      const interpretado = interpretarComandoVoz(textoFinal);
-      setResultado(interpretado);
-      if (onResultadoFinal && interpretado.sucesso) {
-        onResultadoFinal(interpretado);
-      }
+    const texto = textoAtualRef.current;
+    if (texto) {
+      finalizarComTexto(texto);
     }
-  }, [limparTimerSilencio, onResultadoFinal]);
+  }, [limparTimers, finalizarComTexto]);
 
   const iniciarGravacao = useCallback(() => {
     if (!SpeechRecognition) {
@@ -68,7 +112,7 @@ export function useVoiceRecognition(onResultadoFinal?: (res: VozInterpretada) =>
       return;
     }
 
-    limparTimerSilencio();
+    limparTimers();
     setErro(null);
     setTranscricao('');
     setResultado(null);
@@ -77,7 +121,10 @@ export function useVoiceRecognition(onResultadoFinal?: (res: VozInterpretada) =>
     try {
       const recognition = new SpeechRecognition();
       recognition.lang = 'pt-BR';
-      recognition.continuous = true; // Permite pausas naturais entre palavras
+      
+      // No Android WebView e mobile, continuous=false é crucial para evitar loop infinito de buffers
+      const isMobile = typeof navigator !== 'undefined' && /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+      recognition.continuous = !isMobile;
       recognition.interimResults = true;
       recognition.maxAlternatives = 1;
 
@@ -86,77 +133,87 @@ export function useVoiceRecognition(onResultadoFinal?: (res: VozInterpretada) =>
       };
 
       recognition.onresult = (event: any) => {
-        let textoCompleto = '';
+        let textoFinal = '';
+        let textoInterim = '';
+
         for (let i = 0; i < event.results.length; i++) {
-          textoCompleto += event.results[i][0].transcript + ' ';
-        }
-        textoCompleto = textoCompleto.trim();
-        textoAtualRef.current = textoCompleto;
-        setTranscricao(textoCompleto);
-
-        // Interpretar em tempo real para o usuário visualizar o entendimento instantâneo
-        const interpretado = interpretarComandoVoz(textoCompleto);
-        if (interpretado.sucesso || textoCompleto.length > 5) {
-          setResultado(interpretado);
+          const res = event.results[i];
+          if (res.isFinal) {
+            textoFinal += res[0].transcript + ' ';
+          } else {
+            textoInterim += res[0].transcript + ' ';
+          }
         }
 
-        // Renovar timer de pausa: aguarda 1.8 segundos de silêncio antes de finalizar automaticamente
-        limparTimerSilencio();
-        silencioTimerRef.current = setTimeout(() => {
-          pararGravacao();
-        }, 1800);
+        const textoBruto = (textoFinal + textoInterim).trim();
+        const textoProcessado = removerRepeticoes(textoBruto);
+        textoAtualRef.current = textoProcessado;
+        setTranscricao(textoProcessado);
+
+        // Debounce da interpretação para não travar a thread UI no celular
+        if (debounceTimerRef.current) {
+          clearTimeout(debounceTimerRef.current);
+        }
+        debounceTimerRef.current = setTimeout(() => {
+          if (textoAtualRef.current) {
+            finalizarComTexto(textoAtualRef.current);
+          }
+        }, 220);
       };
 
       recognition.onerror = (event: any) => {
-        console.error('Erro no reconhecimento de voz:', event.error);
+        console.warn('SpeechRecognition erro:', event.error);
         if (event.error === 'not-allowed') {
-          setErro('Permissão de microfone negada. Conceda acesso nas configurações do navegador.');
+          setErro('Permissão de microfone negada. Conceda acesso nas permissões do app.');
         } else if (event.error === 'no-speech') {
-          // No-speech é ignorado suavemente se houver texto já falado
           if (!textoAtualRef.current) {
-            setErro('Nenhuma fala detectada. Clique no microfone e tente falar novamente.');
+            setErro('Nenhuma fala detectada. Toque no microfone e fale perto do celular.');
           }
         } else {
-          setErro(`Erro no microfone: ${event.error}`);
+          setErro(`Microfone: ${event.error}`);
         }
         setEstaOuvindo(false);
       };
 
       recognition.onend = () => {
         setEstaOuvindo(false);
-        // Garantir que a transcrição final é processada
-        const finalTexto = textoAtualRef.current.trim();
-        if (finalTexto) {
-          const interpretado = interpretarComandoVoz(finalTexto);
-          setResultado(interpretado);
+        if (textoAtualRef.current) {
+          finalizarComTexto(textoAtualRef.current);
         }
       };
+
+      // Watchdog de segurança: máximo 12 segundos gravando para não prender o usuário
+      maxTimerRef.current = setTimeout(() => {
+        pararGravacao();
+      }, 12000);
 
       recognitionRef.current = recognition;
       recognition.start();
     } catch (err: any) {
       console.error('Falha ao iniciar SpeechRecognition:', err);
-      setErro('Não foi possível iniciar o microfone.');
+      setErro('Não foi possível iniciar o microfone no momento.');
       setEstaOuvindo(false);
     }
-  }, [SpeechRecognition, limparTimerSilencio, pararGravacao]);
+  }, [SpeechRecognition, limparTimers, pararGravacao, finalizarComTexto]);
 
   const limparResultado = useCallback(() => {
-    limparTimerSilencio();
+    limparTimers();
     textoAtualRef.current = '';
     setTranscricao('');
     setResultado(null);
     setErro(null);
-  }, [limparTimerSilencio]);
+  }, [limparTimers]);
 
   useEffect(() => {
     return () => {
-      limparTimerSilencio();
+      limparTimers();
       if (recognitionRef.current) {
-        recognitionRef.current.abort();
+        try {
+          recognitionRef.current.abort();
+        } catch (_) {}
       }
     };
-  }, [limparTimerSilencio]);
+  }, [limparTimers]);
 
   return {
     estaOuvindo,

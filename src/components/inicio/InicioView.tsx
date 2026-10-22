@@ -470,51 +470,55 @@ export const InicioView: React.FC<InicioViewProps> = ({
             </div>
 
             {/* Parcelamentos do Cartão (Acordeão Retrátil) */}
-            {cartaoPrincipalResumo.parcelamentos.length > 0 && (
-              <div style={{ marginTop: '16px', paddingTop: '12px', borderTop: '1px solid #1E3A5F' }}>
-                <button
-                  type="button"
-                  onClick={() => setMostrarParcelamentos(!mostrarParcelamentos)}
-                  style={{
-                    width: '100%',
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    padding: '8px 12px',
-                    borderRadius: '10px',
-                    backgroundColor: mostrarParcelamentos ? 'rgba(80, 144, 211, 0.12)' : '#132F4C',
-                    border: mostrarParcelamentos ? '1px solid #5090D3' : '1px solid #1E3A5F',
-                    cursor: 'pointer',
-                    transition: 'all 0.2s ease'
-                  }}
-                >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <span style={{ fontSize: '13px' }}>📦</span>
-                    <span style={{ fontSize: '11px', fontWeight: 800, color: '#E7EBF0', textTransform: 'uppercase', letterSpacing: '0.4px' }}>
-                      Parcelamentos em Aberto
-                    </span>
-                    <span style={{
-                      fontSize: '10px',
-                      fontWeight: 800,
-                      padding: '2px 7px',
-                      borderRadius: '12px',
-                      backgroundColor: 'rgba(192, 132, 252, 0.2)',
-                      border: '1px solid rgba(192, 132, 252, 0.4)',
-                      color: '#C084FC'
-                    }}>
-                      {cartaoPrincipalResumo.parcelamentos.length}
-                    </span>
-                  </div>
+            <div style={{ marginTop: '16px', paddingTop: '12px', borderTop: '1px solid #1E3A5F' }}>
+              <button
+                type="button"
+                onClick={() => setMostrarParcelamentos(!mostrarParcelamentos)}
+                style={{
+                  width: '100%',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  padding: '8px 12px',
+                  borderRadius: '10px',
+                  backgroundColor: mostrarParcelamentos ? 'rgba(80, 144, 211, 0.12)' : '#132F4C',
+                  border: mostrarParcelamentos ? '1px solid #5090D3' : '1px solid #1E3A5F',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease'
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span style={{ fontSize: '13px' }}>📦</span>
+                  <span style={{ fontSize: '11px', fontWeight: 800, color: '#E7EBF0', textTransform: 'uppercase', letterSpacing: '0.4px' }}>
+                    Parcelamentos em Aberto
+                  </span>
+                  <span style={{
+                    fontSize: '10px',
+                    fontWeight: 800,
+                    padding: '2px 7px',
+                    borderRadius: '12px',
+                    backgroundColor: 'rgba(192, 132, 252, 0.2)',
+                    border: '1px solid rgba(192, 132, 252, 0.4)',
+                    color: '#C084FC'
+                  }}>
+                    {cartaoPrincipalResumo.parcelamentos.length}
+                  </span>
+                </div>
 
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#5090D3', fontSize: '11px', fontWeight: 700 }}>
-                    <span>{mostrarParcelamentos ? 'Recolher' : 'Ver parcelas'}</span>
-                    {mostrarParcelamentos ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-                  </div>
-                </button>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#5090D3', fontSize: '11px', fontWeight: 700 }}>
+                  <span>{mostrarParcelamentos ? 'Recolher' : 'Ver parcelas'}</span>
+                  {mostrarParcelamentos ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                </div>
+              </button>
 
-                {mostrarParcelamentos && (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '10px' }} className="animate-fade-in">
-                    {cartaoPrincipalResumo.parcelamentos.map((p, idx) => (
+              {mostrarParcelamentos && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '10px' }} className="animate-fade-in">
+                  {cartaoPrincipalResumo.parcelamentos.length === 0 ? (
+                    <div style={{ padding: '10px', textAlign: 'center', fontSize: '12px', color: '#AAB4BE' }}>
+                      Nenhum parcelamento ativo registrado nesta competência.
+                    </div>
+                  ) : (
+                    cartaoPrincipalResumo.parcelamentos.map((p, idx) => (
                       <div key={idx} style={{
                         display: 'flex',
                         justifyContent: 'space-between',
@@ -541,11 +545,11 @@ export const InicioView: React.FC<InicioViewProps> = ({
                           <strong style={{ color: '#E7EBF0' }}>{formatarMoeda(p.valorParcela)}</strong>
                         </div>
                       </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
+                    ))
+                  )}
+                </div>
+              )}
+            </div>
           </div>
         );
       })()}
@@ -569,30 +573,39 @@ export const InicioView: React.FC<InicioViewProps> = ({
             justifyContent: 'space-between', 
             alignItems: 'center', 
             cursor: 'pointer',
-            userSelect: 'none'
+            userSelect: 'none',
+            gap: '8px'
           }}
         >
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <h3 style={{ fontSize: '15px', fontWeight: 800, margin: 0, color: '#FFFFFF' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
+            <h3 style={{ 
+              fontSize: '15px', 
+              fontWeight: 800, 
+              margin: 0, 
+              color: '#FFFFFF',
+              whiteSpace: 'nowrap',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis'
+            }}>
               Últimas Movimentações
             </h3>
-            <span style={{ 
-              fontSize: '11px', 
-              color: '#82B1FF', 
-              backgroundColor: 'rgba(40, 126, 165, 0.2)', 
-              padding: '2px 8px', 
-              borderRadius: '6px',
-              fontWeight: 700 
-            }}>
-              {ultimosLancamentos.length} recentes
-            </span>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <span style={{ fontSize: '12px', color: '#5090D3', fontWeight: 700 }}>
-              {mostrarUltimasMovimentacoes ? 'Recolher' : 'Ver movimentações'}
-            </span>
-            {mostrarUltimasMovimentacoes ? <ChevronUp size={18} color="#5090D3" /> : <ChevronDown size={18} color="#5090D3" />}
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '5px',
+            backgroundColor: 'rgba(80, 144, 211, 0.15)',
+            border: '1px solid rgba(80, 144, 211, 0.3)',
+            padding: '4px 10px',
+            borderRadius: '12px',
+            color: '#5090D3',
+            fontSize: '11.5px',
+            fontWeight: 700,
+            flexShrink: 0
+          }}>
+            <span>{mostrarUltimasMovimentacoes ? 'Fechar' : `Ver (${ultimosLancamentos.length})`}</span>
+            {mostrarUltimasMovimentacoes ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
           </div>
         </div>
 

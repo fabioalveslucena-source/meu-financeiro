@@ -1,8 +1,16 @@
 import React, { useState } from 'react';
 import { useFinanceStore } from '../../stores/financeStore';
-import { formatarMoeda } from '../../lib/formatters';
-import { ChevronDown, ChevronUp, Layers, PieChart as PieIcon, ArrowUpRight, ArrowDownRight, TrendingUp } from 'lucide-react';
-import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip } from 'recharts';
+import { formatarMoeda, formatarData } from '../../lib/formatters';
+import { 
+  ChevronDown, 
+  ChevronUp, 
+  Layers, 
+  BarChart3, 
+  ArrowUpRight, 
+  ArrowDownRight, 
+  TrendingUp,
+  Receipt
+} from 'lucide-react';
 
 const CORES_NATUREZA: Record<string, string> = {
   '🏢 Imóveis': '#1976D2',
@@ -21,16 +29,222 @@ const CORES_NATUREZA: Record<string, string> = {
   '📦 Outros': '#84CC16',
 };
 
+// Componente para desenhar cada Barra 3D com efeito isométrico e iluminação realista
+interface Barra3DProps {
+  natureza: string;
+  total: number;
+  percentual: number;
+  cor: string;
+  alturaPx: number;
+  selecionada: boolean;
+  onSelecionar: () => void;
+}
+
+const Barra3D: React.FC<Barra3DProps> = ({
+  natureza,
+  total,
+  percentual,
+  cor,
+  alturaPx,
+  selecionada,
+  onSelecionar,
+}) => {
+  // Ajuste de altura mínima visível
+  const h = Math.max(16, alturaPx);
+  const largura = 44;
+  const profundidade = 14;
+
+  const emoji = natureza.split(' ')[0] || '🏷️';
+  const labelCurto = natureza.replace(/^[^\w\s]+\s*/, '').trim();
+
+  return (
+    <div
+      onClick={onSelecionar}
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        cursor: 'pointer',
+        userSelect: 'none',
+        transition: 'transform 0.2s ease',
+        transform: selecionada ? 'translateY(-6px)' : 'none',
+        flexShrink: 0,
+        width: '68px'
+      }}
+      title={`Clique para ver detalhes de ${natureza}: ${formatarMoeda(total)} (${percentual.toFixed(1)}%)`}
+    >
+      {/* Informações Superiores: Valor e Porcentagem no Topo da Barra */}
+      <div style={{
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        marginBottom: '6px',
+        backgroundColor: selecionada ? 'rgba(248, 209, 23, 0.25)' : 'rgba(11, 25, 41, 0.75)',
+        border: `1px solid ${selecionada ? '#F8D117' : 'rgba(255, 255, 255, 0.15)'}`,
+        padding: '3px 6px',
+        borderRadius: '8px',
+        boxShadow: selecionada ? '0 0 10px rgba(248, 209, 23, 0.4)' : 'none',
+        transition: 'all 0.2s ease',
+        minWidth: '58px'
+      }}>
+        <span style={{
+          fontSize: '10.5px',
+          fontWeight: 900,
+          color: selecionada ? '#F8D117' : '#FFFFFF',
+          whiteSpace: 'nowrap'
+        }}>
+          {formatarMoeda(total).replace('R$', '').trim()}
+        </span>
+        <span style={{
+          fontSize: '9px',
+          fontWeight: 800,
+          color: selecionada ? '#FFFFFF' : '#AAB4BE'
+        }}>
+          {percentual.toFixed(0)}%
+        </span>
+      </div>
+
+      {/* SVG da Barra em Estilo 3D Isométrico com Faces Chanfradas e Sombra */}
+      <div style={{ height: '170px', display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
+        <svg
+          width={largura + profundidade + 6}
+          height={h + profundidade + 10}
+          viewBox={`0 0 ${largura + profundidade + 6} ${h + profundidade + 10}`}
+          style={{ overflow: 'visible', filter: selecionada ? `drop-shadow(0 0 8px ${cor})` : 'none' }}
+        >
+          <defs>
+            {/* Gradiente Frontal */}
+            <linearGradient id={`gradFront-${cor.replace('#', '')}`} x1="0%" y1="0%" x2="0%" y2="100%">
+              <stop offset="0%" stopColor={cor} stopOpacity="1" />
+              <stop offset="100%" stopColor="#0B1C2E" stopOpacity="0.85" />
+            </linearGradient>
+
+            {/* Gradiente Lateral (Face 3D de Profundidade com Sombra) */}
+            <linearGradient id={`gradSide-${cor.replace('#', '')}`} x1="0%" y1="0%" x2="100%" y2="0%">
+              <stop offset="0%" stopColor="#000000" stopOpacity="0.35" />
+              <stop offset="100%" stopColor="#000000" stopOpacity="0.75" />
+            </linearGradient>
+
+            {/* Sombra de Chão */}
+            <radialGradient id={`gradFloor-${cor.replace('#', '')}`} cx="50%" cy="50%" r="50%">
+              <stop offset="0%" stopColor="#000000" stopOpacity="0.6" />
+              <stop offset="100%" stopColor="#000000" stopOpacity="0" />
+            </radialGradient>
+          </defs>
+
+          {/* Sombra da base no chão */}
+          <ellipse
+            cx={largura / 2 + 4}
+            cy={h + profundidade + 4}
+            rx={largura / 2 + 4}
+            ry={profundidade / 2}
+            fill={`url(#gradFloor-${cor.replace('#', '')})`}
+          />
+
+          {/* Face Frontal da Barra 3D */}
+          <rect
+            x={4}
+            y={profundidade + 4}
+            width={largura}
+            height={h}
+            fill={`url(#gradFront-${cor.replace('#', '')})`}
+            stroke={selecionada ? '#F8D117' : cor}
+            strokeWidth={selecionada ? 2 : 1}
+          />
+
+          {/* Linhas de reflexo e brilho 3D no canto esquerdo da face frontal */}
+          <line
+            x1={6}
+            y1={profundidade + 5}
+            x2={6}
+            y2={profundidade + h + 3}
+            stroke="rgba(255, 255, 255, 0.45)"
+            strokeWidth={1.5}
+          />
+
+          {/* Face Lateral Direita 3D (Extrusão Isométrica) */}
+          <polygon
+            points={`
+              ${largura + 4},${profundidade + 4}
+              ${largura + profundidade + 4},4
+              ${largura + profundidade + 4},${h + 4}
+              ${largura + 4},${h + profundidade + 4}
+            `}
+            fill={cor}
+          />
+          <polygon
+            points={`
+              ${largura + 4},${profundidade + 4}
+              ${largura + profundidade + 4},4
+              ${largura + profundidade + 4},${h + 4}
+              ${largura + 4},${h + profundidade + 4}
+            `}
+            fill={`url(#gradSide-${cor.replace('#', '')})`}
+            stroke={selecionada ? '#F8D117' : 'rgba(0, 0, 0, 0.4)'}
+            strokeWidth={selecionada ? 1.5 : 0.8}
+          />
+
+          {/* Topo 3D da Barra (Tampa Superior Isométrica Iluminada) */}
+          <polygon
+            points={`
+              4,${profundidade + 4}
+              ${profundidade + 4},4
+              ${largura + profundidade + 4},4
+              ${largura + 4},${profundidade + 4}
+            `}
+            fill={cor}
+          />
+          <polygon
+            points={`
+              4,${profundidade + 4}
+              ${profundidade + 4},4
+              ${largura + profundidade + 4},4
+              ${largura + 4},${profundidade + 4}
+            `}
+            fill="rgba(255, 255, 255, 0.45)"
+            stroke={selecionada ? '#FFFFFF' : 'rgba(255, 255, 255, 0.6)'}
+            strokeWidth={selecionada ? 2 : 1}
+          />
+        </svg>
+      </div>
+
+      {/* Ícone e Rótulo da Natureza na Base */}
+      <div style={{
+        marginTop: '8px',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        textAlign: 'center',
+        width: '100%'
+      }}>
+        <span style={{ fontSize: '18px' }}>{emoji}</span>
+        <span style={{
+          fontSize: '10px',
+          fontWeight: 800,
+          color: selecionada ? '#F8D117' : '#FFFFFF',
+          whiteSpace: 'nowrap',
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+          maxWidth: '68px',
+          marginTop: '2px'
+        }}>
+          {labelCurto}
+        </span>
+      </div>
+    </div>
+  );
+};
+
 export const AnalisesView: React.FC = () => {
   const { lancamentos, competenciaAtiva, obterResumoLivroCaixa } = useFinanceStore();
   const resumo = obterResumoLivroCaixa(competenciaAtiva);
 
-  // Aba selecionada: 'lista' (detalhamento por natureza) ou 'pizza' (gráfico de pizza/donut)
-  const [abaVisualizacao, setAbaVisualizacao] = useState<'lista' | 'pizza'>('lista');
+  // Aba selecionada: 'grafico3d' (gráfico de barras 3D com detalhamento) ou 'lista' (accordion de todas as naturezas)
+  const [abaVisualizacao, setAbaVisualizacao] = useState<'grafico3d' | 'lista'>('grafico3d');
 
   // Estado para armazenar quais naturezas estão expandidas no accordion
   const [naturezasExpandidas, setNaturezasExpandidas] = useState<Record<string, boolean>>({
-    '🏠 Moradia': true, // Moradia começa expandida por padrão para conveniência
+    '🏠 Moradia': true,
   });
 
   const alternarNatureza = (nome: string) => {
@@ -111,6 +325,22 @@ export const AnalisesView: React.FC = () => {
     })
     .sort((a, b) => b.total - a.total);
 
+  // Natureza selecionada para abrir detalhamento ao clicar na barra 3D
+  const [naturezaSelecionada3D, setNaturezaSelecionada3D] = useState<string>(
+    dadosNaturezas[0]?.natureza || ''
+  );
+
+  // Se a natureza ativa não existir na lista filtrada, ajusta para a primeira
+  const itemAtivo3D = dadosNaturezas.find(n => n.natureza === naturezaSelecionada3D) || dadosNaturezas[0];
+
+  // Maior valor para cálculo proporcional de altura das barras (máximo 150px)
+  const maiorValor = dadosNaturezas.length > 0 ? Math.max(...dadosNaturezas.map(d => d.total)) : 1;
+
+  // Lançamentos específicos da natureza selecionada
+  const lancamentosDaNatureza = itemAtivo3D 
+    ? despesasMes.filter(l => l.natureza === itemAtivo3D.natureza)
+    : [];
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
       
@@ -123,139 +353,173 @@ export const AnalisesView: React.FC = () => {
         gap: '12px'
       }}>
         <div>
-          <h2 style={{ fontSize: '1.4rem', fontWeight: 800, margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <h2 style={{ fontSize: '1.35rem', fontWeight: 900, margin: 0, display: 'flex', alignItems: 'center', gap: '8px', color: '#FFFFFF' }}>
             <Layers size={22} color="#5090D3" />
-            Detalhamento por Natureza de Gastos
+            Análise Financeira & Naturezas
           </h2>
-          <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', margin: '4px 0 0 0' }}>
-            Clique em cada natureza para ver suas categorias, percentuais e barras de progresso • {competenciaAtiva}
+          <p style={{ fontSize: '0.85rem', color: '#AAB4BE', margin: '4px 0 0 0' }}>
+            Consumo setorial, gráficos tridimensionais e auditoria • {competenciaAtiva}
           </p>
         </div>
 
-        <div style={{ display: 'flex', gap: '8px' }}>
-          <button
-            type="button"
-            onClick={expandirTodas}
-            className="btn-secondary"
-            style={{ padding: '6px 12px', fontSize: '12px', fontWeight: 700 }}
-          >
-            Expandir Todas
-          </button>
-          <button
-            type="button"
-            onClick={recolherTodas}
-            className="btn-secondary"
-            style={{ padding: '6px 12px', fontSize: '12px', fontWeight: 700 }}
-          >
-            Recolher Todas
-          </button>
-        </div>
+        {abaVisualizacao === 'lista' && (
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <button
+              type="button"
+              onClick={expandirTodas}
+              className="btn-secondary"
+              style={{ padding: '6px 12px', fontSize: '12px', fontWeight: 700 }}
+            >
+              Expandir Todas
+            </button>
+            <button
+              type="button"
+              onClick={recolherTodas}
+              className="btn-secondary"
+              style={{ padding: '6px 12px', fontSize: '12px', fontWeight: 700 }}
+            >
+              Recolher Todas
+            </button>
+          </div>
+        )}
       </div>
 
       {/* =====================================================
-           📈 RESUMO DO MÊS: RECEITAS, DESPESAS E SALDO
+           📈 BLOCO RESPONSIVO DE 4 CARDS (GRID 2x2)
+           Linha 1: Receitas do Mês + Despesas do Mês
+           Linha 2: Saldo do Mês + Total de Despesas do Mês
          ===================================================== */}
       <div style={{
         display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
-        gap: '12px'
+        gridTemplateColumns: 'repeat(2, 1fr)',
+        gap: '10px'
       }}>
-        {/* Receitas */}
-        <div className="card" style={{
-          padding: '16px',
-          background: 'rgba(76, 175, 80, 0.08)',
-          border: '1px solid rgba(76, 175, 80, 0.3)',
-          boxShadow: '0 4px 12px rgba(23, 63, 95, 0.15)'
+        {/* Linha 1 - Card 1: Receitas do Mês */}
+        <div style={{
+          padding: '14px 12px',
+          borderRadius: '16px',
+          background: 'linear-gradient(135deg, rgba(76, 175, 80, 0.16) 0%, rgba(20, 80, 35, 0.28) 100%)',
+          border: '1.5px solid #4CAF50',
+          boxShadow: '0 4px 14px rgba(76, 175, 80, 0.2)',
+          minWidth: 0
         }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <span style={{ fontSize: '11px', fontWeight: 800, color: '#4CAF50', textTransform: 'uppercase' }}>
               Receitas do Mês
             </span>
-            <ArrowUpRight size={16} color="#4CAF50" />
+            <ArrowUpRight size={15} color="#4CAF50" />
           </div>
-          <div style={{ fontSize: '20px', fontWeight: 900, color: '#4CAF50' }}>
+          <div style={{ 
+            marginTop: '4px', 
+            fontSize: 'clamp(14px, 4vw, 19px)', 
+            fontWeight: 900, 
+            color: '#4CAF50',
+            whiteSpace: 'nowrap',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis'
+          }}>
             {formatarMoeda(resumo.totalReceitas)}
           </div>
-          <span style={{ fontSize: '10px', color: '#AAB4BE' }}>Entradas confirmadas</span>
+          <span style={{ fontSize: '9.5px', color: '#B0BEC5', display: 'block', marginTop: '2px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+            Entradas confirmadas
+          </span>
         </div>
 
-        {/* Despesas */}
-        <div className="card" style={{
-          padding: '16px',
-          background: 'rgba(244, 67, 54, 0.08)',
-          border: '1px solid rgba(244, 67, 54, 0.3)',
-          boxShadow: '0 4px 12px rgba(23, 63, 95, 0.15)'
+        {/* Linha 1 - Card 2: Despesas do Mês */}
+        <div style={{
+          padding: '14px 12px',
+          borderRadius: '16px',
+          background: 'linear-gradient(135deg, rgba(244, 67, 54, 0.16) 0%, rgba(100, 20, 20, 0.28) 100%)',
+          border: '1.5px solid #F44336',
+          boxShadow: '0 4px 14px rgba(244, 67, 54, 0.2)',
+          minWidth: 0
         }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <span style={{ fontSize: '11px', fontWeight: 800, color: '#F44336', textTransform: 'uppercase' }}>
               Despesas do Mês
             </span>
-            <ArrowDownRight size={16} color="#F44336" />
+            <ArrowDownRight size={15} color="#F44336" />
           </div>
-          <div style={{ fontSize: '20px', fontWeight: 900, color: '#F44336' }}>
+          <div style={{ 
+            marginTop: '4px', 
+            fontSize: 'clamp(14px, 4vw, 19px)', 
+            fontWeight: 900, 
+            color: '#F44336',
+            whiteSpace: 'nowrap',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis'
+          }}>
             {formatarMoeda(resumo.totalDespesas)}
           </div>
-          <span style={{ fontSize: '10px', color: '#AAB4BE' }}>Total de saídas</span>
+          <span style={{ fontSize: '9.5px', color: '#B0BEC5', display: 'block', marginTop: '2px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+            Total de saídas
+          </span>
         </div>
 
-        {/* Saldo Líquido do Mês */}
-        <div className="card" style={{
-          padding: '16px',
-          background: 'rgba(40, 126, 165, 0.18)',
-          border: '1px solid #287EA5',
-          boxShadow: '0 4px 12px rgba(23, 63, 95, 0.25)'
+        {/* Linha 2 - Card 3: Saldo do Mês */}
+        <div style={{
+          padding: '14px 12px',
+          borderRadius: '16px',
+          background: 'linear-gradient(135deg, rgba(40, 126, 165, 0.18) 0%, rgba(15, 50, 100, 0.3) 100%)',
+          border: '1.5px solid #287EA5',
+          boxShadow: '0 4px 14px rgba(40, 126, 165, 0.25)',
+          minWidth: 0
         }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
-            <span style={{ fontSize: '11px', fontWeight: 800, color: '#287EA5', textTransform: 'uppercase' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <span style={{ fontSize: '11px', fontWeight: 800, color: '#5090D3', textTransform: 'uppercase' }}>
               Saldo do Mês
             </span>
-            <TrendingUp size={16} color="#287EA5" />
+            <TrendingUp size={15} color="#5090D3" />
           </div>
           <div style={{
-            fontSize: '20px',
+            marginTop: '4px',
+            fontSize: 'clamp(14px, 4vw, 19px)',
             fontWeight: 900,
-            color: resumo.saldoFinal >= 0 ? '#E7EBF0' : '#F44336'
+            color: resumo.saldoFinal >= 0 ? '#F8D117' : '#F44336',
+            whiteSpace: 'nowrap',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis'
           }}>
             {formatarMoeda(resumo.saldoFinal)}
           </div>
-          <span style={{ fontSize: '10px', color: '#AAB4BE' }}>Balanço do período</span>
-        </div>
-      </div>
-
-      {/* Card de Resumo de Despesas no Mês */}
-      <div style={{
-        backgroundColor: '#0F2744',
-        border: '1px solid #1E3A5F',
-        borderRadius: '16px',
-        padding: '16px 20px',
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        flexWrap: 'wrap',
-        gap: '12px'
-      }}>
-        <div>
-          <span style={{ fontSize: '11px', fontWeight: 800, color: '#AAB4BE', textTransform: 'uppercase', letterSpacing: '0.6px' }}>
-            Total de Despesas do Mês ({competenciaAtiva})
+          <span style={{ fontSize: '9.5px', color: '#B0BEC5', display: 'block', marginTop: '2px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+            Balanço do período
           </span>
-          <div style={{ fontSize: '24px', fontWeight: 900, color: '#F44336', marginTop: '2px' }}>
+        </div>
+
+        {/* Linha 2 - Card 4: Total de Despesas do Mês */}
+        <div style={{
+          padding: '14px 12px',
+          borderRadius: '16px',
+          background: 'linear-gradient(135deg, #0F2744 0%, #132F4C 100%)',
+          border: '1.5px solid #1E3A5F',
+          boxShadow: '0 4px 14px rgba(11, 25, 41, 0.4)',
+          minWidth: 0
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <span style={{ fontSize: '11px', fontWeight: 800, color: '#F8D117', textTransform: 'uppercase' }}>
+              Total Despesas
+            </span>
+            <Receipt size={15} color="#F8D117" />
+          </div>
+          <div style={{ 
+            marginTop: '4px', 
+            fontSize: 'clamp(14px, 4vw, 19px)', 
+            fontWeight: 900, 
+            color: '#F44336',
+            whiteSpace: 'nowrap',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis'
+          }}>
             {formatarMoeda(resumo.totalDespesas)}
           </div>
-        </div>
-
-        <div style={{ display: 'flex', gap: '20px' }}>
-          <div>
-            <span style={{ fontSize: '11px', color: '#607789', display: 'block' }}>Naturezas com Gastos</span>
-            <strong style={{ fontSize: '16px', color: '#E7EBF0' }}>{dadosNaturezas.length}</strong>
-          </div>
-          <div>
-            <span style={{ fontSize: '11px', color: '#607789', display: 'block' }}>Total de Lançamentos</span>
-            <strong style={{ fontSize: '16px', color: '#E7EBF0' }}>{despesasMes.length}</strong>
-          </div>
+          <span style={{ fontSize: '9.5px', color: '#B0BEC5', display: 'block', marginTop: '2px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+            {dadosNaturezas.length} naturezas • {despesasMes.length} lançamentos
+          </span>
         </div>
       </div>
 
-      {/* Seletor de Tipo de Gráfico / Visualização (apenas um visível por vez) */}
+      {/* Seletor de Tipo de Gráfico / Visualização */}
       <div style={{
         display: 'flex',
         alignItems: 'center',
@@ -265,6 +529,30 @@ export const AnalisesView: React.FC = () => {
         border: '1px solid #1E3A5F',
         gap: '4px'
       }}>
+        <button
+          type="button"
+          onClick={() => setAbaVisualizacao('grafico3d')}
+          style={{
+            flex: 1,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '6px',
+            padding: '10px 12px',
+            borderRadius: '10px',
+            border: 'none',
+            backgroundColor: abaVisualizacao === 'grafico3d' ? '#173F5F' : 'transparent',
+            color: abaVisualizacao === 'grafico3d' ? '#F8D117' : '#AAB4BE',
+            fontWeight: abaVisualizacao === 'grafico3d' ? 800 : 600,
+            fontSize: '13px',
+            cursor: 'pointer',
+            transition: 'all 0.2s ease'
+          }}
+        >
+          <BarChart3 size={16} />
+          <span>Gráfico de Barras 3D</span>
+        </button>
+
         <button
           type="button"
           onClick={() => setAbaVisualizacao('lista')}
@@ -286,125 +574,255 @@ export const AnalisesView: React.FC = () => {
           }}
         >
           <Layers size={16} />
-          <span>Detalhamento por Natureza</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setAbaVisualizacao('pizza')}
-          style={{
-            flex: 1,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: '6px',
-            padding: '10px 12px',
-            borderRadius: '10px',
-            border: 'none',
-            backgroundColor: abaVisualizacao === 'pizza' ? '#173F5F' : 'transparent',
-            color: abaVisualizacao === 'pizza' ? '#F8D117' : '#AAB4BE',
-            fontWeight: abaVisualizacao === 'pizza' ? 800 : 600,
-            fontSize: '13px',
-            cursor: 'pointer',
-            transition: 'all 0.2s ease'
-          }}
-        >
-          <PieIcon size={16} />
-          <span>Gráfico de Pizza</span>
+          <span>Detalhamento em Lista</span>
         </button>
       </div>
 
-      {/* Visualização de Dados (Apenas uma ativa por vez) */}
+      {/* Visualização de Dados */}
       {dadosNaturezas.length === 0 ? (
-        <div className="card" style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-secondary)' }}>
-          <PieIcon size={36} color="var(--text-tertiary)" style={{ margin: '0 auto 0.75rem auto' }} />
-          <h4 style={{ margin: '0 0 6px 0', color: 'var(--text-primary)' }}>Nenhuma despesa encontrada</h4>
+        <div className="card" style={{ padding: '3rem', textAlign: 'center', color: '#AAB4BE' }}>
+          <BarChart3 size={38} color="#287EA5" style={{ margin: '0 auto 0.75rem auto' }} />
+          <h4 style={{ margin: '0 0 6px 0', color: '#FFFFFF' }}>Nenhuma despesa encontrada</h4>
           <p style={{ margin: 0, fontSize: '0.875rem' }}>Cadastre um novo lançamento para visualizar a distribuição dos seus gastos.</p>
         </div>
-      ) : abaVisualizacao === 'pizza' ? (
+      ) : abaVisualizacao === 'grafico3d' ? (
         /* =====================================================
-             🥧 GRÁFICO DE PIZZA (DONUT) COM RECHARTS
+             📊 GRÁFICO DE BARRAS ESTILO 3D INTERATIVO
+             Valores e categorias na parte superior das barras
+             Ao clicar na barra, abre o detalhamento com os respectivos valores
            ===================================================== */
-        <div style={{
-          backgroundColor: '#0F2744',
-          border: '1px solid #1E3A5F',
-          borderRadius: '16px',
-          padding: '20px 16px',
-          boxShadow: '0 4px 20px rgba(0, 0, 0, 0.25)',
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          gap: '16px'
-        }}>
-          <div style={{ width: '100%', textAlign: 'center' }}>
-            <span style={{ fontSize: '11px', fontWeight: 800, color: '#AAB4BE', textTransform: 'uppercase', letterSpacing: '0.6px' }}>
-              Divisão Proporcional das Despesas • {competenciaAtiva}
-            </span>
-          </div>
-
-          <div style={{ width: '100%', height: 320 }}>
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie
-                  data={dadosNaturezas}
-                  dataKey="total"
-                  nameKey="natureza"
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={65}
-                  outerRadius={105}
-                  paddingAngle={3}
-                >
-                  {dadosNaturezas.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.cor} stroke="#0B1C2E" strokeWidth={2} />
-                  ))}
-                </Pie>
-                <Tooltip
-                  formatter={(val: any) => [formatarMoeda(Number(val)), 'Total Gasto']}
-                  contentStyle={{ backgroundColor: '#0B1C2E', borderColor: '#1E3A5F', borderRadius: '10px', color: '#FFFFFF', fontSize: '12px', fontWeight: 700 }}
-                  itemStyle={{ color: '#F8D117' }}
-                />
-              </PieChart>
-            </ResponsiveContainer>
-          </div>
-
-          {/* Legenda com percentuais e valores por natureza */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          
+          {/* Card do Gráfico de Barras 3D */}
           <div style={{
-            width: '100%',
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
-            gap: '8px'
+            backgroundColor: '#0F2744',
+            border: '1.5px solid #1E3A5F',
+            borderRadius: '20px',
+            padding: '20px 16px',
+            boxShadow: '0 6px 24px rgba(0, 0, 0, 0.4)',
+            overflow: 'hidden'
           }}>
-            {dadosNaturezas.map((entry) => (
-              <div
-                key={entry.natureza}
-                style={{
-                  backgroundColor: '#132F4C',
-                  border: '1px solid #1E3A5F',
-                  borderRadius: '10px',
-                  padding: '8px 10px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px'
-                }}
-              >
-                <div style={{ width: '12px', height: '12px', borderRadius: '4px', backgroundColor: entry.cor, flexShrink: 0 }} />
-                <div style={{ flex: 1, minWidth: 0, overflow: 'hidden' }}>
-                  <div style={{ fontSize: '11px', fontWeight: 800, color: '#FFFFFF', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                    {entry.natureza}
-                  </div>
-                  <div style={{ fontSize: '10.5px', color: '#5090D3', fontWeight: 700, display: 'flex', justifyContent: 'space-between' }}>
-                    <span>{formatarMoeda(entry.total)}</span>
-                    <span style={{ color: '#F8D117' }}>{entry.percentualTotal.toFixed(0)}%</span>
+            <div style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              marginBottom: '16px',
+              paddingBottom: '10px',
+              borderBottom: '1px solid #1E3A5F',
+              flexWrap: 'wrap',
+              gap: '8px'
+            }}>
+              <div>
+                <span style={{ fontSize: '11px', fontWeight: 800, color: '#AAB4BE', textTransform: 'uppercase', letterSpacing: '0.6px' }}>
+                  Consumo por Natureza • Estilo Tridimensional (3D)
+                </span>
+                <p style={{ margin: '2px 0 0 0', fontSize: '11.5px', color: '#5090D3', fontWeight: 700 }}>
+                  Toque em uma barra para auditar as subcategorias e valores
+                </p>
+              </div>
+
+              <span style={{
+                fontSize: '11px',
+                fontWeight: 800,
+                color: '#F8D117',
+                backgroundColor: 'rgba(248, 209, 23, 0.15)',
+                padding: '3px 8px',
+                borderRadius: '8px',
+                border: '1px solid rgba(248, 209, 23, 0.3)'
+              }}>
+                {dadosNaturezas.length} Naturezas Ativas
+              </span>
+            </div>
+
+            {/* Container com scroll horizontal caso haja muitas barras */}
+            <div style={{
+              overflowX: 'auto',
+              padding: '10px 4px 16px 4px',
+              display: 'flex',
+              gap: '14px',
+              alignItems: 'flex-end',
+              justifyContent: dadosNaturezas.length <= 4 ? 'space-around' : 'flex-start',
+              WebkitOverflowScrolling: 'touch',
+              minHeight: '270px'
+            }}>
+              {dadosNaturezas.map((item) => {
+                const alturaCalculada = Math.round((item.total / maiorValor) * 145);
+                const selecionada = itemAtivo3D?.natureza === item.natureza;
+
+                return (
+                  <Barra3D
+                    key={item.natureza}
+                    natureza={item.natureza}
+                    total={item.total}
+                    percentual={item.percentualTotal}
+                    cor={item.cor}
+                    alturaPx={alturaCalculada}
+                    selecionada={selecionada}
+                    onSelecionar={() => setNaturezaSelecionada3D(item.natureza)}
+                  />
+                );
+              })}
+            </div>
+          </div>
+
+          {/* =====================================================
+               🔍 DETALHAMENTO DA NATUREZA SELECIONADA NA BARRA 3D
+             ===================================================== */}
+          {itemAtivo3D && (
+            <div style={{
+              backgroundColor: '#173F5F',
+              border: `2px solid ${itemAtivo3D.cor}`,
+              borderRadius: '20px',
+              padding: '18px 20px',
+              boxShadow: `0 8px 30px rgba(0, 0, 0, 0.5), 0 0 16px ${itemAtivo3D.cor}40`,
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '14px'
+            }} className="animate-fade-in">
+              {/* Cabeçalho do Detalhamento Aberto */}
+              <div style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                flexWrap: 'wrap',
+                gap: '8px',
+                borderBottom: '1px solid rgba(255, 255, 255, 0.15)',
+                paddingBottom: '12px'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <span style={{ fontSize: '26px' }}>{itemAtivo3D.natureza.split(' ')[0]}</span>
+                  <div>
+                    <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 900, color: '#FFFFFF' }}>
+                      {itemAtivo3D.natureza}
+                    </h3>
+                    <span style={{ fontSize: '11.5px', color: '#D0DCE5' }}>
+                      {itemAtivo3D.categorias.length} {itemAtivo3D.categorias.length === 1 ? 'subcategoria' : 'subcategorias'} • {lancamentosDaNatureza.length} lançamentos
+                    </span>
                   </div>
                 </div>
+
+                <div style={{ textAlign: 'right' }}>
+                  <div style={{ fontSize: '1.35rem', fontWeight: 900, color: '#F8D117' }}>
+                    {formatarMoeda(itemAtivo3D.total)}
+                  </div>
+                  <span style={{
+                    fontSize: '11px',
+                    fontWeight: 800,
+                    color: '#FFFFFF',
+                    backgroundColor: 'rgba(0, 0, 0, 0.35)',
+                    padding: '2px 8px',
+                    borderRadius: '6px'
+                  }}>
+                    {itemAtivo3D.percentualTotal.toFixed(1)}% de todas as despesas
+                  </span>
+                </div>
               </div>
-            ))}
-          </div>
+
+              {/* Lista das Subcategorias Detalhadas com Barras de Progresso e Valores */}
+              <div>
+                <span style={{ fontSize: '11px', fontWeight: 800, color: '#F8D117', textTransform: 'uppercase', letterSpacing: '0.6px', display: 'block', marginBottom: '8px' }}>
+                  Subcategorias com Respectivos Valores
+                </span>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  {itemAtivo3D.categorias.map((cat, idx) => (
+                    <div
+                      key={idx}
+                      style={{
+                        backgroundColor: '#205B7D',
+                        border: '1px solid #3A9BD5',
+                        borderRadius: '12px',
+                        padding: '12px 16px',
+                        boxShadow: '0 3px 10px rgba(0, 0, 0, 0.2)'
+                      }}
+                    >
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                        <div>
+                          <strong style={{ fontSize: '13.5px', color: '#FFFFFF', fontWeight: 800 }}>
+                            {cat.nome}
+                          </strong>
+                          <span style={{ fontSize: '11px', color: '#D0DCE5', display: 'block' }}>
+                            {cat.quantidade} {cat.quantidade === 1 ? 'lançamento' : 'lançamentos'}
+                          </span>
+                        </div>
+
+                        <div style={{ textAlign: 'right' }}>
+                          <span style={{ fontSize: '14px', fontWeight: 900, color: '#FFFFFF' }}>
+                            {formatarMoeda(cat.total)}
+                          </span>
+                          <span style={{ fontSize: '11px', fontWeight: 800, color: '#F8D117', display: 'block' }}>
+                            {cat.percentualNatureza.toFixed(1)}% do setor
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Barra de Progresso Subcategoria */}
+                      <div style={{
+                        height: '7px',
+                        backgroundColor: '#0F2744',
+                        borderRadius: '999px',
+                        overflow: 'hidden'
+                      }}>
+                        <div style={{
+                          width: `${Math.min(cat.percentualNatureza, 100)}%`,
+                          height: '100%',
+                          background: `linear-gradient(90deg, ${itemAtivo3D.cor} 0%, #F8D117 100%)`,
+                          borderRadius: '999px',
+                          transition: 'width 0.4s ease'
+                        }} />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Lançamentos Detalhados Individuais no Período */}
+              {lancamentosDaNatureza.length > 0 && (
+                <div style={{ marginTop: '6px' }}>
+                  <span style={{ fontSize: '11px', fontWeight: 800, color: '#AAB4BE', textTransform: 'uppercase', letterSpacing: '0.6px', display: 'block', marginBottom: '8px' }}>
+                    Últimas Compras nesta Natureza ({competenciaAtiva})
+                  </span>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', maxHeight: '180px', overflowY: 'auto' }}>
+                    {lancamentosDaNatureza.slice(0, 6).map((l) => (
+                      <div key={l.id} style={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        padding: '8px 12px',
+                        borderRadius: '10px',
+                        backgroundColor: '#0F2744',
+                        border: '1px solid rgba(255, 255, 255, 0.1)',
+                        fontSize: '12px'
+                      }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
+                          <span style={{ color: '#5090D3', fontSize: '11px', fontWeight: 700, flexShrink: 0 }}>
+                            {formatarData(l.data).slice(0, 5)}
+                          </span>
+                          <span style={{ color: '#FFFFFF', fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                            {l.descricao}
+                          </span>
+                        </div>
+
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
+                          <span style={{ fontSize: '10.5px', color: '#F8D117', fontWeight: 600 }}>
+                            {l.pagamento}
+                          </span>
+                          <strong style={{ color: '#F44336', fontWeight: 800 }}>
+                            {formatarMoeda(l.valor)}
+                          </strong>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       ) : (
         /* =====================================================
-             📊 DETALHAMENTO EM LISTA ACCORDION (ORIGINAL)
+             📑 DETALHAMENTO EM LISTA ACCORDION
            ===================================================== */
         <div style={{
           backgroundColor: '#0F2744',
@@ -430,7 +848,7 @@ export const AnalisesView: React.FC = () => {
             </span>
           </div>
 
-          {/* Linhas das Naturezas com separador integrado e contorno destacado ao expandir */}
+          {/* Linhas das Naturezas com separador integrado */}
           {dadosNaturezas.map((item, index) => {
             const expandido = Boolean(naturezasExpandidas[item.natureza]);
             const isUltimo = index === dadosNaturezas.length - 1;
@@ -503,7 +921,7 @@ export const AnalisesView: React.FC = () => {
                     </div>
                   </div>
 
-                  {/* Barra de Progresso da Natureza (0 a 100%) */}
+                  {/* Barra de Progresso da Natureza */}
                   <div>
                     <div style={{
                       height: '7px',
@@ -522,14 +940,14 @@ export const AnalisesView: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Subcategorias Detalhadas (Expandidas dentro do Bloco - Tom visivelmente mais claro para destacar) */}
+                {/* Subcategorias Detalhadas */}
                 {expandido && (
                   <div style={{
                     padding: '16px 20px 20px 22px',
                     borderTop: '1px solid #287EA5',
                     borderBottom: '1px solid #287EA5',
-                    backgroundColor: '#173F5F', // Tom visivelmente mais claro que #0F2744
-                    borderLeft: `5px solid ${item.cor}`, // Linha vertical de destaque da natureza
+                    backgroundColor: '#173F5F',
+                    borderLeft: `5px solid ${item.cor}`,
                     display: 'flex',
                     flexDirection: 'column',
                     gap: '12px'
@@ -566,7 +984,7 @@ export const AnalisesView: React.FC = () => {
                       <div 
                         key={idx}
                         style={{
-                          backgroundColor: '#205B7D', // Cartão da subcategoria bem mais claro e destacado
+                          backgroundColor: '#205B7D',
                           border: '1px solid #3A9BD5',
                           borderRadius: '12px',
                           padding: '13px 16px',
@@ -596,7 +1014,7 @@ export const AnalisesView: React.FC = () => {
                           </div>
                         </div>
 
-                        {/* Barra de Progresso Subcategoria (0 a 100% dentro da natureza) */}
+                        {/* Barra de Progresso Subcategoria */}
                         <div style={{
                           height: '7px',
                           backgroundColor: '#0F2744',

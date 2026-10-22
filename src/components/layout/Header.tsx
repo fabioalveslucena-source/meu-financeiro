@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { useFinanceStore } from '../../stores/financeStore';
-import { Calendar, User, Check, Edit3, X, Upload, Camera, Settings, Moon, Sun, RotateCw } from 'lucide-react';
+import { Calendar, User, Check, Edit3, X, Upload, Camera, Settings, Moon, Sun } from 'lucide-react';
 import { ConfiguracoesBaseModal } from '../configuracoes/ConfiguracoesBaseModal';
 import type { SecaoAtiva } from './Sidebar';
 
@@ -125,16 +125,15 @@ export const Header: React.FC<HeaderProps> = () => {
               style={{
                 display: 'flex',
                 alignItems: 'center',
-                gap: '6px',
+                gap: '8px',
                 cursor: 'pointer',
-                padding: '3px 8px 3px 3px',
+                padding: '4px 10px 4px 4px',
                 borderRadius: '25px',
                 backgroundColor: 'rgba(11, 25, 41, 0.45)',
                 border: '1px solid rgba(248, 209, 23, 0.35)',
                 transition: 'transform 0.15s ease',
                 flex: '1 1 auto',
-                minWidth: 0,
-                maxWidth: 'calc(100% - 165px)'
+                minWidth: 0
               }}
               title="Clique para editar sua foto e nome"
             >
@@ -143,8 +142,8 @@ export const Header: React.FC<HeaderProps> = () => {
                   src={usuario.avatarUrl}
                   alt={usuario.nome}
                   style={{
-                    width: '32px',
-                    height: '32px',
+                    width: '34px',
+                    height: '34px',
                     borderRadius: '50%',
                     objectFit: 'cover',
                     border: '2px solid #F8D117',
@@ -163,10 +162,10 @@ export const Header: React.FC<HeaderProps> = () => {
                 }} />
               </div>
 
-              <div style={{ minWidth: 0, overflow: 'hidden' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '3px' }}>
+              <div style={{ minWidth: 0, flex: 1, overflow: 'hidden' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                   <span style={{ 
-                    fontSize: 'clamp(11.5px, 2.8vw, 13px)', 
+                    fontSize: 'clamp(12px, 3.2vw, 14px)', 
                     fontWeight: 800, 
                     color: '#FFFFFF',
                     whiteSpace: 'nowrap',
@@ -175,10 +174,10 @@ export const Header: React.FC<HeaderProps> = () => {
                   }}>
                     {usuario.nome}
                   </span>
-                  <Edit3 size={11} color="#F8D117" opacity={0.8} style={{ flexShrink: 0 }} />
+                  <Edit3 size={12} color="#F8D117" opacity={0.8} style={{ flexShrink: 0 }} />
                 </div>
                 <span style={{ 
-                  fontSize: '10px', 
+                  fontSize: '10.5px', 
                   color: '#F8D117', 
                   fontWeight: 700, 
                   display: 'block',
@@ -191,15 +190,15 @@ export const Header: React.FC<HeaderProps> = () => {
               </div>
             </div>
 
-            {/* Lado Direito: Seletor de Mês, Modo Escuro/Claro e Configurações */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '5px', flexShrink: 0 }}>
+            {/* Lado Direito: Seletor de Mês e Configurações */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
               <div style={{
                 display: 'flex',
                 alignItems: 'center',
-                gap: '3px',
+                gap: '4px',
                 background: 'rgba(11, 25, 41, 0.55)',
                 backdropFilter: 'blur(8px)',
-                padding: '5px 8px',
+                padding: '6px 8px',
                 borderRadius: '10px',
                 border: '1px solid rgba(255, 255, 255, 0.18)'
               }}>
@@ -231,7 +230,7 @@ export const Header: React.FC<HeaderProps> = () => {
               <button
                 type="button"
                 onClick={alternarTema}
-                title={tema === 'dark' ? 'Mudar para Modo Claro (Diurno)' : 'Mudar para Modo Escuro (Noturno)'}
+                title={tema === 'dark' ? 'Modo Claro' : 'Modo Escuro'}
                 style={{
                   width: '32px',
                   height: '32px',
@@ -243,39 +242,13 @@ export const Header: React.FC<HeaderProps> = () => {
                   alignItems: 'center',
                   justifyContent: 'center',
                   cursor: 'pointer',
-                  transition: 'all 0.15s ease',
                   flexShrink: 0
                 }}
               >
                 {tema === 'dark' ? <Moon size={15} /> : <Sun size={15} />}
               </button>
 
-              {/* Botão de Atualizar / Recarregar App (Força nova versão) */}
-              <button
-                type="button"
-                onClick={() => {
-                  window.location.reload();
-                }}
-                title="Recarregar e atualizar versão do aplicativo"
-                style={{
-                  width: '32px',
-                  height: '32px',
-                  borderRadius: '10px',
-                  backgroundColor: 'rgba(11, 25, 41, 0.55)',
-                  border: '1px solid rgba(255, 255, 255, 0.18)',
-                  color: '#5090D3',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  cursor: 'pointer',
-                  transition: 'all 0.15s ease',
-                  flexShrink: 0
-                }}
-              >
-                <RotateCw size={15} />
-              </button>
-
-              {/* Botão de Configurações da Base de Dados (Engrenagem Sempre Visível) */}
+              {/* Botão de Configurações da Base de Dados */}
               <button
                 type="button"
                 onClick={() => {
@@ -294,7 +267,6 @@ export const Header: React.FC<HeaderProps> = () => {
                   alignItems: 'center',
                   justifyContent: 'center',
                   cursor: 'pointer',
-                  transition: 'all 0.15s ease',
                   flexShrink: 0
                 }}
               >
