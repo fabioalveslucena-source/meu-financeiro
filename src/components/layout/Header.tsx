@@ -106,12 +106,12 @@ export const Header: React.FC<HeaderProps> = () => {
           flexDirection: 'column',
           gap: '10px'
         }}>
-          {/* Linha 1: Perfil do Titular (Esquerda) e Ações de Mês & Configurações (Direita) */}
+          {/* Linha 1: Perfil do Titular (Esquerda) e Seleção do Mês de Movimento (Direita) */}
           <div style={{
             display: 'flex',
             justifyContent: 'space-between',
             alignItems: 'center',
-            gap: '8px',
+            gap: '10px',
             width: '100%'
           }}>
             {/* Lado Esquerdo: Perfil do Titular */}
@@ -142,8 +142,8 @@ export const Header: React.FC<HeaderProps> = () => {
                   src={usuario.avatarUrl}
                   alt={usuario.nome}
                   style={{
-                    width: '34px',
-                    height: '34px',
+                    width: '36px',
+                    height: '36px',
                     borderRadius: '50%',
                     objectFit: 'cover',
                     border: '2px solid #F8D117',
@@ -154,8 +154,8 @@ export const Header: React.FC<HeaderProps> = () => {
                   position: 'absolute',
                   bottom: 0,
                   right: 0,
-                  width: '8px',
-                  height: '8px',
+                  width: '9px',
+                  height: '9px',
                   backgroundColor: '#4CAF50',
                   borderRadius: '50%',
                   border: '1.5px solid #0F2744'
@@ -165,7 +165,7 @@ export const Header: React.FC<HeaderProps> = () => {
               <div style={{ minWidth: 0, flex: 1, overflow: 'hidden' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                   <span style={{ 
-                    fontSize: 'clamp(12px, 3.2vw, 14px)', 
+                    fontSize: 'clamp(12px, 3.4vw, 14.5px)', 
                     fontWeight: 800, 
                     color: '#FFFFFF',
                     whiteSpace: 'nowrap',
@@ -190,47 +190,108 @@ export const Header: React.FC<HeaderProps> = () => {
               </div>
             </div>
 
-            {/* Lado Direito: Seletor de Mês e Configurações */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
-              <div style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '4px',
-                background: 'rgba(11, 25, 41, 0.55)',
-                backdropFilter: 'blur(8px)',
-                padding: '6px 8px',
-                borderRadius: '10px',
-                border: '1px solid rgba(255, 255, 255, 0.18)'
-              }}>
-                <Calendar size={13} color="#5090D3" style={{ flexShrink: 0 }} />
-                <select
-                  value={competenciaAtiva}
-                  onChange={(e) => setCompetenciaAtiva(e.target.value)}
-                  style={{
-                    background: 'transparent',
-                    border: 'none',
-                    padding: 0,
-                    fontSize: '12px',
-                    fontWeight: 800,
-                    color: '#FFFFFF',
-                    cursor: 'pointer',
-                    outline: 'none',
-                    appearance: 'auto'
-                  }}
-                >
-                  {opcoesCompetencia.map((comp) => (
-                    <option key={comp} value={comp} style={{ background: '#0F2744', color: '#FFFFFF' }}>
-                      {comp}
-                    </option>
-                  ))}
-                </select>
-              </div>
+            {/* Lado Direito: Seleção do Mês de Movimento */}
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '5px',
+              background: 'rgba(11, 25, 41, 0.55)',
+              backdropFilter: 'blur(8px)',
+              padding: '6px 10px',
+              borderRadius: '12px',
+              border: '1px solid rgba(255, 255, 255, 0.22)',
+              flexShrink: 0
+            }}>
+              <Calendar size={14} color="#5090D3" style={{ flexShrink: 0 }} />
+              <select
+                value={competenciaAtiva}
+                onChange={(e) => setCompetenciaAtiva(e.target.value)}
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  padding: 0,
+                  fontSize: '12.5px',
+                  fontWeight: 800,
+                  color: '#FFFFFF',
+                  cursor: 'pointer',
+                  outline: 'none',
+                  appearance: 'auto'
+                }}
+              >
+                {opcoesCompetencia.map((comp) => (
+                  <option key={comp} value={comp} style={{ background: '#0F2744', color: '#FFFFFF' }}>
+                    {comp}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
 
-              {/* Botão de Alternância de Tema (Modo Escuro / Modo Claro) */}
+          {/* Linha 2: BANCO DO BRASIL • MEU FINANCEIRO PRO (Esquerda) + Luazinha/Sol e Engrenagem (Direita) */}
+          <div style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            gap: '8px',
+            width: '100%'
+          }}>
+            {/* Banco Principal e Meu Financeiro PRO */}
+            <div 
+              onClick={() => {
+                setAbaConfigInicial('banco');
+                setModalConfigAberto(true);
+              }}
+              style={{ 
+                display: 'inline-flex', 
+                alignItems: 'center', 
+                gap: '6px',
+                cursor: 'pointer',
+                padding: '6px 12px',
+                borderRadius: '20px',
+                backgroundColor: 'rgba(11, 25, 41, 0.45)',
+                border: `1.5px solid ${corBanco}60`,
+                boxShadow: `0 2px 10px rgba(0, 0, 0, 0.2), 0 0 10px ${corBanco}20`,
+                transition: 'all 0.15s ease',
+                minWidth: 0,
+                flex: '1 1 auto',
+                overflow: 'hidden'
+              }}
+              title="Clique para alternar o Banco Principal do cabeçalho"
+            >
+              <span style={{ fontSize: '12px', flexShrink: 0 }}>🏛️</span>
+              <span style={{
+                fontSize: '11px',
+                fontWeight: 900,
+                letterSpacing: '0.6px',
+                color: corBanco,
+                textTransform: 'uppercase',
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis'
+              }}>
+                {usuario.bancoPrincipal || 'BANCO DO BRASIL'}
+              </span>
+              <span style={{ fontSize: '9px', color: corBanco, opacity: 0.9, flexShrink: 0 }}>▼</span>
+              <span style={{ color: 'rgba(255, 255, 255, 0.4)', fontSize: '10px', flexShrink: 0 }}>•</span>
+              <span style={{ 
+                fontSize: '11px', 
+                fontWeight: 700, 
+                color: '#E7EBF0', 
+                letterSpacing: '-0.2px',
+                whiteSpace: 'nowrap',
+                flexShrink: 0
+              }}>
+                MEU FINANCEIRO PRO
+              </span>
+            </div>
+
+            {/* Ações: Luazinha/Sol (Cor de Fundo) e Engrenagem (Configurações) */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
+              {/* Botão de Alternância de Tema (Luazinha / Sol) */}
               <button
                 type="button"
                 onClick={alternarTema}
-                title={tema === 'dark' ? 'Modo Claro' : 'Modo Escuro'}
+                title={tema === 'dark' ? 'Alternar para Modo Claro' : 'Alternar para Modo Escuro'}
                 style={{
                   width: '32px',
                   height: '32px',
@@ -242,13 +303,14 @@ export const Header: React.FC<HeaderProps> = () => {
                   alignItems: 'center',
                   justifyContent: 'center',
                   cursor: 'pointer',
-                  flexShrink: 0
+                  flexShrink: 0,
+                  transition: 'transform 0.15s ease'
                 }}
               >
                 {tema === 'dark' ? <Moon size={15} /> : <Sun size={15} />}
               </button>
 
-              {/* Botão de Configurações da Base de Dados */}
+              {/* Botão da Engrenagem (Configurações da Base de Dados) */}
               <button
                 type="button"
                 onClick={() => {
@@ -267,7 +329,8 @@ export const Header: React.FC<HeaderProps> = () => {
                   alignItems: 'center',
                   justifyContent: 'center',
                   cursor: 'pointer',
-                  flexShrink: 0
+                  flexShrink: 0,
+                  transition: 'transform 0.15s ease'
                 }}
               >
                 <Settings size={15} />
@@ -275,81 +338,51 @@ export const Header: React.FC<HeaderProps> = () => {
             </div>
           </div>
 
-          {/* Linha 2: Banco Selecionável e Botão Visível de Sincronização em Nuvem */}
-          <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', flexWrap: 'wrap', gap: '8px', width: '100%' }}>
-            <div 
-              onClick={() => {
-                setAbaConfigInicial('banco');
-                setModalConfigAberto(true);
-              }}
-              style={{ 
-                display: 'inline-flex', 
-                alignItems: 'center', 
-                justifyContent: 'center',
-                gap: '8px',
-                cursor: 'pointer',
-                padding: '5px 14px',
-                borderRadius: '20px',
-                backgroundColor: 'rgba(11, 25, 41, 0.45)',
-                border: `1.5px solid ${corBanco}60`,
-                boxShadow: `0 2px 10px rgba(0, 0, 0, 0.2), 0 0 10px ${corBanco}20`,
-                transition: 'all 0.15s ease'
-              }}
-              title="Clique para alternar o Banco Principal do cabeçalho"
-            >
-              <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-                <span style={{ fontSize: '11px' }}>🏛️</span>
-                <span style={{
-                  fontSize: '11px',
-                  fontWeight: 900,
-                  letterSpacing: '0.8px',
-                  color: corBanco,
-                  textTransform: 'uppercase'
-                }}>
-                  {usuario.bancoPrincipal || 'BANCO DO BRASIL'}
-                </span>
-                <span style={{ fontSize: '9px', color: corBanco, opacity: 0.9 }}>▼</span>
-              </div>
-              <span style={{ color: 'rgba(255, 255, 255, 0.4)', fontSize: '10px' }}>•</span>
-              <span style={{ fontSize: '11px', fontWeight: 700, color: '#E7EBF0', letterSpacing: '-0.2px' }}>
-                Meu Financeiro PRO
-              </span>
-            </div>
-
-            {/* Botão de Sincronizar Tudo Agora Sempre Visível */}
-            <div 
+          {/* Linha 3: Sincronização da Nuvem Centralizada */}
+          <div style={{
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            width: '100%',
+            paddingTop: '2px'
+          }}>
+            <button 
+              type="button"
               onClick={() => sincronizarComNuvem()}
               style={{
                 display: 'inline-flex',
                 alignItems: 'center',
-                gap: '6px',
+                justifyContent: 'center',
+                gap: '8px',
                 cursor: 'pointer',
-                padding: '5px 12px',
-                borderRadius: '20px',
-                backgroundColor: sincronizandoNuvem ? 'rgba(40, 126, 165, 0.4)' : 'rgba(11, 25, 41, 0.55)',
-                border: '1.5px solid rgba(76, 175, 80, 0.5)',
-                boxShadow: '0 2px 10px rgba(0, 0, 0, 0.25)',
+                padding: '7px 16px',
+                borderRadius: '22px',
+                backgroundColor: sincronizandoNuvem ? 'rgba(40, 126, 165, 0.5)' : 'rgba(11, 25, 41, 0.65)',
+                border: '1.5px solid rgba(76, 175, 80, 0.6)',
+                boxShadow: '0 2px 10px rgba(0, 0, 0, 0.3)',
                 transition: 'all 0.15s ease',
-                userSelect: 'none'
+                color: '#FFFFFF',
+                width: '100%',
+                maxWidth: '400px'
               }}
               title="Clique para sincronizar todos os dados entre PC e Celular agora"
             >
-              <RotateCw size={12} color="#4CAF50" className={sincronizandoNuvem ? 'animate-spin' : ''} />
-              <span style={{ fontSize: '11px', fontWeight: 800, color: '#FFFFFF' }}>
-                {sincronizandoNuvem ? 'Sincronizando...' : 'Sincronizar Nuvem'}
+              <RotateCw size={13} color="#4CAF50" className={sincronizandoNuvem ? 'animate-spin' : ''} />
+              <span style={{ fontSize: '11.5px', fontWeight: 800, color: '#FFFFFF' }}>
+                {sincronizandoNuvem ? 'Sincronizando Nuvem...' : 'Sincronizar Nuvem Agora'}
               </span>
               <span style={{
-                fontSize: '8.5px',
+                fontSize: '9px',
                 fontWeight: 900,
-                padding: '1px 5px',
-                borderRadius: '6px',
-                backgroundColor: 'rgba(76, 175, 80, 0.2)',
+                padding: '2px 7px',
+                borderRadius: '8px',
+                backgroundColor: 'rgba(76, 175, 80, 0.25)',
                 color: '#4CAF50',
                 border: '1px solid #4CAF50'
               }}>
                 100% ONLINE
               </span>
-            </div>
+            </button>
           </div>
         </div>
       </header>

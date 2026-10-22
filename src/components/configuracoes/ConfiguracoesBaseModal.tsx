@@ -200,9 +200,19 @@ export const ConfiguracoesBaseModal: React.FC<ConfiguracoesBaseModalProps> = ({
     setCriandoNatureza(false);
   };
 
-  const categoriasDaNatureza = categorias.filter(
-    (c) => c.natureza === naturezaSelecionada
-  );
+  const normalizarTexto = (s: string) =>
+    (s || '')
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^\w]/gi, '')
+      .toLowerCase();
+
+  const categoriasDaNatureza = categorias.filter((c) => {
+    if (c.natureza === naturezaSelecionada) return true;
+    const n1 = normalizarTexto(c.natureza);
+    const n2 = normalizarTexto(naturezaSelecionada);
+    return n1 === n2 || n1.includes(n2) || n2.includes(n1);
+  });
 
   return (
     <div style={{

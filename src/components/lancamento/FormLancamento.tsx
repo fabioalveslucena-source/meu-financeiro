@@ -44,10 +44,33 @@ export const FormLancamento: React.FC<FormLancamentoProps> = ({
   const [novoEmoji, setNovoEmoji] = useState('📦');
   const [novaNatPai, setNovaNatPai] = useState('');
 
-  // Categorias filtradas pela natureza selecionada
-  const categoriasFiltradas = categorias.filter(
-    (c) => c.natureza === natureza && (c.tipo === tipo || c.tipo === 'Todos')
-  );
+  // Normalizador resiliente para casar strings com/sem emojis ou acentos
+  const normalizarTexto = (s: string) =>
+    (s || '')
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^\w]/gi, '')
+      .toLowerCase();
+
+  // Categorias filtradas pela natureza selecionada de forma ultra-resiliente
+  const categoriasFiltradas = categorias.filter((c) => {
+    const matchTipo = c.tipo === tipo || c.tipo === 'Todos';
+    if (!matchTipo) return false;
+    if (c.natureza === natureza) return true;
+    const n1 = normalizarTexto(c.natureza);
+    const n2 = normalizarTexto(natureza);
+    return n1 === n2 || n1.includes(n2) || n2.includes(n1);
+  });
+
+  // Se a categoria selecionada não pertence à natureza ou ficou vazia, ajusta para a primeira válida
+  useEffect(() => {
+    if (categoriasFiltradas.length > 0) {
+      const existe = categoriasFiltradas.some(c => c.nome.toLowerCase() === categoria.toLowerCase());
+      if (!existe) {
+        setCategoria(categoriasFiltradas[0].nome);
+      }
+    }
+  }, [natureza, tipo, categoriasFiltradas]);
 
   // Inicializar defaults - Prioriza Banco do Brasil como solicitado pelo usuário
   useEffect(() => {
@@ -455,7 +478,14 @@ export const FormLancamento: React.FC<FormLancamentoProps> = ({
                       return;
                     }
                     setNatureza(novaNat);
-                    const fil = categorias.filter(c => c.natureza === novaNat && (c.tipo === tipo || c.tipo === 'Todos'));
+                    const n2 = normalizarTexto(novaNat);
+                    const fil = categorias.filter(c => {
+                      const matchTipo = c.tipo === tipo || c.tipo === 'Todos';
+                      if (!matchTipo) return false;
+                      if (c.natureza === novaNat) return true;
+                      const n1 = normalizarTexto(c.natureza);
+                      return n1 === n2 || n1.includes(n2) || n2.includes(n1);
+                    });
                     if (fil.length > 0) {
                       setCategoria(fil[0].nome);
                     }

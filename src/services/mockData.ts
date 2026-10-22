@@ -118,9 +118,30 @@ export const CATEGORIAS_PADRAO: Categoria[] = [
   { id: 'cat-m8', userId: 'default-user', natureza: '🏠 Moradia', nome: 'Serviços de Limpeza / Diarista', tipo: 'Despesa', ativa: true },
 
   // 🏢 Imóveis
-  { id: 'cat-im1', userId: 'default-user', natureza: '🏢 Imóveis', nome: 'Aluguel / Condomínio', tipo: 'Despesa', ativa: true },
-  { id: 'cat-im2', userId: 'default-user', natureza: '🏢 Imóveis', nome: 'IPTU e Taxas', tipo: 'Despesa', ativa: true },
+  { id: 'cat-im1', userId: 'default-user', natureza: '🏢 Imóveis', nome: 'Ferramentas e Materiais', tipo: 'Despesa', ativa: true },
+  { id: 'cat-im2', userId: 'default-user', natureza: '🏢 Imóveis', nome: 'Aluguel / Condomínio', tipo: 'Despesa', ativa: true },
   { id: 'cat-im3', userId: 'default-user', natureza: '🏢 Imóveis', nome: 'Manutenção e Reformas', tipo: 'Despesa', ativa: true },
+  { id: 'cat-im4', userId: 'default-user', natureza: '🏢 Imóveis', nome: 'IPTU e Taxas', tipo: 'Despesa', ativa: true },
+  { id: 'cat-im5', userId: 'default-user', natureza: '🏢 Imóveis', nome: 'Elétrica e Hidráulica', tipo: 'Despesa', ativa: true },
+  { id: 'cat-im6', userId: 'default-user', natureza: '🏢 Imóveis', nome: 'Tintas e Pintura', tipo: 'Despesa', ativa: true },
+  { id: 'cat-im7', userId: 'default-user', natureza: '🏢 Imóveis', nome: 'Construção Civil', tipo: 'Despesa', ativa: true },
+  { id: 'cat-im8', userId: 'default-user', natureza: '🏢 Imóveis', nome: 'Chaveiro e Fechaduras', tipo: 'Despesa', ativa: true },
+  { id: 'cat-im9', userId: 'default-user', natureza: '🏢 Imóveis', nome: 'Imóveis e Aluguéis', tipo: 'Despesa', ativa: true },
+
+  // 🔧 Manutenção Veicular
+  { id: 'cat-mv-alin', userId: 'default-user', natureza: '🔧 Manutenção Veicular', nome: 'Alinhamento', tipo: 'Despesa', ativa: true },
+  { id: 'cat-mv-balan', userId: 'default-user', natureza: '🔧 Manutenção Veicular', nome: 'Balanceamento', tipo: 'Despesa', ativa: true },
+  { id: 'cat-mv-pneu', userId: 'default-user', natureza: '🔧 Manutenção Veicular', nome: 'Pneu', tipo: 'Despesa', ativa: true },
+  { id: 'cat-mv-susp', userId: 'default-user', natureza: '🔧 Manutenção Veicular', nome: 'Suspensão', tipo: 'Despesa', ativa: true },
+  { id: 'cat-mv-oleo', userId: 'default-user', natureza: '🔧 Manutenção Veicular', nome: 'Óleo do Motor', tipo: 'Despesa', ativa: true },
+  { id: 'cat-mv-lant', userId: 'default-user', natureza: '🔧 Manutenção Veicular', nome: 'Lanternagem', tipo: 'Despesa', ativa: true },
+  { id: 'cat-mv-pint', userId: 'default-user', natureza: '🔧 Manutenção Veicular', nome: 'Pintura', tipo: 'Despesa', ativa: true },
+  { id: 'cat-mv-lav', userId: 'default-user', natureza: '🔧 Manutenção Veicular', nome: 'Lavagem', tipo: 'Despesa', ativa: true },
+  { id: 'cat-mv-poli', userId: 'default-user', natureza: '🔧 Manutenção Veicular', nome: 'Polimento', tipo: 'Despesa', ativa: true },
+  { id: 'cat-mv-pecas', userId: 'default-user', natureza: '🔧 Manutenção Veicular', nome: 'Peças e Acessórios', tipo: 'Despesa', ativa: true },
+  { id: 'cat-mv-ofic', userId: 'default-user', natureza: '🔧 Manutenção Veicular', nome: 'Oficina e Mecânica', tipo: 'Despesa', ativa: true },
+  { id: 'cat-mv-freios', userId: 'default-user', natureza: '🔧 Manutenção Veicular', nome: 'Freios e Pastilhas', tipo: 'Despesa', ativa: true },
+  { id: 'cat-mv-bat', userId: 'default-user', natureza: '🔧 Manutenção Veicular', nome: 'Bateria e Autoelétrica', tipo: 'Despesa', ativa: true },
 
   // 🛒 Alimentação
   { id: 'cat-a1', userId: 'default-user', natureza: '🛒 Alimentação', nome: 'Supermercado', tipo: 'Despesa', ativa: true },

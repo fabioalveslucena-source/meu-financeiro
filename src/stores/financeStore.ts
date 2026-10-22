@@ -251,37 +251,62 @@ function migrarLancamentos(lancamentos: Lancamento[]): Lancamento[] {
 }
 
 function migrarNaturezas(naturezas: Natureza[]): Natureza[] {
-  const lista = [...naturezas];
+  let lista = [...naturezas];
 
-  // Garantir '🏢 Imóveis'
-  if (!lista.some(n => n.label.includes('Imóveis') || n.id === 'imoveis')) {
+  // 1. Normalizar emojis e labels das naturezas
+  lista = lista.map(n => {
+    const nomeNorm = (n.nome || '').toLowerCase();
+    const labelNorm = (n.label || '').toLowerCase();
+    if (nomeNorm.includes('manuten') || labelNorm.includes('manuten')) {
+      return { id: 'manutencao-veicular', nome: 'Manutenção Veicular', emoji: '🔧', label: '🔧 Manutenção Veicular' };
+    }
+    if (nomeNorm.includes('imóve') || nomeNorm.includes('imove') || labelNorm.includes('imóve') || labelNorm.includes('imove')) {
+      return { id: 'imoveis', nome: 'Imóveis', emoji: '🏢', label: '🏢 Imóveis' };
+    }
+    return n;
+  });
+
+  // 2. Garantir '🏢 Imóveis' e '🔧 Manutenção Veicular'
+  if (!lista.some(n => n.id === 'imoveis' || n.label.includes('Imóveis'))) {
     lista.unshift({ id: 'imoveis', nome: 'Imóveis', emoji: '🏢', label: '🏢 Imóveis' });
   }
-
-  // Garantir '🔧 Manutenção Veicular'
-  if (!lista.some(n => n.label.includes('Manutenção Veicular') || n.id === 'manutencao-veicular')) {
+  if (!lista.some(n => n.id === 'manutencao-veicular' || n.label.includes('Manutenção Veicular'))) {
     lista.splice(1, 0, { id: 'manutencao-veicular', nome: 'Manutenção Veicular', emoji: '🔧', label: '🔧 Manutenção Veicular' });
   }
+
+  // 3. Garantir todas as naturezas padrão caso a lista local esteja incompleta (ex: no celular antigo)
+  NATUREZAS_PADRAO.forEach(padrao => {
+    if (!lista.some(n => n.id === padrao.id || n.nome.toLowerCase() === padrao.nome.toLowerCase())) {
+      lista.push(padrao);
+    }
+  });
 
   return lista;
 }
 
 function migrarCategorias(categorias: Categoria[]): Categoria[] {
-  const lista = [...categorias];
-  const novas = [
-    { id: 'cat-im1', userId: 'default-user', natureza: '🏢 Imóveis', nome: 'Ferramentas e Materiais', tipo: 'Despesa' as const, ativa: true },
-    { id: 'cat-im2', userId: 'default-user', natureza: '🏢 Imóveis', nome: 'Aluguel / Condomínio', tipo: 'Despesa' as const, ativa: true },
-    { id: 'cat-im3', userId: 'default-user', natureza: '🏢 Imóveis', nome: 'Manutenção e Reformas', tipo: 'Despesa' as const, ativa: true },
-    { id: 'cat-im4', userId: 'default-user', natureza: '🏢 Imóveis', nome: 'IPTU e Taxas', tipo: 'Despesa' as const, ativa: true },
-    { id: 'cat-mv1', userId: 'default-user', natureza: '🔧 Manutenção Veicular', nome: 'Oficina e Mecânica', tipo: 'Despesa' as const, ativa: true },
-    { id: 'cat-mv2', userId: 'default-user', natureza: '🔧 Manutenção Veicular', nome: 'Peças e Acessórios', tipo: 'Despesa' as const, ativa: true },
-    { id: 'cat-mv3', userId: 'default-user', natureza: '🔧 Manutenção Veicular', nome: 'Revisão e Troca de Óleo', tipo: 'Despesa' as const, ativa: true },
-    { id: 'cat-mv4', userId: 'default-user', natureza: '🔧 Manutenção Veicular', nome: 'Pneus e Alinhamento', tipo: 'Despesa' as const, ativa: true },
-  ];
+  let lista = [...categorias];
 
-  novas.forEach(n => {
-    if (!lista.some(c => c.nome === n.nome && c.natureza === n.natureza)) {
-      lista.push(n);
+  // 1. Normalizar nomes de naturezas em categorias existentes
+  lista = lista.map(c => {
+    const natNorm = (c.natureza || '').toLowerCase();
+    if (natNorm.includes('manuten')) {
+      return { ...c, natureza: '🔧 Manutenção Veicular' };
+    }
+    if (natNorm.includes('imove') || natNorm.includes('imóve')) {
+      return { ...c, natureza: '🏢 Imóveis' };
+    }
+    return c;
+  });
+
+  // 2. Mesclar com todas as categorias padrão oficiais (incluindo todas de Manutenção Veicular e Imóveis)
+  CATEGORIAS_PADRAO.forEach(padrao => {
+    const jaExiste = lista.some(c => 
+      c.nome.trim().toLowerCase() === padrao.nome.trim().toLowerCase() &&
+      c.natureza.trim().toLowerCase() === padrao.natureza.trim().toLowerCase()
+    );
+    if (!jaExiste) {
+      lista.push(padrao);
     }
   });
 
@@ -560,6 +585,7 @@ export const useFinanceStore = create<FinanceState>((set, get) => {
       set((state) => {
         const novasCategorias = [...state.categorias, nova];
         salvarNoStorage(STORAGE_KEY_CATEGORIAS, novasCategorias);
+        FirestoreSyncService.salvarCategorias(MASTER_UID, novasCategorias).catch(console.warn);
         return { categorias: novasCategorias, ultimoEventoTimestamp: Date.now() };
       });
       get().mostrarToast(`Categoria "${nova.nome}" cadastrada com sucesso!`, 'sucesso');
@@ -569,6 +595,7 @@ export const useFinanceStore = create<FinanceState>((set, get) => {
       set((state) => {
         const novasCategorias = state.categorias.filter((c) => c.id !== id);
         salvarNoStorage(STORAGE_KEY_CATEGORIAS, novasCategorias);
+        FirestoreSyncService.salvarCategorias(MASTER_UID, novasCategorias).catch(console.warn);
         return { categorias: novasCategorias, ultimoEventoTimestamp: Date.now() };
       });
       get().mostrarToast('Categoria removida.', 'info');
@@ -586,6 +613,7 @@ export const useFinanceStore = create<FinanceState>((set, get) => {
       set((state) => {
         const novasNaturezas = [...state.naturezas, nova];
         salvarNoStorage(STORAGE_KEY_NATUREZAS, novasNaturezas);
+        FirestoreSyncService.salvarNaturezas(MASTER_UID, novasNaturezas).catch(console.warn);
         return { naturezas: novasNaturezas, ultimoEventoTimestamp: Date.now() };
       });
       get().mostrarToast(`Natureza "${nova.label}" cadastrada com sucesso!`, 'sucesso');
@@ -1238,11 +1266,19 @@ export const useFinanceStore = create<FinanceState>((set, get) => {
         if (res.usuarioSincronizado) {
           salvarNoStorage(STORAGE_KEY_USUARIO, res.usuarioSincronizado);
         }
+        if (res.categoriasSincronizados && res.categoriasSincronizados.length > 0) {
+          salvarNoStorage(STORAGE_KEY_CATEGORIAS, res.categoriasSincronizados);
+        }
+        if (res.naturezasSincronizados && res.naturezasSincronizados.length > 0) {
+          salvarNoStorage(STORAGE_KEY_NATUREZAS, res.naturezasSincronizados);
+        }
 
         set({
           lancamentos: res.lancamentosSincronizados,
           cartoes: res.cartoesSincronizados,
           usuario: res.usuarioSincronizado || usuario,
+          categorias: res.categoriasSincronizados || categorias,
+          naturezas: res.naturezasSincronizados || naturezas,
           sincronizandoNuvem: false,
           ultimoEventoTimestamp: Date.now()
         });

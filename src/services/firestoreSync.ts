@@ -166,6 +166,76 @@ export class FirestoreSyncService {
   }
 
   /**
+   * Salva as categorias na nuvem
+   */
+  public static async salvarCategorias(uid: string = MASTER_UID, categorias: Categoria[]): Promise<void> {
+    if (!db || !isFirebaseConfigured || !uid || categorias.length === 0) return;
+    try {
+      const tamLote = 400;
+      for (let i = 0; i < categorias.length; i += tamLote) {
+        const pedaco = categorias.slice(i, i + tamLote);
+        const batch = writeBatch(db);
+        for (const cat of pedaco) {
+          const docRef = doc(db, 'usuarios', uid, 'categorias', cat.id);
+          batch.set(docRef, sanitizarParaFirestore(cat), { merge: true });
+        }
+        await batch.commit();
+      }
+    } catch (e) {
+      console.error('Erro ao salvar categorias no Firestore:', e);
+    }
+  }
+
+  /**
+   * Baixa as categorias do Firestore
+   */
+  public static async baixarCategorias(uid: string = MASTER_UID): Promise<Categoria[]> {
+    if (!db || !isFirebaseConfigured || !uid) return [];
+    try {
+      const snap = await getDocs(collection(db, 'usuarios', uid, 'categorias'));
+      const lista: Categoria[] = [];
+      snap.forEach((d) => lista.push(d.data() as Categoria));
+      return lista;
+    } catch (e) {
+      console.error('Erro ao baixar categorias do Firestore:', e);
+      return [];
+    }
+  }
+
+  /**
+   * Salva as naturezas na nuvem
+   */
+  public static async salvarNaturezas(uid: string = MASTER_UID, naturezas: Natureza[]): Promise<void> {
+    if (!db || !isFirebaseConfigured || !uid || naturezas.length === 0) return;
+    try {
+      const batch = writeBatch(db);
+      for (const nat of naturezas) {
+        const docRef = doc(db, 'usuarios', uid, 'naturezas', nat.id);
+        batch.set(docRef, sanitizarParaFirestore(nat), { merge: true });
+      }
+      await batch.commit();
+    } catch (e) {
+      console.error('Erro ao salvar naturezas no Firestore:', e);
+    }
+  }
+
+  /**
+   * Baixa as naturezas do Firestore
+   */
+  public static async baixarNaturezas(uid: string = MASTER_UID): Promise<Natureza[]> {
+    if (!db || !isFirebaseConfigured || !uid) return [];
+    try {
+      const snap = await getDocs(collection(db, 'usuarios', uid, 'naturezas'));
+      const lista: Natureza[] = [];
+      snap.forEach((d) => lista.push(d.data() as Natureza));
+      return lista;
+    } catch (e) {
+      console.error('Erro ao baixar naturezas do Firestore:', e);
+      return [];
+    }
+  }
+
+  /**
    * Salva perfil do usuário na nuvem
    */
   public static async salvarPerfil(uid: string = MASTER_UID, usuario: UsuarioPerfil): Promise<void> {
@@ -212,6 +282,8 @@ export class FirestoreSyncService {
     lancamentosSincronizados: Lancamento[];
     cartoesSincronizados: Cartao[];
     usuarioSincronizado: UsuarioPerfil | null;
+    categoriasSincronizados: Categoria[];
+    naturezasSincronizados: Natureza[];
     novosImportados: number;
     novosEnviados: number;
   }> {
@@ -220,6 +292,8 @@ export class FirestoreSyncService {
         lancamentosSincronizados: estadoLocal.lancamentos,
         cartoesSincronizados: estadoLocal.cartoes,
         usuarioSincronizado: estadoLocal.usuario,
+        categoriasSincronizados: estadoLocal.categorias,
+        naturezasSincronizados: estadoLocal.naturezas,
         novosImportados: 0,
         novosEnviados: 0
       };
@@ -232,6 +306,8 @@ export class FirestoreSyncService {
       const lancamentosNuvem = await this.baixarTodosLancamentos(uid);
       const cartoesNuvem = await this.baixarCartoes(uid);
       const perfilNuvem = await this.baixarPerfil(uid);
+      const categoriasNuvem = await this.baixarCategorias(uid);
+      const naturezasNuvem = await this.baixarNaturezas(uid);
 
       // 2. Fazer Merge dos Lançamentos por ID
       const mapaLancamentos = new Map<string, Lancamento>();
@@ -280,10 +356,46 @@ export class FirestoreSyncService {
       });
       const listaFinalCartoes = Array.from(mapaCartoes.values());
 
+      // Merge de Categorias
+      const mapaCategorias = new Map<string, Categoria>();
+      // Primeiro nuvem
+      categoriasNuvem.forEach(c => mapaCategorias.set(`${c.natureza}_${c.nome}`, c));
+      // Depois local (e salva na nuvem se não existir na nuvem)
+      const categoriasParaSalvarNuvem: Categoria[] = [];
+      estadoLocal.categorias.forEach(c => {
+        const chave = `${c.natureza}_${c.nome}`;
+        if (!mapaCategorias.has(chave)) {
+          mapaCategorias.set(chave, c);
+          categoriasParaSalvarNuvem.push(c);
+        }
+      });
+      if (categoriasParaSalvarNuvem.length > 0) {
+        await this.salvarCategorias(uid, Array.from(mapaCategorias.values()));
+      }
+      const listaFinalCategorias = Array.from(mapaCategorias.values());
+
+      // Merge de Naturezas
+      const mapaNaturezas = new Map<string, Natureza>();
+      naturezasNuvem.forEach(n => mapaNaturezas.set(n.id || n.nome, n));
+      const naturezasParaSalvarNuvem: Natureza[] = [];
+      estadoLocal.naturezas.forEach(n => {
+        const chave = n.id || n.nome;
+        if (!mapaNaturezas.has(chave)) {
+          mapaNaturezas.set(chave, n);
+          naturezasParaSalvarNuvem.push(n);
+        }
+      });
+      if (naturezasParaSalvarNuvem.length > 0 || naturezasNuvem.length === 0) {
+        await this.salvarNaturezas(uid, Array.from(mapaNaturezas.values()));
+      }
+      const listaFinalNaturezas = Array.from(mapaNaturezas.values());
+
       return {
         lancamentosSincronizados: listaFinalLancamentos,
         cartoesSincronizados: listaFinalCartoes.length > 0 ? listaFinalCartoes : estadoLocal.cartoes,
         usuarioSincronizado: perfilNuvem || estadoLocal.usuario,
+        categoriasSincronizados: listaFinalCategorias.length > 0 ? listaFinalCategorias : estadoLocal.categorias,
+        naturezasSincronizados: listaFinalNaturezas.length > 0 ? listaFinalNaturezas : estadoLocal.naturezas,
         novosImportados,
         novosEnviados
       };
