@@ -27,12 +27,31 @@ export const AppShell: React.FC = () => {
     // Ativa a escuta contínua em tempo real entre todos os aparelhos
     FirestoreSyncService.iniciarEscutaTempoReal(MASTER_UID, (lancamentosNuvem) => {
       useFinanceStore.setState((state) => {
-        // Se a quantidade de itens ou IDs forem diferentes, atualiza o estado local e storage
         const idsLocais = new Set(state.lancamentos.map((l) => l.id));
+        const mapLocal = new Map(state.lancamentos.map((l) => [l.id, l]));
+
         const mudou = lancamentosNuvem.length !== state.lancamentos.length ||
-                      lancamentosNuvem.some((l) => !idsLocais.has(l.id));
+                      lancamentosNuvem.some((n) => {
+                        const local = mapLocal.get(n.id);
+                        if (!local) return true;
+                        return local.valor !== n.valor ||
+                               local.status !== n.status ||
+                               local.competencia !== n.competencia ||
+                               local.descricao !== n.descricao;
+                      });
 
         if (mudou) {
+          // Detecta se vieram novas compras do Meu Mercado em tempo real
+          const novosMercado = lancamentosNuvem.filter(
+            (n) => (n.origem === 'meu-mercado' || n.detalhesMercado) && !idsLocais.has(n.id)
+          );
+          if (novosMercado.length > 0) {
+            useFinanceStore.getState().mostrarToast(
+              `🛒 ${novosMercado.length} compra(s) do Meu Mercado recebida(s) em tempo real!`,
+              'sucesso'
+            );
+          }
+
           try {
             localStorage.setItem('mf_lancamentos_v1', JSON.stringify(lancamentosNuvem));
           } catch (_) {}

@@ -5,12 +5,10 @@ import {
   ShoppingCart, 
   RefreshCw, 
   Trash2, 
-  Calendar, 
-  ChevronDown, 
-  ChevronUp, 
-  Link, 
   Cloud,
-  CheckCircle
+  CheckCircle,
+  ExternalLink,
+  ShieldCheck
 } from 'lucide-react';
 
 interface SincronizarMercadoModalProps {
@@ -18,16 +16,7 @@ interface SincronizarMercadoModalProps {
   onFechar: () => void;
 }
 
-const STORAGE_KEY_URL_MERCADO = 'mf_url_meu_mercado_v1';
-const URL_PADRAO_MEU_MERCADO = 'https://docs.google.com/spreadsheets/d/1yzFMAn67heVuMMprPVIw5lH5alL7hpi31A1K6AnERZk/edit';
-
-function parseNumeroPtBr(val: any): number {
-  if (typeof val === 'number') return val;
-  if (!val) return 0;
-  const s = String(val).trim().replace(/\s/g, '').replace(/\./g, '').replace(',', '.');
-  const n = parseFloat(s);
-  return isNaN(n) ? 0 : n;
-}
+const URL_MEU_MERCADO_APP = 'https://meu-mercado-1db5c.web.app';
 
 export const SincronizarMercadoModal: React.FC<SincronizarMercadoModalProps> = ({
   aberto,
@@ -36,19 +25,11 @@ export const SincronizarMercadoModal: React.FC<SincronizarMercadoModalProps> = (
   const { 
     lancamentos, 
     excluirLancamento, 
-    adicionarCompraMercado,
     sincronizarComNuvem,
-    mostrarToast,
-    competenciaAtiva 
+    mostrarToast
   } = useFinanceStore();
 
-  const [urlApp, setUrlApp] = useState(() => {
-    return localStorage.getItem(STORAGE_KEY_URL_MERCADO) || URL_PADRAO_MEU_MERCADO;
-  });
-  const [competenciaDestino, setCompetenciaDestino] = useState(competenciaAtiva || '10/2026');
   const [carregandoNuvem, setCarregandoNuvem] = useState(false);
-  const [carregandoPlanilha, setCarregandoPlanilha] = useState(false);
-  const [mostrarAvancado, setMostrarAvancado] = useState(false);
   const [mensagemStatus, setMensagemStatus] = useState<string | null>(null);
   const [statusSincronizacao, setStatusSincronizacao] = useState<'idle' | 'sincronizado_sem_novidades' | 'novos_adicionados'>('idle');
   const [novosLancamentosCount, setNovosLancamentosCount] = useState<number>(0);
@@ -56,27 +37,20 @@ export const SincronizarMercadoModal: React.FC<SincronizarMercadoModalProps> = (
 
   if (!aberto) return null;
 
-  const salvarUrl = (novaUrl: string) => {
-    setUrlApp(novaUrl);
-    localStorage.setItem(STORAGE_KEY_URL_MERCADO, novaUrl);
-  };
-
-  // Compras reais do Meu Mercado que estão salvas no Meu Financeiro
+  // Compras reais do Meu Mercado salvas no Meu Financeiro
   const comprasMercado = lancamentos.filter(l => l.origem === 'meu-mercado' || l.detalhesMercado);
   const totalMercadoGeral = comprasMercado.reduce((acc, curr) => acc + curr.valor, 0);
 
-  // Sincronizar com a Nuvem Firestore agora com verificação inteligente de duplicidade
+  // Sincronizar com a Nuvem Firestore com verificação inteligente de duplicidade
   const handleSincronizarNuvemAgora = async () => {
     if (carregandoNuvem || bloqueioCliqueRapido) return;
 
-    // Se acabou de sincronizar e o usuário clica de novo
     if (statusSincronizacao === 'sincronizado_sem_novidades') {
       const qtdAtual = comprasMercado.length;
       setMensagemStatus(
-        'ℹ️ Esses lançamentos do Meu Mercado já foram feitos anteriormente!\n\n' +
+        'ℹ️ Os lançamentos do Meu Mercado já estão em dia!\n\n' +
         `Você já possui ${qtdAtual} compra(s) registrada(s) no valor total de R$ ${totalMercadoGeral.toFixed(2)}.\n\n` +
-        '🛡️ O sistema protege seus dados e NÃO duplica lançamentos.\n\n' +
-        '👉 Se você finalizou uma nova compra no Meu Mercado agora, ela será identificada e apenas os novos lançamentos serão inseridos.'
+        '🛡️ O sistema protege seus dados e nunca duplica lançamentos.'
       );
       mostrarToast('Lançamentos já realizados! Nenhuma nova compra pendente.', 'info');
       return;
@@ -85,20 +59,17 @@ export const SincronizarMercadoModal: React.FC<SincronizarMercadoModalProps> = (
     setCarregandoNuvem(true);
     setMensagemStatus('🔄 Verificando compras do Meu Mercado na nuvem...');
 
-    // 1. Mapeia os IDs já existentes antes da sincronização
     const comprasAntes = lancamentos.filter(l => l.origem === 'meu-mercado' || l.detalhesMercado);
     const idsAntes = new Set(comprasAntes.map(l => l.id));
 
     try {
       await sincronizarComNuvem();
 
-      // 2. Compara após a sincronização para verificar se vieram compras realmente novas
       const lancamentosAtualizados = useFinanceStore.getState().lancamentos;
       const comprasDepois = lancamentosAtualizados.filter(l => l.origem === 'meu-mercado' || l.detalhesMercado);
       const novosDoMercado = comprasDepois.filter(c => !idsAntes.has(c.id));
 
       if (novosDoMercado.length > 0) {
-        // Encontrou compras novas
         setStatusSincronizacao('novos_adicionados');
         setNovosLancamentosCount(novosDoMercado.length);
 
@@ -113,9 +84,7 @@ export const SincronizarMercadoModal: React.FC<SincronizarMercadoModalProps> = (
           setBloqueioCliqueRapido(false);
           setStatusSincronizacao('sincronizado_sem_novidades');
         }, 4000);
-
       } else {
-        // Nenhuma nova compra: tudo que existe já estava sincronizado!
         setStatusSincronizacao('sincronizado_sem_novidades');
         setNovosLancamentosCount(0);
 
@@ -123,14 +92,13 @@ export const SincronizarMercadoModal: React.FC<SincronizarMercadoModalProps> = (
           setMensagemStatus(
             'ℹ️ Esses lançamentos do Meu Mercado já foram feitos anteriormente!\n\n' +
             `Todas as suas ${comprasDepois.length} compras (Total: R$ ${comprasDepois.reduce((a, b) => a + b.valor, 0).toFixed(2)}) já constam no seu extrato e cartões.\n\n` +
-            '🛡️ O sistema não duplica lançamentos.\n\n' +
-            '💡 Quando você fizer uma nova compra no app Meu Mercado e clicar aqui, apenas a nova compra será adicionada.'
+            '🛡️ O sistema não duplica lançamentos.'
           );
-          mostrarToast('Lançamentos já realizados! Nenhuma nova compra pendente.', 'info');
+          mostrarToast('Lançamentos em dia! Nenhuma compra pendente.', 'info');
         } else {
           setMensagemStatus(
             'ℹ️ Nenhuma compra pendente encontrada no Meu Mercado.\n\n' +
-            'Quando você finalizar uma lista de compras no app Meu Mercado, clique aqui para registrá-la automaticamente no seu extrato.'
+            'Quando você finalizar uma lista de compras no app Meu Mercado, ela sincronizará automaticamente aqui.'
           );
           mostrarToast('Nenhuma compra pendente no Meu Mercado.', 'info');
         }
@@ -140,7 +108,6 @@ export const SincronizarMercadoModal: React.FC<SincronizarMercadoModalProps> = (
           setBloqueioCliqueRapido(false);
         }, 2000);
       }
-
     } catch (err: any) {
       setMensagemStatus(`⚠️ Erro ao sincronizar nuvem: ${err?.message || 'Falha de comunicação'}`);
       mostrarToast('Erro ao conectar com a nuvem.', 'erro');
@@ -149,7 +116,7 @@ export const SincronizarMercadoModal: React.FC<SincronizarMercadoModalProps> = (
     }
   };
 
-  // Excluir todas as compras do Meu Mercado (do estado local e da nuvem Firestore)
+  // Excluir todas as compras do Meu Mercado
   const handleLimparTodasCompras = () => {
     if (comprasMercado.length === 0) return;
     if (confirm(`Deseja realmente remover todas as ${comprasMercado.length} compras do Meu Mercado do extrato e da nuvem?`)) {
@@ -168,155 +135,6 @@ export const SincronizarMercadoModal: React.FC<SincronizarMercadoModalProps> = (
       excluirLancamento(id, true);
       setStatusSincronizacao('idle');
       mostrarToast(`Compra "${descricao}" removida.`, 'info');
-    }
-  };
-
-  // Sincronização opcional direta da Planilha Google (GViz / TQ)
-  const handleSincronizarPlanilha = async () => {
-    const urlLimpa = urlApp.trim();
-    if (!urlLimpa) {
-      mostrarToast('Informe o link da sua Planilha Google.', 'erro');
-      return;
-    }
-
-    try {
-      setCarregandoPlanilha(true);
-      setMensagemStatus('🔄 Lendo abas da Planilha Google...');
-
-      const matchSheet = urlLimpa.match(/\/spreadsheets\/d\/([a-zA-Z0-9_-]+)/);
-      if (!matchSheet || !matchSheet[1]) {
-        throw new Error('Link da Planilha inválido. Deve conter /spreadsheets/d/...');
-      }
-
-      const sheetId = matchSheet[1];
-
-      const buscarAba = async (nomesPossiveis: string[], colIdentificadora: string) => {
-        for (const nome of nomesPossiveis) {
-          try {
-            const enc = encodeURIComponent(nome);
-            const u = `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:json&sheet=${enc}`;
-            const r = await fetch(u);
-            if (!r.ok) continue;
-            const t = await r.text();
-            const jsonStr = t.substring(t.indexOf('{'), t.lastIndexOf('}') + 1);
-            const j = JSON.parse(jsonStr);
-            if (j.status === 'ok' && j.table) {
-              const colLabels = (j.table.cols || []).map((c: any) => String(c?.label || '').toUpperCase());
-              const encontrouCol = colLabels.some((lbl: string) => lbl.includes(colIdentificadora.toUpperCase()));
-              if (encontrouCol) {
-                const rows = (j.table.rows || []).map((row: any) => (row.c || []).map((c: any) => c?.v ?? ''));
-                return { cols: colLabels, rows };
-              }
-            }
-          } catch {
-            // tenta proximo nome
-          }
-        }
-        return null;
-      };
-
-      const dadosListas = await buscarAba(['📋 LISTAS', 'LISTAS', 'Listas'], 'ID_LISTA');
-      const dadosCompras = await buscarAba(['🧾 COMPRAS', 'COMPRAS', 'Compras'], 'ID_COMPRA');
-      const dadosItens = await buscarAba(['🛒 ITENS_LISTA', 'ITENS_LISTA', 'ITENS', 'Itens'], 'ID_ITEM');
-
-      if (!dadosListas && !dadosCompras) {
-        throw new Error('Abas 📋 LISTAS ou 🧾 COMPRAS não encontradas na planilha informada.');
-      }
-
-      const comprasPorLista: Record<string, any[]> = {};
-      if (dadosCompras && dadosCompras.rows.length > 0) {
-        dadosCompras.rows.forEach((linha: any[]) => {
-          const idLista = String(linha[1] || '').trim();
-          const produto = String(linha[3] || '').trim();
-          const qtd = parseNumeroPtBr(linha[4]) || 1;
-          const unit = parseNumeroPtBr(linha[5]);
-          const subtotal = parseNumeroPtBr(linha[6]) || (qtd * unit);
-
-          if (!produto) return;
-          const chaveLista = idLista || 'avulso';
-          if (!comprasPorLista[chaveLista]) comprasPorLista[chaveLista] = [];
-          comprasPorLista[chaveLista].push({
-            nome: produto,
-            quantidade: qtd,
-            precoUnitario: unit > 0 ? unit : (subtotal > 0 && qtd > 0 ? subtotal / qtd : 0),
-            precoTotal: subtotal
-          });
-        });
-      }
-
-      if (dadosItens && dadosItens.rows.length > 0) {
-        dadosItens.rows.forEach((linha: any[]) => {
-          const idLista = String(linha[1] || '').trim();
-          const produto = String(linha[3] || '').trim();
-          const qtd = parseNumeroPtBr(linha[4]) || 1;
-          const precoEst = parseNumeroPtBr(linha[6]);
-          const comprado = String(linha[7] || '').toUpperCase() === 'TRUE';
-
-          if (!produto || !comprado) return;
-          const chaveLista = idLista || 'avulso';
-          if (!comprasPorLista[chaveLista]) comprasPorLista[chaveLista] = [];
-          const jaExiste = comprasPorLista[chaveLista].some(it => it.nome.toLowerCase() === produto.toLowerCase());
-          if (!jaExiste) {
-            comprasPorLista[chaveLista].push({
-              nome: produto,
-              quantidade: qtd,
-              precoUnitario: precoEst,
-              precoTotal: qtd * precoEst
-            });
-          }
-        });
-      }
-
-      const [mesDestino, anoDestino] = competenciaDestino.split('/');
-      let importadas = 0;
-
-      if (dadosListas && dadosListas.rows.length > 0) {
-        dadosListas.rows.forEach((linha: any[]) => {
-          const id = String(linha[0] || '').trim();
-          const nome = String(linha[1] || 'Compras de Supermercado').trim();
-          const status = String(linha[5] || '').toUpperCase();
-          const itens = comprasPorLista[id] || [];
-          let totalCompra = 0;
-          itens.forEach(it => { totalCompra += (it.precoTotal || 0); });
-
-          if (id && (itens.length > 0 || status === 'FECHADA' || totalCompra > 0)) {
-            const valorCalculado = totalCompra > 0 ? totalCompra : 50.00;
-            const nomeFormatado = nome ? `Compra ${nome}` : 'Compra Supermercado';
-
-            // Verificação anti-duplicação: não insere se já existir no extrato
-            const jaExiste = lancamentos.some(
-              l => (l.descricao.toLowerCase() === nomeFormatado.toLowerCase() || l.descricao.toLowerCase() === nome.toLowerCase()) &&
-                   Math.abs(l.valor - valorCalculado) < 0.01 &&
-                   l.competencia === competenciaDestino
-            );
-
-            if (!jaExiste) {
-              adicionarCompraMercado({
-                mercadoNome: nome,
-                data: `${anoDestino}-${mesDestino}-22`,
-                competencia: competenciaDestino,
-                valorTotal: valorCalculado,
-                formaPagamento: '💳 Crédito',
-                cartao: 'Banco do Brasil Ourocard',
-                itens: itens
-              });
-              importadas++;
-            }
-          }
-        });
-      }
-
-      if (importadas > 0) {
-        setMensagemStatus(`✅ ${importadas} compra(s) importada(s) da planilha para ${competenciaDestino}!`);
-        mostrarToast(`🛒 ${importadas} compra(s) importadas!`, 'sucesso');
-      } else {
-        setMensagemStatus('ℹ️ Planilha conectada, mas não foram encontradas compras fechadas nas abas.');
-      }
-    } catch (err: any) {
-      setMensagemStatus(`⚠️ ${err?.message || 'Falha ao sincronizar planilha'}`);
-      mostrarToast(err?.message || 'Erro na planilha', 'erro');
-    } finally {
-      setCarregandoPlanilha(false);
     }
   };
 
@@ -374,10 +192,10 @@ export const SincronizarMercadoModal: React.FC<SincronizarMercadoModalProps> = (
             </div>
             <div>
               <h3 style={{ fontSize: '15px', fontWeight: 800, margin: 0 }}>
-                Sincronizar Meu Mercado
+                Integração Meu Mercado
               </h3>
               <span style={{ fontSize: '11px', color: '#E7EBF0', opacity: 0.85 }}>
-                Integração automática em tempo real com extrato e cartões
+                Conexão Nuvem Direta • Firebase Firestore
               </span>
             </div>
           </div>
@@ -404,7 +222,7 @@ export const SincronizarMercadoModal: React.FC<SincronizarMercadoModalProps> = (
         {/* Corpo do Modal */}
         <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
           
-          {/* Card de Explicação e Botão Principal da Nuvem */}
+          {/* Card de Status da Nuvem e Botão Principal */}
           <div style={{
             backgroundColor: '#0A1A2E',
             borderRadius: '12px',
@@ -414,16 +232,38 @@ export const SincronizarMercadoModal: React.FC<SincronizarMercadoModalProps> = (
             flexDirection: 'column',
             gap: '10px'
           }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <Cloud size={18} color="#60A5FA" />
-              <div>
-                <strong style={{ fontSize: '13px', color: '#FFFFFF', display: 'block' }}>
-                  Integração Direta em Tempo Real
-                </strong>
-                <span style={{ fontSize: '11px', color: '#AAB4BE' }}>
-                  Ao finalizar compras no app Meu Mercado, elas entram automaticamente aqui
-                </span>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Cloud size={18} color="#60A5FA" />
+                <div>
+                  <strong style={{ fontSize: '13px', color: '#FFFFFF', display: 'block' }}>
+                    Sincronização em Tempo Real
+                  </strong>
+                  <span style={{ fontSize: '11px', color: '#AAB4BE' }}>
+                    Finalizou no Meu Mercado, entra imediatamente aqui
+                  </span>
+                </div>
               </div>
+              <a
+                href={URL_MEU_MERCADO_APP}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                  fontSize: '11px',
+                  color: '#38bdf8',
+                  textDecoration: 'none',
+                  backgroundColor: 'rgba(56, 189, 248, 0.1)',
+                  padding: '4px 8px',
+                  borderRadius: '6px',
+                  fontWeight: 700
+                }}
+              >
+                <span>Abrir App</span>
+                <ExternalLink size={11} />
+              </a>
             </div>
 
             <button
@@ -496,7 +336,8 @@ export const SincronizarMercadoModal: React.FC<SincronizarMercadoModalProps> = (
               textAlign: 'center',
               padding: '2px 4px'
             }}>
-              <span>🛡️ <strong>Anti-duplicação ativo:</strong> lançamentos já feitos nunca são duplicados.</span>
+              <ShieldCheck size={13} color="#4ade80" />
+              <span><strong>Proteção inteligente:</strong> o sistema impede duplicações no extrato e faturas.</span>
             </div>
           </div>
 
@@ -531,7 +372,7 @@ export const SincronizarMercadoModal: React.FC<SincronizarMercadoModalProps> = (
                 </p>
               </div>
             ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', maxHeight: '200px', overflowY: 'auto' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', maxHeight: '220px', overflowY: 'auto' }}>
                 {comprasMercado.map(c => (
                   <div 
                     key={c.id}
@@ -613,125 +454,17 @@ export const SincronizarMercadoModal: React.FC<SincronizarMercadoModalProps> = (
             <div style={{
               padding: '10px 12px',
               borderRadius: '10px',
-              backgroundColor: mensagemStatus.startsWith('✅') ? 'rgba(76, 175, 80, 0.15)' : mensagemStatus.startsWith('ℹ️') ? 'rgba(33, 150, 243, 0.15)' : 'rgba(255, 152, 0, 0.15)',
-              border: `1px solid ${mensagemStatus.startsWith('✅') ? '#4CAF50' : mensagemStatus.startsWith('ℹ️') ? '#2196F3' : '#FF9800'}`,
+              backgroundColor: mensagemStatus.startsWith('✅') || mensagemStatus.startsWith('🎉') ? 'rgba(76, 175, 80, 0.15)' : mensagemStatus.startsWith('ℹ️') ? 'rgba(33, 150, 243, 0.15)' : 'rgba(255, 152, 0, 0.15)',
+              border: `1px solid ${mensagemStatus.startsWith('✅') || mensagemStatus.startsWith('🎉') ? '#4CAF50' : mensagemStatus.startsWith('ℹ️') ? '#2196F3' : '#FF9800'}`,
               fontSize: '11.5px',
               fontWeight: 600,
-              color: mensagemStatus.startsWith('✅') ? '#66BB6A' : mensagemStatus.startsWith('ℹ️') ? '#60A5FA' : '#F8D117',
+              color: mensagemStatus.startsWith('✅') || mensagemStatus.startsWith('🎉') ? '#66BB6A' : mensagemStatus.startsWith('ℹ️') ? '#60A5FA' : '#F8D117',
               whiteSpace: 'pre-line',
               lineHeight: 1.45
             }}>
               {mensagemStatus}
             </div>
           )}
-
-          {/* Seção Opcional Avançada: Importar Planilha Google */}
-          <div style={{
-            borderTop: '1px solid #1E3A5F',
-            paddingTop: '8px',
-            marginTop: '2px'
-          }}>
-            <button
-              type="button"
-              onClick={() => setMostrarAvancado(!mostrarAvancado)}
-              style={{
-                width: '100%',
-                background: 'none',
-                border: 'none',
-                color: '#60A5FA',
-                fontSize: '11.5px',
-                fontWeight: 700,
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                padding: '6px 0'
-              }}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <Link size={13} />
-                <span>Opções Avançadas: Importar da Planilha Google</span>
-              </div>
-              {mostrarAvancado ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-            </button>
-
-            {mostrarAvancado && (
-              <div style={{ marginTop: '10px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                {/* Seletor da competência de destino para a planilha */}
-                <div style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  padding: '8px 10px',
-                  backgroundColor: '#071626',
-                  borderRadius: '8px',
-                  border: '1px solid #1E3A5F'
-                }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <Calendar size={13} color="#F8D117" />
-                    <span style={{ fontSize: '11px', color: '#E7EBF0', fontWeight: 600 }}>Lançar planilha no mês:</span>
-                  </div>
-                  <select
-                    value={competenciaDestino}
-                    onChange={(e) => setCompetenciaDestino(e.target.value)}
-                    style={{
-                      backgroundColor: '#173F5F',
-                      color: '#FFFFFF',
-                      border: '1px solid #287EA5',
-                      borderRadius: '6px',
-                      padding: '4px 8px',
-                      fontSize: '11px',
-                      fontWeight: 700
-                    }}
-                  >
-                    <option value="10/2026">Outubro / 2026</option>
-                    <option value="09/2026">Setembro / 2026</option>
-                    <option value="11/2026">Novembro / 2026</option>
-                  </select>
-                </div>
-
-                <input 
-                  type="text"
-                  placeholder="docs.google.com/spreadsheets/d/..."
-                  value={urlApp}
-                  onChange={(e) => salvarUrl(e.target.value)}
-                  style={{
-                    width: '100%',
-                    fontSize: '11.5px',
-                    padding: '8px 10px',
-                    borderRadius: '8px',
-                    border: '1px solid #287EA5',
-                    backgroundColor: '#071626',
-                    color: '#FFFFFF'
-                  }}
-                />
-
-                <button
-                  type="button"
-                  onClick={handleSincronizarPlanilha}
-                  disabled={carregandoPlanilha}
-                  style={{
-                    width: '100%',
-                    padding: '8px',
-                    fontSize: '11.5px',
-                    fontWeight: 700,
-                    backgroundColor: '#173F5F',
-                    border: '1px solid #287EA5',
-                    color: '#FFFFFF',
-                    borderRadius: '8px',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '6px'
-                  }}
-                >
-                  <RefreshCw size={13} className={carregandoPlanilha ? 'animate-spin' : ''} />
-                  <span>{carregandoPlanilha ? 'Lendo Planilha...' : `Importar Dados da Planilha em ${competenciaDestino}`}</span>
-                </button>
-              </div>
-            )}
-          </div>
 
         </div>
       </div>
