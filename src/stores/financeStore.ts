@@ -88,6 +88,7 @@ interface FinanceState {
     formaPagamento: FormaPagamento;
     cartao?: string;
     conta?: string;
+    totalParcelas?: number;
     itens: ItemCompraMercado[];
   }) => { sucesso: boolean; mensagem: string };
 
@@ -480,51 +481,86 @@ export const useFinanceStore = create<FinanceState>((set, get) => {
 
     adicionarCompraMercado: (dados) => {
       const { lancamentos, usuario, adicionarLogRealtime, mostrarToast } = get();
+      const totalParcelas = Math.max(1, dados.totalParcelas || 1);
       const dataObj = new Date(dados.data + 'T12:00:00');
-      const [ano, mes] = dados.data.split('-');
-      const competencia = dados.competencia || `${mes}/${ano}`;
+      const [anoStr, mesStr] = dados.data.split('-');
+      const anoNum = parseInt(anoStr) || new Date().getFullYear();
+      const mesNum = parseInt(mesStr) || (new Date().getMonth() + 1);
+      const diaNum = dataObj.getDate();
 
-      const novoLancamento: Lancamento = {
-        id: `mercado_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
-        userId: usuario.uid || 'fabio-master-uid',
-        data: dataObj,
-        competencia,
-        valor: dados.valorTotal,
-        tipo: 'Despesa',
-        natureza: '🛒 Alimentação',
-        categoria: 'Supermercado',
-        descricao: dados.mercadoNome ? `Compra ${dados.mercadoNome}` : 'Compra Supermercado',
-        pagamento: dados.formaPagamento,
-        cartao: dados.cartao,
-        conta: dados.conta,
-        status: 'Lançado',
-        origem: 'meu-mercado',
-        detalhesMercado: {
-          mercadoNome: dados.mercadoNome || 'Meu Mercado',
-          cupomNumero: `MM-${Date.now().toString().slice(-4)}`,
-          itens: dados.itens,
-          totalItens: dados.itens.length,
-          valorTotal: dados.valorTotal,
-          dataCompra: dados.data,
-          formaPagamentoUtilizada: dados.formaPagamento,
-        },
-        criadoEm: new Date(),
-        atualizadoEm: new Date(),
-      };
+      const diaFechamento = (dados.cartao && dados.cartao.toLowerCase().includes('bradesco')) ? 10 : 25;
+      const comprouAposFechamento = (dados.formaPagamento === '💳 Crédito') && (diaNum > diaFechamento);
 
-      const novaLista = [novoLancamento, ...lancamentos];
+      const valorCentavos = Math.round(dados.valorTotal * 100);
+      const centavosBase = Math.floor(valorCentavos / totalParcelas);
+      const restoCentavos = valorCentavos % totalParcelas;
+
+      const compraId = `mercado_${Date.now()}`;
+      const novosLancamentos: Lancamento[] = [];
+
+      for (let p = 1; p <= totalParcelas; p++) {
+        const deslocamentoFatura = comprouAposFechamento ? p : (p - 1);
+        const dataFatura = new Date(anoNum, (mesNum - 1) + deslocamentoFatura, 1);
+        const compMes = String(dataFatura.getMonth() + 1).padStart(2, '0');
+        const compAno = dataFatura.getFullYear();
+        const faturaCompetencia = dados.competencia && totalParcelas === 1 ? dados.competencia : `${compMes}/${compAno}`;
+
+        const centavosParcela = p <= restoCentavos ? centavosBase + 1 : centavosBase;
+        const valorFinal = Number((centavosParcela / 100).toFixed(2));
+
+        const descBase = dados.mercadoNome ? `Compra ${dados.mercadoNome}` : 'Compra Supermercado';
+        const descFinal = totalParcelas > 1 ? `${descBase} (${p}/${totalParcelas})` : descBase;
+
+        const docId = totalParcelas > 1 ? `${compraId}_p${p}` : compraId;
+
+        const l: Lancamento = {
+          id: docId,
+          userId: usuario.uid || 'fabio-master-uid',
+          data: dataObj,
+          competencia: faturaCompetencia,
+          valor: valorFinal,
+          tipo: 'Despesa',
+          natureza: '🛒 Alimentação',
+          categoria: 'Supermercado',
+          descricao: descFinal,
+          pagamento: dados.formaPagamento,
+          cartao: dados.cartao,
+          conta: dados.conta,
+          status: 'Lançado',
+          origem: 'meu-mercado',
+          compraId: dados.formaPagamento === '💳 Crédito' ? compraId : undefined,
+          parcela: totalParcelas > 1 ? p : undefined,
+          totalParcelas: totalParcelas > 1 ? totalParcelas : undefined,
+          fatura: dados.formaPagamento === '💳 Crédito' ? faturaCompetencia : undefined,
+          detalhesMercado: {
+            mercadoNome: dados.mercadoNome || 'Meu Mercado',
+            cupomNumero: `MM-${Date.now().toString().slice(-4)}`,
+            itens: dados.itens,
+            totalItens: dados.itens.length,
+            valorTotal: dados.valorTotal,
+            parcelaAtual: p,
+            totalParcelas,
+            dataCompra: dados.data,
+            formaPagamentoUtilizada: dados.formaPagamento,
+          },
+          criadoEm: new Date(),
+          atualizadoEm: new Date(),
+        };
+
+        novosLancamentos.push(l);
+        FirestoreSyncService.salvarLancamento(usuario.uid || MASTER_UID, l);
+      }
+
+      const novaLista = [...novosLancamentos, ...lancamentos];
       salvarNoStorage(STORAGE_KEY_LANCAMENTOS, novaLista);
       set({ lancamentos: novaLista, ultimoEventoTimestamp: Date.now() });
 
-      // Salva na nuvem Firestore para refletir no PC e Celular
-      FirestoreSyncService.salvarLancamento(usuario.uid || MASTER_UID, novoLancamento);
+      const descMsg = totalParcelas > 1 
+        ? `${dados.mercadoNome || 'Supermercado'}: R$ ${dados.valorTotal.toFixed(2)} (${totalParcelas}x no ${dados.cartao || 'Crédito'})`
+        : `${dados.mercadoNome || 'Supermercado'}: R$ ${dados.valorTotal.toFixed(2)}`;
 
-      adicionarLogRealtime(
-        '[MEU MERCADO] Compra Integrada',
-        `${dados.mercadoNome || 'Supermercado'}: R$ ${dados.valorTotal.toFixed(2)} (${dados.itens.length} itens) em ${competencia}.`,
-        'sucesso'
-      );
-      mostrarToast(`🛒 Compra de ${dados.mercadoNome || 'Supermercado'} (R$ ${dados.valorTotal.toFixed(2)}) lançada em ${competencia}!`, 'sucesso');
+      adicionarLogRealtime('[MEU MERCADO] Compra Integrada', descMsg, 'sucesso');
+      mostrarToast(`🛒 ${descMsg} lançada no extrato e cartões!`, 'sucesso');
       return { sucesso: true, mensagem: 'Compra integrada com sucesso' };
     },
 

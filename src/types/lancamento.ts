@@ -20,8 +20,11 @@ export interface DetalhesMercado {
   itens: ItemCompraMercado[];
   totalItens: number;
   valorTotal: number;
+  parcelaAtual?: number;
+  totalParcelas?: number;
   dataCompra: string;          // YYYY-MM-DD
   formaPagamentoUtilizada?: string;
+  cartaoUtilizado?: string;
   observacoes?: string;
 }
 

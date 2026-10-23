@@ -27,8 +27,15 @@ export const AppShell: React.FC = () => {
     // Ativa a escuta contínua em tempo real entre todos os aparelhos
     FirestoreSyncService.iniciarEscutaTempoReal(MASTER_UID, (lancamentosNuvem) => {
       useFinanceStore.setState((state) => {
-        // Se a quantidade de itens ou IDs forem diferentes, atualiza o estado local
-        if (lancamentosNuvem.length !== state.lancamentos.length) {
+        // Se a quantidade de itens ou IDs forem diferentes, atualiza o estado local e storage
+        const idsLocais = new Set(state.lancamentos.map((l) => l.id));
+        const mudou = lancamentosNuvem.length !== state.lancamentos.length ||
+                      lancamentosNuvem.some((l) => !idsLocais.has(l.id));
+
+        if (mudou) {
+          try {
+            localStorage.setItem('mf_lancamentos_v1', JSON.stringify(lancamentosNuvem));
+          } catch (_) {}
           return { lancamentos: lancamentosNuvem, ultimoEventoTimestamp: Date.now() };
         }
         return {};
