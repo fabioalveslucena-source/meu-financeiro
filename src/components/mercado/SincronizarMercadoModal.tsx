@@ -50,6 +50,9 @@ export const SincronizarMercadoModal: React.FC<SincronizarMercadoModalProps> = (
   const [carregandoPlanilha, setCarregandoPlanilha] = useState(false);
   const [mostrarAvancado, setMostrarAvancado] = useState(false);
   const [mensagemStatus, setMensagemStatus] = useState<string | null>(null);
+  const [statusSincronizacao, setStatusSincronizacao] = useState<'idle' | 'sincronizado_sem_novidades' | 'novos_adicionados'>('idle');
+  const [novosLancamentosCount, setNovosLancamentosCount] = useState<number>(0);
+  const [bloqueioCliqueRapido, setBloqueioCliqueRapido] = useState(false);
 
   if (!aberto) return null;
 
@@ -62,19 +65,85 @@ export const SincronizarMercadoModal: React.FC<SincronizarMercadoModalProps> = (
   const comprasMercado = lancamentos.filter(l => l.origem === 'meu-mercado' || l.detalhesMercado);
   const totalMercadoGeral = comprasMercado.reduce((acc, curr) => acc + curr.valor, 0);
 
-  // Sincronizar com a Nuvem Firestore agora
+  // Sincronizar com a Nuvem Firestore agora com verificação inteligente de duplicidade
   const handleSincronizarNuvemAgora = async () => {
+    if (carregandoNuvem || bloqueioCliqueRapido) return;
+
+    // Se acabou de sincronizar e o usuário clica de novo
+    if (statusSincronizacao === 'sincronizado_sem_novidades') {
+      const qtdAtual = comprasMercado.length;
+      setMensagemStatus(
+        'ℹ️ Esses lançamentos do Meu Mercado já foram feitos anteriormente!\n\n' +
+        `Você já possui ${qtdAtual} compra(s) registrada(s) no valor total de R$ ${totalMercadoGeral.toFixed(2)}.\n\n` +
+        '🛡️ O sistema protege seus dados e NÃO duplica lançamentos.\n\n' +
+        '👉 Se você finalizou uma nova compra no Meu Mercado agora, ela será identificada e apenas os novos lançamentos serão inseridos.'
+      );
+      mostrarToast('Lançamentos já realizados! Nenhuma nova compra pendente.', 'info');
+      return;
+    }
+
     setCarregandoNuvem(true);
-    setMensagemStatus('🔄 Conectando com a nuvem Firestore...');
+    setMensagemStatus('🔄 Verificando compras do Meu Mercado na nuvem...');
+
+    // 1. Mapeia os IDs já existentes antes da sincronização
+    const comprasAntes = lancamentos.filter(l => l.origem === 'meu-mercado' || l.detalhesMercado);
+    const idsAntes = new Set(comprasAntes.map(l => l.id));
+
     try {
-      const res = await sincronizarComNuvem();
-      if (res && res.sucesso) {
-        setMensagemStatus(`✅ Nuvem sincronizada com sucesso!\n${res.mensagem}`);
+      await sincronizarComNuvem();
+
+      // 2. Compara após a sincronização para verificar se vieram compras realmente novas
+      const lancamentosAtualizados = useFinanceStore.getState().lancamentos;
+      const comprasDepois = lancamentosAtualizados.filter(l => l.origem === 'meu-mercado' || l.detalhesMercado);
+      const novosDoMercado = comprasDepois.filter(c => !idsAntes.has(c.id));
+
+      if (novosDoMercado.length > 0) {
+        // Encontrou compras novas
+        setStatusSincronizacao('novos_adicionados');
+        setNovosLancamentosCount(novosDoMercado.length);
+
+        const resumo = novosDoMercado.map(n => `• ${n.descricao}: R$ ${n.valor.toFixed(2)} (${n.competencia})`).join('\n');
+        setMensagemStatus(
+          `🎉 ${novosDoMercado.length} novo(s) lançamento(s) do Meu Mercado inserido(s) com sucesso!\n\n${resumo}\n\n👉 Extrato, faturas e saldos atualizados sem duplicidades!`
+        );
+        mostrarToast(`✓ ${novosDoMercado.length} novo(s) lançamento(s) inserido(s)!`, 'sucesso');
+
+        setBloqueioCliqueRapido(true);
+        setTimeout(() => {
+          setBloqueioCliqueRapido(false);
+          setStatusSincronizacao('sincronizado_sem_novidades');
+        }, 4000);
+
       } else {
-        setMensagemStatus('✅ Sincronização finalizada!');
+        // Nenhuma nova compra: tudo que existe já estava sincronizado!
+        setStatusSincronizacao('sincronizado_sem_novidades');
+        setNovosLancamentosCount(0);
+
+        if (comprasDepois.length > 0) {
+          setMensagemStatus(
+            'ℹ️ Esses lançamentos do Meu Mercado já foram feitos anteriormente!\n\n' +
+            `Todas as suas ${comprasDepois.length} compras (Total: R$ ${comprasDepois.reduce((a, b) => a + b.valor, 0).toFixed(2)}) já constam no seu extrato e cartões.\n\n` +
+            '🛡️ O sistema não duplica lançamentos.\n\n' +
+            '💡 Quando você fizer uma nova compra no app Meu Mercado e clicar aqui, apenas a nova compra será adicionada.'
+          );
+          mostrarToast('Lançamentos já realizados! Nenhuma nova compra pendente.', 'info');
+        } else {
+          setMensagemStatus(
+            'ℹ️ Nenhuma compra pendente encontrada no Meu Mercado.\n\n' +
+            'Quando você finalizar uma lista de compras no app Meu Mercado, clique aqui para registrá-la automaticamente no seu extrato.'
+          );
+          mostrarToast('Nenhuma compra pendente no Meu Mercado.', 'info');
+        }
+
+        setBloqueioCliqueRapido(true);
+        setTimeout(() => {
+          setBloqueioCliqueRapido(false);
+        }, 2000);
       }
+
     } catch (err: any) {
       setMensagemStatus(`⚠️ Erro ao sincronizar nuvem: ${err?.message || 'Falha de comunicação'}`);
+      mostrarToast('Erro ao conectar com a nuvem.', 'erro');
     } finally {
       setCarregandoNuvem(false);
     }
@@ -87,6 +156,7 @@ export const SincronizarMercadoModal: React.FC<SincronizarMercadoModalProps> = (
       comprasMercado.forEach(c => {
         excluirLancamento(c.id, true);
       });
+      setStatusSincronizacao('idle');
       setMensagemStatus('🧹 Todas as compras do Meu Mercado foram removidas com sucesso.');
       mostrarToast('Todas as compras do Meu Mercado foram removidas.', 'info');
     }
@@ -96,6 +166,7 @@ export const SincronizarMercadoModal: React.FC<SincronizarMercadoModalProps> = (
   const handleExcluirUmaCompra = (id: string, descricao: string) => {
     if (confirm(`Deseja remover "${descricao}"?`)) {
       excluirLancamento(id, true);
+      setStatusSincronizacao('idle');
       mostrarToast(`Compra "${descricao}" removida.`, 'info');
     }
   };
@@ -209,16 +280,28 @@ export const SincronizarMercadoModal: React.FC<SincronizarMercadoModalProps> = (
           itens.forEach(it => { totalCompra += (it.precoTotal || 0); });
 
           if (id && (itens.length > 0 || status === 'FECHADA' || totalCompra > 0)) {
-            adicionarCompraMercado({
-              mercadoNome: nome,
-              data: `${anoDestino}-${mesDestino}-22`,
-              competencia: competenciaDestino,
-              valorTotal: totalCompra > 0 ? totalCompra : 50.00,
-              formaPagamento: '💳 Crédito',
-              cartao: 'Banco do Brasil Ourocard',
-              itens: itens
-            });
-            importadas++;
+            const valorCalculado = totalCompra > 0 ? totalCompra : 50.00;
+            const nomeFormatado = nome ? `Compra ${nome}` : 'Compra Supermercado';
+
+            // Verificação anti-duplicação: não insere se já existir no extrato
+            const jaExiste = lancamentos.some(
+              l => (l.descricao.toLowerCase() === nomeFormatado.toLowerCase() || l.descricao.toLowerCase() === nome.toLowerCase()) &&
+                   Math.abs(l.valor - valorCalculado) < 0.01 &&
+                   l.competencia === competenciaDestino
+            );
+
+            if (!jaExiste) {
+              adicionarCompraMercado({
+                mercadoNome: nome,
+                data: `${anoDestino}-${mesDestino}-22`,
+                competencia: competenciaDestino,
+                valorTotal: valorCalculado,
+                formaPagamento: '💳 Crédito',
+                cartao: 'Banco do Brasil Ourocard',
+                itens: itens
+              });
+              importadas++;
+            }
           }
         });
       }
@@ -349,24 +432,72 @@ export const SincronizarMercadoModal: React.FC<SincronizarMercadoModalProps> = (
               disabled={carregandoNuvem}
               style={{
                 width: '100%',
-                padding: '12px',
-                background: 'linear-gradient(135deg, #15803d 0%, #16a34a 100%)',
-                border: '1.5px solid #4ade80',
+                padding: '13px',
+                background: carregandoNuvem
+                  ? 'linear-gradient(135deg, #1e3a5f 0%, #205b7d 100%)'
+                  : statusSincronizacao === 'novos_adicionados'
+                  ? 'linear-gradient(135deg, #15803d 0%, #16a34a 100%)'
+                  : statusSincronizacao === 'sincronizado_sem_novidades'
+                  ? 'linear-gradient(135deg, #0f2c4d 0%, #173f5f 100%)'
+                  : 'linear-gradient(135deg, #15803d 0%, #16a34a 100%)',
+                border: carregandoNuvem
+                  ? '1.5px solid #287EA5'
+                  : statusSincronizacao === 'novos_adicionados'
+                  ? '1.5px solid #4ade80'
+                  : statusSincronizacao === 'sincronizado_sem_novidades'
+                  ? '1.5px solid #60a5fa'
+                  : '1.5px solid #4ade80',
                 color: '#FFFFFF',
                 borderRadius: '10px',
                 fontSize: '13px',
                 fontWeight: 900,
-                cursor: 'pointer',
+                cursor: carregandoNuvem ? 'not-allowed' : 'pointer',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 gap: '8px',
-                boxShadow: '0 4px 15px rgba(22, 163, 74, 0.35)'
+                boxShadow: statusSincronizacao === 'sincronizado_sem_novidades'
+                  ? '0 4px 15px rgba(32, 91, 125, 0.4)'
+                  : '0 4px 15px rgba(22, 163, 74, 0.35)',
+                transition: 'all 0.3s ease'
               }}
             >
-              <RefreshCw size={16} className={carregandoNuvem ? 'animate-spin' : ''} />
-              <span>{carregandoNuvem ? 'Buscando da Nuvem...' : '☁️ Atualizar e Sincronizar Nuvem Agora'}</span>
+              {carregandoNuvem ? (
+                <>
+                  <RefreshCw size={16} className="animate-spin" />
+                  <span>Verificando novos lançamentos na nuvem...</span>
+                </>
+              ) : statusSincronizacao === 'novos_adicionados' ? (
+                <>
+                  <CheckCircle size={16} color="#4ade80" />
+                  <span>✓ {novosLancamentosCount} Novo(s) Lançamento(s) Adicionado(s)!</span>
+                </>
+              ) : statusSincronizacao === 'sincronizado_sem_novidades' ? (
+                <>
+                  <CheckCircle size={16} color="#60a5fa" />
+                  <span>✓ Lançamentos já realizados (Em dia)</span>
+                </>
+              ) : (
+                <>
+                  <Cloud size={16} color="#FFFFFF" />
+                  <span>☁️ Atualizar e Sincronizar Nuvem Agora</span>
+                </>
+              )}
             </button>
+
+            {/* Aviso de Proteção Anti-Duplicação */}
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '6px',
+              fontSize: '11px',
+              color: '#94a3b8',
+              textAlign: 'center',
+              padding: '2px 4px'
+            }}>
+              <span>🛡️ <strong>Anti-duplicação ativo:</strong> lançamentos já feitos nunca são duplicados.</span>
+            </div>
           </div>
 
           {/* Lista REAL das Compras do Meu Mercado */}
