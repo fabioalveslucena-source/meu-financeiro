@@ -432,10 +432,8 @@ export class FirestoreSyncService {
           } as Lancamento);
         });
 
-        if (dados.length > 0) {
-          dados.sort((a, b) => new Date(b.data).getTime() - new Date(a.data).getTime());
-          onLancamentosAtualizados(dados);
-        }
+        dados.sort((a, b) => new Date(b.data).getTime() - new Date(a.data).getTime());
+        onLancamentosAtualizados(dados);
       }, (err) => console.warn('Erro listener Firestore:', err));
 
       this.unsubscribers.push(unsub);
