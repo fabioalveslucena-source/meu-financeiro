@@ -274,8 +274,8 @@ export const Header: React.FC<HeaderProps> = () => {
                 {usuario.bancoPrincipal || 'BANCO DO BRASIL'}
               </span>
               <span style={{ fontSize: '9px', color: corBanco, opacity: 0.9, flexShrink: 0 }}>▼</span>
-              <span style={{ color: 'rgba(255, 255, 255, 0.4)', fontSize: '10px', flexShrink: 0 }}>•</span>
-              <span style={{ 
+              <span className="separador-pro" style={{ color: 'rgba(255, 255, 255, 0.4)', fontSize: '10px', flexShrink: 0 }}>•</span>
+              <span className="texto-pro-badge" style={{ 
                 fontSize: '11px', 
                 fontWeight: 700, 
                 color: '#E7EBF0', 

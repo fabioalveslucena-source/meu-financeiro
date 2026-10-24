@@ -29,7 +29,7 @@ const CORES_NATUREZA: Record<string, string> = {
   '📦 Outros': '#84CC16',
 };
 
-// Componente para desenhar cada Barra 3D com efeito isométrico e iluminação realista
+// Componente para desenhar cada Barra 3D com efeito isométrico e iluminação realista (100% Responsivo no Celular)
 interface Barra3DProps {
   natureza: string;
   total: number;
@@ -38,6 +38,7 @@ interface Barra3DProps {
   alturaPx: number;
   selecionada: boolean;
   onSelecionar: () => void;
+  totalColunas?: number;
 }
 
 const Barra3D: React.FC<Barra3DProps> = ({
@@ -48,14 +49,21 @@ const Barra3D: React.FC<Barra3DProps> = ({
   alturaPx,
   selecionada,
   onSelecionar,
+  totalColunas = 6,
 }) => {
   // Ajuste de altura mínima visível
   const h = Math.max(16, alturaPx);
-  const largura = 44;
-  const profundidade = 14;
+  
+  // Proporções dinâmicas calculadas para caber exatamente em 100% da largura da tela do celular sem rolagem
+  const largura = totalColunas <= 4 ? 36 : (totalColunas <= 6 ? 26 : (totalColunas <= 8 ? 19 : 14));
+  const profundidade = totalColunas <= 4 ? 12 : (totalColunas <= 6 ? 9 : (totalColunas <= 8 ? 7 : 5));
 
   const emoji = natureza.split(' ')[0] || '🏷️';
   const labelCurto = natureza.replace(/^[^\w\s]+\s*/, '').trim();
+
+  const textoValor = total >= 1000 
+    ? `${(total / 1000).toFixed(1)}k`
+    : Math.round(total).toString();
 
   return (
     <div
@@ -68,8 +76,9 @@ const Barra3D: React.FC<Barra3DProps> = ({
         userSelect: 'none',
         transition: 'transform 0.2s ease',
         transform: selecionada ? 'translateY(-6px)' : 'none',
-        flexShrink: 0,
-        width: '68px'
+        flex: 1,
+        minWidth: 0,
+        maxWidth: totalColunas <= 4 ? '70px' : (totalColunas <= 6 ? '54px' : '42px')
       }}
       title={`Clique para ver detalhes de ${natureza}: ${formatarMoeda(total)} (${percentual.toFixed(1)}%)`}
     >
@@ -81,35 +90,43 @@ const Barra3D: React.FC<Barra3DProps> = ({
         marginBottom: '6px',
         backgroundColor: selecionada ? 'rgba(248, 209, 23, 0.25)' : 'rgba(11, 25, 41, 0.75)',
         border: `1px solid ${selecionada ? '#F8D117' : 'rgba(255, 255, 255, 0.15)'}`,
-        padding: '3px 6px',
-        borderRadius: '8px',
+        padding: totalColunas > 6 ? '2px 2px' : '3px 4px',
+        borderRadius: '6px',
         boxShadow: selecionada ? '0 0 10px rgba(248, 209, 23, 0.4)' : 'none',
         transition: 'all 0.2s ease',
-        minWidth: '58px'
+        width: '100%',
+        maxWidth: '56px',
+        textAlign: 'center',
+        overflow: 'hidden'
       }}>
         <span style={{
-          fontSize: '10.5px',
+          fontSize: totalColunas > 7 ? '8px' : (totalColunas > 5 ? '9px' : '10px'),
           fontWeight: 900,
           color: selecionada ? '#F8D117' : '#FFFFFF',
-          whiteSpace: 'nowrap'
+          whiteSpace: 'nowrap',
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+          maxWidth: '100%'
         }}>
-          {formatarMoeda(total).replace('R$', '').trim()}
+          {totalColunas > 7 ? `${percentual.toFixed(0)}%` : textoValor}
         </span>
-        <span style={{
-          fontSize: '9px',
-          fontWeight: 800,
-          color: selecionada ? '#FFFFFF' : '#AAB4BE'
-        }}>
-          {percentual.toFixed(0)}%
-        </span>
+        {totalColunas <= 7 && (
+          <span style={{
+            fontSize: '8px',
+            fontWeight: 800,
+            color: selecionada ? '#FFFFFF' : '#AAB4BE'
+          }}>
+            {percentual.toFixed(0)}%
+          </span>
+        )}
       </div>
 
       {/* SVG da Barra em Estilo 3D Isométrico com Faces Chanfradas e Sombra */}
-      <div style={{ height: '170px', display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
+      <div style={{ height: '170px', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', width: '100%' }}>
         <svg
-          width={largura + profundidade + 6}
+          width={largura + profundidade + 4}
           height={h + profundidade + 10}
-          viewBox={`0 0 ${largura + profundidade + 6} ${h + profundidade + 10}`}
+          viewBox={`0 0 ${largura + profundidade + 4} ${h + profundidade + 10}`}
           style={{ overflow: 'visible', filter: selecionada ? `drop-shadow(0 0 8px ${cor})` : 'none' }}
         >
           <defs>
@@ -210,22 +227,22 @@ const Barra3D: React.FC<Barra3DProps> = ({
 
       {/* Ícone e Rótulo da Natureza na Base */}
       <div style={{
-        marginTop: '8px',
+        marginTop: '6px',
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
         textAlign: 'center',
         width: '100%'
       }}>
-        <span style={{ fontSize: '18px' }}>{emoji}</span>
+        <span style={{ fontSize: totalColunas > 7 ? '13px' : (totalColunas > 5 ? '15px' : '18px') }}>{emoji}</span>
         <span style={{
-          fontSize: '10px',
+          fontSize: totalColunas > 7 ? '8px' : (totalColunas > 5 ? '9px' : '10px'),
           fontWeight: 800,
           color: selecionada ? '#F8D117' : '#FFFFFF',
           whiteSpace: 'nowrap',
           overflow: 'hidden',
           textOverflow: 'ellipsis',
-          maxWidth: '68px',
+          maxWidth: '100%',
           marginTop: '2px'
         }}>
           {labelCurto}
@@ -398,7 +415,7 @@ export const AnalisesView: React.FC = () => {
   const resumo = obterResumoLivroCaixa(competenciaAtiva);
 
   // Formato do gráfico 3D: 'panoramico' (100% largura de tela sem scroll horizontal) ou 'colunas' (colunas verticais)
-  const [formatoGrafico3D, setFormatoGrafico3D] = useState<'panoramico' | 'colunas'>('panoramico');
+  const [formatoGrafico3D, setFormatoGrafico3D] = useState<'panoramico' | 'colunas'>('colunas');
 
   // Aba selecionada: 'grafico3d' (gráfico de barras 3D com detalhamento) ou 'lista' (accordion de todas as naturezas)
   const [abaVisualizacao, setAbaVisualizacao] = useState<'grafico3d' | 'lista'>('grafico3d');
@@ -869,15 +886,15 @@ export const AnalisesView: React.FC = () => {
                 })}
               </div>
             ) : (
-              /* MODO 2: BARRAS VERTICAIS 3D (EM COLUNAS) */
+              /* MODO 2: BARRAS VERTICAIS 3D (EM COLUNAS) - 100% RESPONSIVO NO CELULAR SEM ROLAGEM LATERAL */
               <div style={{
-                overflowX: 'auto',
-                padding: '10px 4px 16px 4px',
+                overflowX: 'hidden',
+                width: '100%',
+                padding: '10px 2px 14px 2px',
                 display: 'flex',
-                gap: '14px',
+                gap: dadosNaturezas.length > 7 ? '2px' : (dadosNaturezas.length > 5 ? '4px' : '8px'),
                 alignItems: 'flex-end',
-                justifyContent: dadosNaturezas.length <= 4 ? 'space-around' : 'flex-start',
-                WebkitOverflowScrolling: 'touch',
+                justifyContent: 'space-between',
                 minHeight: '270px'
               }}>
                 {dadosNaturezas.map((item) => {
@@ -893,6 +910,7 @@ export const AnalisesView: React.FC = () => {
                       cor={item.cor}
                       alturaPx={alturaCalculada}
                       selecionada={selecionada}
+                      totalColunas={dadosNaturezas.length}
                       onSelecionar={() => setNaturezaSelecionada3D(item.natureza)}
                     />
                   );

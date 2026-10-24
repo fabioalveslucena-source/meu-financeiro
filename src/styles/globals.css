@@ -591,4 +591,14 @@ button:disabled {
   .container {
     padding: 0 0.5rem !important;
   }
+
+  /* Previne sobreposição e encavalamento no mobile */
+  .separador-pro, .texto-pro-badge {
+    display: none !important;
+  }
+
+  .card, div[style*="borderRadius"] {
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+  }
 }
