@@ -790,12 +790,31 @@ export const AnalisesView: React.FC = () => {
               flexWrap: 'wrap',
               gap: '10px'
             }}>
-              <div>
-                <span style={{ fontSize: '11px', fontWeight: 800, color: '#AAB4BE', textTransform: 'uppercase', letterSpacing: '0.6px' }}>
-                  Consumo por Natureza • Estilo Tridimensional (3D)
-                </span>
-                <p style={{ margin: '2px 0 0 0', fontSize: '11.5px', color: '#5090D3', fontWeight: 700 }}>
-                  Toque em uma barra para auditar as subcategorias e valores
+              <div style={{ flex: '1 1 220px', minWidth: '200px' }}>
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  flexWrap: 'wrap'
+                }}>
+                  <span style={{ fontSize: '12px', fontWeight: 800, color: '#E2E8F0', letterSpacing: '0.4px' }}>
+                    Consumo por Natureza
+                  </span>
+                  <span style={{
+                    fontSize: '10.5px',
+                    fontWeight: 800,
+                    color: '#60A5FA',
+                    backgroundColor: 'rgba(96, 165, 250, 0.12)',
+                    border: '1px solid rgba(96, 165, 250, 0.3)',
+                    padding: '2px 8px',
+                    borderRadius: '8px',
+                    whiteSpace: 'nowrap'
+                  }}>
+                    3D Tridimensional
+                  </span>
+                </div>
+                <p style={{ margin: '3px 0 0 0', fontSize: '11px', color: '#94A3B8', fontWeight: 600, lineHeight: 1.4 }}>
+                  Toque em uma barra para editar as categorias e valores
                 </p>
               </div>
 
@@ -1080,45 +1099,62 @@ export const AnalisesView: React.FC = () => {
            ===================================================== */
         <div style={{
           backgroundColor: '#0F2744',
-          border: '1px solid #1E3A5F',
-          borderRadius: '16px',
+          border: '2px solid #F8D117',
+          borderRadius: '18px',
           overflow: 'hidden',
-          boxShadow: '0 4px 20px rgba(0, 0, 0, 0.25)'
+          boxShadow: '0 8px 30px rgba(0, 0, 0, 0.45), 0 0 16px rgba(248, 209, 23, 0.22)'
         }}>
-          {/* Cabeçalho do Bloco Único */}
+          {/* Cabeçalho do Bloco Único Destacado */}
           <div style={{
             padding: '14px 18px',
-            backgroundColor: '#132F4C',
-            borderBottom: '1px solid #1E3A5F',
+            background: 'linear-gradient(90deg, #132F4C 0%, #16385C 100%)',
+            borderBottom: '1px solid rgba(248, 209, 23, 0.3)',
             display: 'flex',
             justifyContent: 'space-between',
-            alignItems: 'center'
+            alignItems: 'center',
+            flexWrap: 'wrap',
+            gap: '8px'
           }}>
-            <span style={{ fontSize: '11px', fontWeight: 800, color: '#AAB4BE', textTransform: 'uppercase', letterSpacing: '0.6px' }}>
-              Distribuição por Natureza de Gastos
-            </span>
-            <span style={{ fontSize: '11px', color: '#5090D3', fontWeight: 700 }}>
-              {dadosNaturezas.length} {dadosNaturezas.length === 1 ? 'Natureza' : 'Naturezas'} ativas
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span style={{ fontSize: '18px' }}>📊</span>
+              <div>
+                <span style={{ fontSize: '13px', fontWeight: 800, color: '#FFFFFF', letterSpacing: '0.4px' }}>
+                  Gastos por Categoria
+                </span>
+                <p style={{ margin: '1px 0 0 0', fontSize: '11px', color: '#94A3B8' }}>
+                  Detalhamento consolidado por natureza
+                </p>
+              </div>
+            </div>
+            <span style={{
+              fontSize: '11px',
+              color: '#F8D117',
+              backgroundColor: 'rgba(248, 209, 23, 0.12)',
+              border: '1px solid rgba(248, 209, 23, 0.35)',
+              padding: '3px 9px',
+              borderRadius: '12px',
+              fontWeight: 800
+            }}>
+              {dadosNaturezas.length} {dadosNaturezas.length === 1 ? 'Natureza' : 'Naturezas'}
             </span>
           </div>
 
-          {/* Linhas das Naturezas com separador integrado */}
-          {dadosNaturezas.map((item, index) => {
+          {/* Linhas das Naturezas em Bloco Único Sem Linhas de Divisão */}
+          {dadosNaturezas.map((item) => {
             const expandido = Boolean(naturezasExpandidas[item.natureza]);
-            const isUltimo = index === dadosNaturezas.length - 1;
 
             return (
               <div 
                 key={item.natureza}
                 style={{
-                  border: expandido ? `2px solid ${item.cor}` : 'none',
-                  borderBottom: expandido ? `2px solid ${item.cor}` : (isUltimo ? 'none' : '1px solid #1E3A5F'),
-                  borderRadius: expandido ? '14px' : '0px',
-                  margin: expandido ? '6px 8px' : '0px',
+                  border: 'none',
+                  borderBottom: 'none',
+                  borderRadius: expandido ? '12px' : '0px',
+                  margin: expandido ? '4px 6px' : '0px',
                   overflow: 'hidden',
                   boxShadow: expandido ? `0 4px 18px rgba(0, 0, 0, 0.35), 0 0 12px ${item.cor}33` : 'none',
                   transition: 'all 0.25s ease',
-                  backgroundColor: expandido ? 'rgba(23, 63, 95, 0.28)' : 'transparent'
+                  backgroundColor: expandido ? 'rgba(23, 63, 95, 0.35)' : 'transparent'
                 }}
               >
                 {/* Cabeçalho Clicável da Natureza */}
