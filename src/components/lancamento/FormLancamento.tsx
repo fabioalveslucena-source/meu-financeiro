@@ -5,6 +5,7 @@ import { formatarDataInput, formatarMoeda, parseMoedaBR } from '../../lib/format
 import type { FormaPagamento, TipoLancamento } from '../../types';
 import { Mic, Plus, X, Check } from 'lucide-react';
 import { useVoiceRecognition } from '../../features/voice/useVoiceRecognition';
+import { detectarComandoEfetuar } from '../../features/voice/voiceInterpreter';
 
 interface FormLancamentoProps {
   onAbrirVoz: () => void;
@@ -103,11 +104,12 @@ export const FormLancamento: React.FC<FormLancamentoProps> = ({
         const bb = cartoes.find(c => c.nome.includes('Banco do Brasil'));
         setCartao(bb ? bb.nome : cartoes[0].nome);
       }
-      setAguardandoVozEfetuar(true);
     }
   }, [dadosPreenchidosVoz]);
 
-  const [aguardandoVozEfetuar, setAguardandoVozEfetuar] = useState(false);
+  const [modoVozEfetuar, setModoVozEfetuar] = useState(false);
+  const [revisaoLiberada, setRevisaoLiberada] = useState(false);
+  const [comandoEfetuarDetectado, setComandoEfetuarDetectado] = useState(false);
 
   const submeterLancamento = useCallback(() => {
     setErros([]);
@@ -153,7 +155,9 @@ export const FormLancamento: React.FC<FormLancamentoProps> = ({
       setValorTexto('');
       setDescricao('');
       setParcelas(1);
-      setAguardandoVozEfetuar(false);
+      setModoVozEfetuar(false);
+      setRevisaoLiberada(false);
+      setComandoEfetuarDetectado(false);
       pararEscutaEfetuar();
       return true;
     }
@@ -162,23 +166,49 @@ export const FormLancamento: React.FC<FormLancamentoProps> = ({
 
   const {
     estaOuvindo: ouvindoEfetuar,
+    transcricao: transcricaoEfetuar,
     iniciarGravacao: iniciarEscutaEfetuar,
     pararGravacao: pararEscutaEfetuar,
-  } = useVoiceRecognition({
-    onComandoEfetuar: () => {
-      submeterLancamento();
-    }
-  });
+  } = useVoiceRecognition();
 
-  // Reativa escuta automática enquanto estiver aguardando voz para efetuar
+  // Quando chegam dados preenchidos por voz, dá 3.5 segundos de revisão calma antes de abrir o microfone
   useEffect(() => {
-    if (aguardandoVozEfetuar && !ouvindoEfetuar) {
+    if (dadosPreenchidosVoz) {
+      setModoVozEfetuar(true);
+      setRevisaoLiberada(false);
+      setComandoEfetuarDetectado(false);
+
       const timer = setTimeout(() => {
-        if (aguardandoVozEfetuar) iniciarEscutaEfetuar();
-      }, 400);
+        setRevisaoLiberada(true);
+        iniciarEscutaEfetuar();
+      }, 3500);
+
       return () => clearTimeout(timer);
     }
-  }, [aguardandoVozEfetuar, ouvindoEfetuar, iniciarEscutaEfetuar]);
+  }, [dadosPreenchidosVoz, iniciarEscutaEfetuar]);
+
+  // Se o microfone de efetivação parar por silêncio no Android, reativa apenas se ainda estiver no modo de voz
+  useEffect(() => {
+    if (modoVozEfetuar && revisaoLiberada && !ouvindoEfetuar && !comandoEfetuarDetectado) {
+      const timer = setTimeout(() => {
+        if (modoVozEfetuar && revisaoLiberada) iniciarEscutaEfetuar();
+      }, 500);
+      return () => clearTimeout(timer);
+    }
+  }, [modoVozEfetuar, revisaoLiberada, ouvindoEfetuar, comandoEfetuarDetectado, iniciarEscutaEfetuar]);
+
+  // Captura comando de efetivar quando a revisão já foi liberada
+  useEffect(() => {
+    if (modoVozEfetuar && revisaoLiberada && transcricaoEfetuar && !comandoEfetuarDetectado) {
+      if (detectarComandoEfetuar(transcricaoEfetuar)) {
+        setComandoEfetuarDetectado(true);
+        pararEscutaEfetuar();
+        setTimeout(() => {
+          submeterLancamento();
+        }, 500);
+      }
+    }
+  }, [modoVozEfetuar, revisaoLiberada, transcricaoEfetuar, comandoEfetuarDetectado, pararEscutaEfetuar, submeterLancamento]);
 
   const handleSubmit = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
@@ -253,49 +283,85 @@ export const FormLancamento: React.FC<FormLancamentoProps> = ({
           </button>
         </div>
 
-        {/* Banner de Aguardo de Comando de Voz para Efetuar */}
-        {aguardandoVozEfetuar && (
+        {/* Banner de Revisão Tranquila e Comando de Voz para Efetuar */}
+        {modoVozEfetuar && (
           <div style={{
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
-            backgroundColor: 'rgba(248, 209, 23, 0.14)',
-            border: '1.5px solid #F8D117',
+            backgroundColor: revisaoLiberada ? 'rgba(76, 175, 80, 0.16)' : 'rgba(40, 126, 165, 0.16)',
+            border: `1.5px solid ${revisaoLiberada ? '#4CAF50' : '#287EA5'}`,
             borderRadius: '14px',
-            padding: '10px 14px',
-            marginBottom: '14px',
-            gap: '10px'
+            padding: '11px 16px',
+            marginBottom: '16px',
+            gap: '12px',
+            transition: 'all 0.3s ease'
           }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px', textAlign: 'left' }}>
-              <span style={{ fontSize: '20px' }}>🎙️</span>
+              <span style={{ fontSize: '22px' }}>{revisaoLiberada ? (comandoEfetuarDetectado ? '✓' : '🎙️') : '👀'}</span>
               <div>
-                <strong style={{ fontSize: '13px', color: '#F8D117', display: 'block' }}>
-                  Microfone ligado:
+                <strong style={{ fontSize: '13px', color: revisaoLiberada ? '#81C784' : '#82B1FF', display: 'block' }}>
+                  {comandoEfetuarDetectado ? (
+                    'Comando "Efetuar" reconhecido! Gravando lançamento...'
+                  ) : revisaoLiberada ? (
+                    'Microfone pronto para gravar:'
+                  ) : (
+                    'Revise os dados preenchidos com calma:'
+                  )}
                 </strong>
                 <span style={{ fontSize: '11.5px', color: '#E2E8F0' }}>
-                  Diga <strong>"Efetuar"</strong>, <strong>"Sim"</strong> ou <strong>"OK"</strong> para gravar
+                  {comandoEfetuarDetectado ? (
+                    'Salvando movimentação financeira...'
+                  ) : revisaoLiberada ? (
+                    <>Diga <strong>"Efetuar"</strong> ou <strong>"Gravar"</strong> (ou toque no botão verde abaixo)</>
+                  ) : (
+                    'O microfone será armado em instantes para sua segurança.'
+                  )}
                 </span>
               </div>
             </div>
-            <button
-              type="button"
-              onClick={() => {
-                pararEscutaEfetuar();
-                setAguardandoVozEfetuar(false);
-              }}
-              style={{
-                background: 'rgba(255, 255, 255, 0.12)',
-                border: '1px solid rgba(255, 255, 255, 0.25)',
-                borderRadius: '8px',
-                padding: '5px 9px',
-                color: '#FFFFFF',
-                fontSize: '11.5px',
-                fontWeight: 700,
-                cursor: 'pointer'
-              }}
-            >
-              Pausar
-            </button>
+            <div style={{ display: 'flex', gap: '6px' }}>
+              {!revisaoLiberada && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setRevisaoLiberada(true);
+                    iniciarEscutaEfetuar();
+                  }}
+                  style={{
+                    background: 'rgba(80, 144, 211, 0.25)',
+                    border: '1px solid #5090D3',
+                    borderRadius: '8px',
+                    padding: '5px 10px',
+                    color: '#FFFFFF',
+                    fontSize: '11.5px',
+                    fontWeight: 800,
+                    cursor: 'pointer'
+                  }}
+                >
+                  Falar Agora
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() => {
+                  pararEscutaEfetuar();
+                  setModoVozEfetuar(false);
+                }}
+                style={{
+                  background: 'rgba(255, 255, 255, 0.12)',
+                  border: '1px solid rgba(255, 255, 255, 0.25)',
+                  borderRadius: '8px',
+                  padding: '5px 9px',
+                  color: '#FFFFFF',
+                  fontSize: '11.5px',
+                  fontWeight: 700,
+                  cursor: 'pointer'
+                }}
+              >
+                Pausar Voz
+              </button>
+            </div>
           </div>
         )}
 

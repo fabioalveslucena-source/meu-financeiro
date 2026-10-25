@@ -1,7 +1,7 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { useVoiceRecognition } from '../../features/voice/useVoiceRecognition';
 import { formatarMoeda } from '../../lib/formatters';
-import type { VozInterpretada } from '../../features/voice/voiceInterpreter';
+import { detectarComandoConfirmacao, type VozInterpretada } from '../../features/voice/voiceInterpreter';
 import { Mic, MicOff, X, Check, AlertCircle, Sparkles, RefreshCw, Square } from 'lucide-react';
 
 interface VoiceModalProps {
@@ -15,15 +15,8 @@ export const VoiceModal: React.FC<VoiceModalProps> = ({
   onFechar,
   onConfirmarDados,
 }) => {
-  const resultadoRef = React.useRef<VozInterpretada | null>(null);
-
-  const handleConfirmar = React.useCallback((resParaConfirmar?: VozInterpretada) => {
-    const dados = resParaConfirmar || resultadoRef.current;
-    if (dados && dados.sucesso) {
-      onConfirmarDados(dados);
-      onFechar();
-    }
-  }, [onConfirmarDados, onFechar]);
+  const resultadoRef = useRef<VozInterpretada | null>(null);
+  const [tempoAnaliseLiberado, setTempoAnaliseLiberado] = useState(false);
 
   const {
     estaOuvindo,
@@ -34,32 +27,60 @@ export const VoiceModal: React.FC<VoiceModalProps> = ({
     iniciarGravacao,
     pararGravacao,
     limparResultado,
-  } = useVoiceRecognition({
-    onComandoConfirmar: () => {
-      handleConfirmar();
+  } = useVoiceRecognition();
+
+  const handleConfirmar = useCallback((resParaConfirmar?: VozInterpretada) => {
+    const dados = resParaConfirmar || resultadoRef.current || resultado;
+    if (dados && dados.sucesso) {
+      pararGravacao();
+      onConfirmarDados(dados);
+      onFechar();
     }
-  });
+  }, [resultado, onConfirmarDados, onFechar, pararGravacao]);
 
   useEffect(() => {
     resultadoRef.current = resultado;
   }, [resultado]);
 
-  // Se já identificou os dados com sucesso, mantém o microfone escutando para capturar "confirmar" ou "ok"
+  // Dá um tempo de 2 segundos para o usuário ler os dados antes de armar comando de voz
+  useEffect(() => {
+    if (resultado && resultado.sucesso) {
+      setTempoAnaliseLiberado(false);
+      const timer = setTimeout(() => {
+        setTempoAnaliseLiberado(true);
+      }, 2000);
+      return () => clearTimeout(timer);
+    } else {
+      setTempoAnaliseLiberado(false);
+    }
+  }, [resultado]);
+
+  // Se já identificou os dados com sucesso, reativa o microfone mantendo o resultado para ouvir "confirmar" ou "ok"
   useEffect(() => {
     if (resultado && resultado.sucesso && aberto && suportado && !estaOuvindo) {
       const timer = setTimeout(() => {
-        if (aberto) {
-          iniciarGravacao();
+        if (aberto && !estaOuvindo) {
+          iniciarGravacao(true); // Mantém o card na tela!
         }
-      }, 400);
+      }, 600);
       return () => clearTimeout(timer);
     }
   }, [resultado, aberto, suportado, estaOuvindo, iniciarGravacao]);
 
+  // Captura comando de confirmação APENAS após o tempo de análise ser liberado
+  useEffect(() => {
+    if (tempoAnaliseLiberado && resultado && resultado.sucesso && transcricao) {
+      if (detectarComandoConfirmacao(transcricao)) {
+        handleConfirmar();
+      }
+    }
+  }, [transcricao, tempoAnaliseLiberado, resultado, handleConfirmar]);
+
   useEffect(() => {
     if (aberto && suportado) {
       limparResultado();
-      iniciarGravacao();
+      setTempoAnaliseLiberado(false);
+      iniciarGravacao(false);
     } else {
       pararGravacao();
     }
@@ -145,7 +166,7 @@ export const VoiceModal: React.FC<VoiceModalProps> = ({
 
           <button
             type="button"
-            onClick={estaOuvindo ? pararGravacao : iniciarGravacao}
+            onClick={estaOuvindo ? pararGravacao : () => iniciarGravacao()}
             style={{
               width: '84px',
               height: '84px',
@@ -269,18 +290,25 @@ export const VoiceModal: React.FC<VoiceModalProps> = ({
               alignItems: 'center',
               justifyContent: 'center',
               gap: '8px',
-              backgroundColor: 'rgba(76, 175, 80, 0.15)',
-              border: '1px solid rgba(76, 175, 80, 0.4)',
+              backgroundColor: tempoAnaliseLiberado ? 'rgba(76, 175, 80, 0.15)' : 'rgba(40, 126, 165, 0.15)',
+              border: `1px solid ${tempoAnaliseLiberado ? 'rgba(76, 175, 80, 0.4)' : 'rgba(40, 126, 165, 0.4)'}`,
               borderRadius: '12px',
-              padding: '8px 12px',
+              padding: '9px 14px',
               marginBottom: '12px',
               width: '100%',
-              color: '#81C784',
+              color: tempoAnaliseLiberado ? '#81C784' : '#82B1FF',
               fontSize: '12.5px',
-              fontWeight: 800
+              fontWeight: 800,
+              transition: 'all 0.3s ease'
             }}>
-              <span style={{ fontSize: '15px' }}>🎙️</span>
-              <span>Microfone ligado: Diga <strong>"Confirmar"</strong> ou <strong>"OK"</strong></span>
+              <span style={{ fontSize: '16px' }}>{tempoAnaliseLiberado ? '🎙️' : '👀'}</span>
+              <span>
+                {tempoAnaliseLiberado ? (
+                  <>Microfone pronto: Diga <strong>"Confirmar"</strong> ou <strong>"OK"</strong> (ou toque no botão)</>
+                ) : (
+                  <>Analise os dados identificados abaixo com calma...</>
+                )}
+              </span>
             </div>
 
             <div style={{
@@ -354,7 +382,7 @@ export const VoiceModal: React.FC<VoiceModalProps> = ({
             {!estaOuvindo && (
               <button
                 type="button"
-                onClick={iniciarGravacao}
+                onClick={() => iniciarGravacao()}
                 style={{
                   flex: 1,
                   display: 'flex',

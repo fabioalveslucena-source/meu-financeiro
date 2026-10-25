@@ -26,7 +26,7 @@ export interface UseVoiceRecognitionReturn {
   resultado: VozInterpretada | null;
   suportado: boolean;
   erro: string | null;
-  iniciarGravacao: () => void;
+  iniciarGravacao: (preservarResultado?: boolean) => void;
   pararGravacao: () => void;
   limparResultado: () => void;
 }
@@ -113,9 +113,6 @@ export function useVoiceRecognition(
       if (onResultadoFinal && interpretado.sucesso) {
         onResultadoFinal(interpretado);
       }
-      if (interpretado.sucesso && onComandoConfirmar && detectarComandoConfirmacao(textoLimpo)) {
-        onComandoConfirmar();
-      }
     } catch (e) {
       console.error('Erro ao interpretar comando de voz:', e);
     }
@@ -136,7 +133,7 @@ export function useVoiceRecognition(
     }
   }, [limparTimers, finalizarComTexto]);
 
-  const iniciarGravacao = useCallback(() => {
+  const iniciarGravacao = useCallback((preservarResultado: boolean = false) => {
     if (!SpeechRecognition) {
       setErro('Seu navegador não suporta reconhecimento de voz nativo.');
       return;
@@ -145,7 +142,9 @@ export function useVoiceRecognition(
     limparTimers();
     setErro(null);
     setTranscricao('');
-    setResultado(null);
+    if (!preservarResultado) {
+      setResultado(null);
+    }
     textoAtualRef.current = '';
 
     try {

@@ -505,19 +505,22 @@ export function interpretarComandoVoz(frase: string): VozInterpretada {
 }
 
 /**
- * Detecta comandos de voz de confirmação ("confirmar", "ok", "sim", "correto", "pode salvar", etc)
+ * Detecta comandos explícitos de voz para confirmação no modal ("confirmar", "ok", "confirmado")
+ * Exige comando deliberado para não disparar acidentalmente em ruídos ou falas intermediárias.
  */
 export function detectarComandoConfirmacao(texto: string): boolean {
   if (!texto) return false;
-  const norm = normalizarTexto(texto);
-  return /\b(confirmar|confirma|confirmado|confirmou|ok|oquei|sim|correto|pode salvar|salvar|pode confirmar)\b/.test(norm);
+  const norm = normalizarTexto(texto).trim();
+  if (/^(confirmar|confirma|confirmado|ok|oquei)$/i.test(norm)) return true;
+  return /\b(pode confirmar|confirmar dados|esta correto|está correto|tudo certo)\b/i.test(norm);
 }
 
 /**
- * Detecta comandos de voz para efetuar o lançamento na tela final ("efetuar", "sim", "ok", "gravar", "salvar")
+ * Detecta comandos explícitos de voz para efetuar o lançamento na tela do formulário ("efetuar", "efetuar lançamento", "gravar")
  */
 export function detectarComandoEfetuar(texto: string): boolean {
   if (!texto) return false;
-  const norm = normalizarTexto(texto);
-  return /\b(efetuar|efetua|efetuado|sim|ok|oquei|gravar|salvar|concluir|confirmar)\b/.test(norm);
+  const norm = normalizarTexto(texto).trim();
+  if (/^(efetuar|efetua|efetuado|gravar|concluir|concluido|concluído|ok|oquei)$/i.test(norm)) return true;
+  return /\b(efetuar lancamento|efetuar lançamento|gravar lancamento|gravar lançamento|concluir lancamento|concluir lançamento|pode efetuar|pode gravar)\b/i.test(norm);
 }
