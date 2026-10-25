@@ -1,9 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useFinanceStore } from '../../stores/financeStore';
 import { TIPOS_LANCAMENTO } from '../../lib/constants';
 import { formatarDataInput, formatarMoeda, parseMoedaBR } from '../../lib/formatters';
 import type { FormaPagamento, TipoLancamento } from '../../types';
 import { Mic, Plus, X, Check } from 'lucide-react';
+import { useVoiceRecognition } from '../../features/voice/useVoiceRecognition';
 
 interface FormLancamentoProps {
   onAbrirVoz: () => void;
@@ -102,11 +103,13 @@ export const FormLancamento: React.FC<FormLancamentoProps> = ({
         const bb = cartoes.find(c => c.nome.includes('Banco do Brasil'));
         setCartao(bb ? bb.nome : cartoes[0].nome);
       }
+      setAguardandoVozEfetuar(true);
     }
   }, [dadosPreenchidosVoz]);
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
+  const [aguardandoVozEfetuar, setAguardandoVozEfetuar] = useState(false);
+
+  const submeterLancamento = useCallback(() => {
     setErros([]);
 
     const valorNumerico = parseMoedaBR(valorTexto);
@@ -116,7 +119,6 @@ export const FormLancamento: React.FC<FormLancamentoProps> = ({
       validacaoErros.push('Informe um valor financeiro válido.');
     }
 
-    // Se o usuário não preencher a descrição, replica automaticamente o nome da categoria
     const descricaoFinal = (descricao.trim() || categoria).trim();
     if (!descricaoFinal) {
       validacaoErros.push('Selecione uma categoria ou informe uma descrição.');
@@ -131,7 +133,7 @@ export const FormLancamento: React.FC<FormLancamentoProps> = ({
 
     if (validacaoErros.length > 0) {
       setErros(validacaoErros);
-      return;
+      return false;
     }
 
     const resultado = adicionarLancamento({
@@ -151,7 +153,36 @@ export const FormLancamento: React.FC<FormLancamentoProps> = ({
       setValorTexto('');
       setDescricao('');
       setParcelas(1);
+      setAguardandoVozEfetuar(false);
+      pararEscutaEfetuar();
+      return true;
     }
+    return false;
+  }, [valorTexto, descricao, categoria, pagamento, cartao, conta, data, tipo, natureza, parcelas, adicionarLancamento]);
+
+  const {
+    estaOuvindo: ouvindoEfetuar,
+    iniciarGravacao: iniciarEscutaEfetuar,
+    pararGravacao: pararEscutaEfetuar,
+  } = useVoiceRecognition({
+    onComandoEfetuar: () => {
+      submeterLancamento();
+    }
+  });
+
+  // Reativa escuta automática enquanto estiver aguardando voz para efetuar
+  useEffect(() => {
+    if (aguardandoVozEfetuar && !ouvindoEfetuar) {
+      const timer = setTimeout(() => {
+        if (aguardandoVozEfetuar) iniciarEscutaEfetuar();
+      }, 400);
+      return () => clearTimeout(timer);
+    }
+  }, [aguardandoVozEfetuar, ouvindoEfetuar, iniciarEscutaEfetuar]);
+
+  const handleSubmit = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    submeterLancamento();
   };
 
   const pagamentosOriginais: FormaPagamento[] = [
@@ -175,50 +206,98 @@ export const FormLancamento: React.FC<FormLancamentoProps> = ({
         padding: '20px 18px',
         boxShadow: '0 6px 20px rgba(11, 25, 41, 0.4)'
       }}>
-        {/* Cabeçalho do formulário com botão de voz integrado */}
+        {/* Cabeçalho do formulário centralizado com botão de voz integrado */}
         <div style={{
           display: 'flex',
+          flexDirection: 'column',
           alignItems: 'center',
-          justifyContent: 'space-between',
+          justifyContent: 'center',
+          textAlign: 'center',
           marginBottom: '16px',
           borderBottom: '1px solid #1E3A5F',
-          paddingBottom: '12px',
-          flexWrap: 'wrap',
-          gap: '8px'
+          paddingBottom: '14px',
+          gap: '10px'
         }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <span style={{ fontSize: '22px' }}>⚡</span>
-            <div>
-              <h2 style={{ fontSize: '17px', fontWeight: 800, margin: 0, color: '#FFFFFF' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '3px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+              <span style={{ fontSize: '22px' }}>⚡</span>
+              <h2 style={{ fontSize: '18px', fontWeight: 800, margin: 0, color: '#FFFFFF' }}>
                 Novo Lançamento
               </h2>
-              <span style={{ fontSize: '11px', color: '#607789' }}>Preencha os dados ou fale por voz</span>
             </div>
+            <span style={{ fontSize: '12px', color: '#AAB4BE' }}>Preencha os dados ou fale por voz</span>
           </div>
 
           <button
             type="button"
             onClick={onAbrirVoz}
             style={{
-              padding: '8px 14px',
-              borderRadius: '12px',
+              padding: '9px 18px',
+              borderRadius: '14px',
               border: '1px solid #287EA5',
               background: 'linear-gradient(135deg, #173F5F 0%, #287EA5 100%)',
               color: '#FFFFFF',
-              fontSize: '12px',
+              fontSize: '13px',
               fontWeight: 800,
               cursor: 'pointer',
-              display: 'flex',
+              display: 'inline-flex',
               alignItems: 'center',
-              gap: '6px',
-              boxShadow: '0 2px 8px rgba(40, 126, 165, 0.3)',
+              justifyContent: 'center',
+              gap: '8px',
+              boxShadow: '0 3px 12px rgba(40, 126, 165, 0.35)',
               transition: 'transform 0.15s ease'
             }}
           >
-            <Mic size={15} />
+            <Mic size={16} />
             <span>Falar Lançamento 🎙️</span>
           </button>
         </div>
+
+        {/* Banner de Aguardo de Comando de Voz para Efetuar */}
+        {aguardandoVozEfetuar && (
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            backgroundColor: 'rgba(248, 209, 23, 0.14)',
+            border: '1.5px solid #F8D117',
+            borderRadius: '14px',
+            padding: '10px 14px',
+            marginBottom: '14px',
+            gap: '10px'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', textAlign: 'left' }}>
+              <span style={{ fontSize: '20px' }}>🎙️</span>
+              <div>
+                <strong style={{ fontSize: '13px', color: '#F8D117', display: 'block' }}>
+                  Microfone ligado:
+                </strong>
+                <span style={{ fontSize: '11.5px', color: '#E2E8F0' }}>
+                  Diga <strong>"Efetuar"</strong>, <strong>"Sim"</strong> ou <strong>"OK"</strong> para gravar
+                </span>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                pararEscutaEfetuar();
+                setAguardandoVozEfetuar(false);
+              }}
+              style={{
+                background: 'rgba(255, 255, 255, 0.12)',
+                border: '1px solid rgba(255, 255, 255, 0.25)',
+                borderRadius: '8px',
+                padding: '5px 9px',
+                color: '#FFFFFF',
+                fontSize: '11.5px',
+                fontWeight: 700,
+                cursor: 'pointer'
+              }}
+            >
+              Pausar
+            </button>
+          </div>
+        )}
 
         {erros.length > 0 && (
           <div style={{

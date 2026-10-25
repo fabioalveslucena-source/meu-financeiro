@@ -108,20 +108,23 @@ export const ExtratoView: React.FC<ExtratoViewProps> = ({ subAbaInicial = 'livro
           </button>
         </div>
 
-        {/* Ação Rápida: Importar OFX/CSV */}
-        <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', width: '100%' }}>
+        {/* Ação Rápida: Importar OFX/CSV Centralizado */}
+        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', width: '100%' }}>
           <button
             type="button"
             onClick={() => setModalImportarAberto(true)}
             className="btn-secondary"
             style={{
-              padding: '7px 14px',
-              fontSize: '11.5px',
+              padding: '7px 16px',
+              fontSize: '12px',
               fontWeight: 700,
               gap: '6px',
               borderRadius: '10px',
               borderColor: '#287EA5',
-              color: '#82B1FF'
+              color: '#82B1FF',
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center'
             }}
             title="Importar extrato baixado do internet banking (.OFX ou .CSV)"
           >

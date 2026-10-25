@@ -160,34 +160,50 @@ export const InicioView: React.FC<InicioViewProps> = ({
         padding: '20px',
         boxShadow: '0 6px 20px rgba(11, 25, 41, 0.4)'
       }}>
+        {/* Cabeçalho Centralizado da Visão Geral do Mês */}
         <div style={{
           display: 'flex',
-          justifyContent: 'space-between',
+          flexDirection: 'column',
           alignItems: 'center',
+          justifyContent: 'center',
+          textAlign: 'center',
           marginBottom: '16px',
           borderBottom: '1px solid #1E3A5F',
-          paddingBottom: '10px'
+          paddingBottom: '12px',
+          gap: '5px'
         }}>
-          <div>
-            <h3 style={{ fontSize: '16px', fontWeight: 900, margin: 0, color: '#FFFFFF', display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <span>📊</span> Visão Geral do Mês
-            </h3>
-            <span style={{ fontSize: '11px', color: '#AAB4BE' }}>
-              Balanço consolidado da competência {competenciaAtiva}
+          <h3 style={{ fontSize: '16px', fontWeight: 900, margin: 0, color: '#FFFFFF', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+            <span>📊</span> Visão Geral do Mês
+          </h3>
+          <span style={{ fontSize: '12px', color: '#AAB4BE', fontWeight: 700 }}>
+            Balanço Consolidado da Competência
+          </span>
+          <span style={{
+            fontSize: '13px',
+            fontWeight: 800,
+            color: '#5090D3',
+            backgroundColor: 'rgba(80, 144, 211, 0.12)',
+            border: '1px solid rgba(80, 144, 211, 0.3)',
+            padding: '2px 10px',
+            borderRadius: '10px'
+          }}>
+            {competenciaAtiva}
+          </span>
+
+          <div style={{ marginTop: '4px' }}>
+            <span style={{
+              fontSize: '11px',
+              fontWeight: 800,
+              padding: '4px 14px',
+              borderRadius: '20px',
+              backgroundColor: resumo.saldoFinal >= 0 ? 'rgba(76, 175, 80, 0.18)' : 'rgba(244, 67, 54, 0.18)',
+              border: `1px solid ${resumo.saldoFinal >= 0 ? '#4CAF50' : '#F44336'}`,
+              color: resumo.saldoFinal >= 0 ? '#4CAF50' : '#F44336',
+              display: 'inline-block'
+            }}>
+              {resumo.saldoFinal >= 0 ? '● Saldo Positivo' : '● Atenção ao Saldo'}
             </span>
           </div>
-
-          <span style={{
-            fontSize: '11px',
-            fontWeight: 800,
-            padding: '3px 10px',
-            borderRadius: '20px',
-            backgroundColor: resumo.saldoFinal >= 0 ? 'rgba(76, 175, 80, 0.18)' : 'rgba(244, 67, 54, 0.18)',
-            border: `1px solid ${resumo.saldoFinal >= 0 ? '#4CAF50' : '#F44336'}`,
-            color: resumo.saldoFinal >= 0 ? '#4CAF50' : '#F44336'
-          }}>
-            {resumo.saldoFinal >= 0 ? '● Saldo Positivo' : '● Atenção ao Saldo'}
-          </span>
         </div>
 
         {/* Grade com os 4 Cards Principais Responsiva */}
@@ -354,39 +370,42 @@ export const InicioView: React.FC<InicioViewProps> = ({
           }}>
             <div style={{
               display: 'flex',
-              justifyContent: 'space-between',
+              flexDirection: 'column',
               alignItems: 'center',
-              marginBottom: '14px'
+              justifyContent: 'center',
+              textAlign: 'center',
+              marginBottom: '14px',
+              gap: '6px'
             }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
                 <span style={{ fontSize: '20px' }}>💳</span>
-                <div>
-                  <h3 style={{ fontSize: '16px', fontWeight: 900, margin: 0, color: '#FFFFFF' }}>
-                    Cartão Principal • {c.nome}
-                  </h3>
-                  <span style={{ fontSize: '11px', color: '#AAB4BE' }}>
-                    {c.bandeira} • Fechamento Dia {c.diaFechamento} • Vencimento Dia {c.diaVencimento}
-                  </span>
-                </div>
+                <h3 style={{ fontSize: '16.5px', fontWeight: 900, margin: 0, color: '#FFFFFF', textAlign: 'center' }}>
+                  {c.nome}
+                </h3>
               </div>
-
+              <span style={{ fontSize: '11px', color: '#AAB4BE', textAlign: 'center' }}>
+                {c.bandeira} • Fechamento Dia {c.diaFechamento} • Vencimento Dia {c.diaVencimento}
+              </span>
               <button
                 type="button"
                 onClick={onIrParaCartoes}
                 style={{
-                  background: 'none',
-                  border: 'none',
+                  background: 'rgba(80, 144, 211, 0.1)',
+                  border: '1px solid rgba(80, 144, 211, 0.3)',
+                  borderRadius: '10px',
+                  padding: '4px 12px',
                   color: '#5090D3',
-                  fontSize: '12px',
+                  fontSize: '11.5px',
                   fontWeight: 700,
                   cursor: 'pointer',
-                  display: 'flex',
+                  display: 'inline-flex',
                   alignItems: 'center',
-                  gap: '4px'
+                  gap: '4px',
+                  marginTop: '2px'
                 }}
               >
-                <span>Ver todos</span>
-                <ArrowRight size={14} />
+                <span>Ver Fatura Completa</span>
+                <ArrowRight size={13} />
               </button>
             </div>
 

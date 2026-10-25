@@ -118,49 +118,44 @@ export const LivroCaixaView: React.FC = () => {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-      {/* Barra de Ações do Topo */}
+      {/* Barra de Ações do Topo Centralizada */}
       <div style={{
         display: 'flex',
+        flexDirection: 'column',
         alignItems: 'center',
-        justifyContent: 'space-between',
-        flexWrap: 'wrap',
-        gap: '1rem'
+        justifyContent: 'center',
+        textAlign: 'center',
+        gap: '12px',
+        width: '100%'
       }}>
-        <div>
-          <h2 style={{ fontSize: '1.45rem', fontWeight: 800, margin: 0 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
+          <h2 style={{ fontSize: '1.45rem', fontWeight: 800, margin: 0, textAlign: 'center' }}>
             Livro Caixa • {competenciaAtiva}
           </h2>
-          <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', margin: '2px 0 0 0' }}>
+          <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', margin: 0, textAlign: 'center' }}>
             Titular: <strong style={{ color: '#FFFFFF' }}>{usuario.nome}</strong> • {lancamentosComSaldo.length} lançamentos
           </p>
         </div>
 
-        <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
-          <button
-            type="button"
-            onClick={() => exportarLancamentosCSV(lancamentosDoMes, `Extrato_${competenciaAtiva.replace('/', '_')}.csv`)}
-            className="btn-secondary"
-            style={{
-              padding: '0.65rem 1rem',
-              fontSize: '0.85rem',
-              gap: '0.5rem',
-              borderColor: '#10B981',
-              color: '#34D399'
-            }}
-            title="Exportar para Excel / Google Planilhas (CSV)"
-          >
-            <Table size={16} color="#10B981" />
-            <span>Exportar CSV</span>
-          </button>
-
+        <div style={{
+          display: 'flex',
+          gap: '8px',
+          alignItems: 'center',
+          justifyContent: 'center',
+          flexWrap: 'wrap',
+          width: '100%',
+          maxWidth: '480px'
+        }}>
           <button
             onClick={handleExportarPdf}
             disabled={gerandoPdf}
             className="btn-primary"
             style={{
-              padding: '0.65rem 1.25rem',
+              padding: '0.7rem 1.25rem',
               fontSize: '0.9rem',
-              gap: '0.5rem'
+              gap: '0.5rem',
+              flex: '1 1 200px',
+              justifyContent: 'center'
             }}
           >
             {gerandoPdf ? (
@@ -174,6 +169,25 @@ export const LivroCaixaView: React.FC = () => {
                 <span>Exportar PDF para Imprimir</span>
               </>
             )}
+          </button>
+
+          <button
+            type="button"
+            onClick={() => exportarLancamentosCSV(lancamentosDoMes, `Extrato_${competenciaAtiva.replace('/', '_')}.csv`)}
+            className="btn-secondary"
+            style={{
+              padding: '0.7rem 1rem',
+              fontSize: '0.85rem',
+              gap: '0.5rem',
+              borderColor: '#10B981',
+              color: '#34D399',
+              flex: '1 1 140px',
+              justifyContent: 'center'
+            }}
+            title="Exportar para Excel / Google Planilhas (CSV)"
+          >
+            <Table size={16} color="#10B981" />
+            <span>Exportar CSV</span>
           </button>
         </div>
       </div>
@@ -685,11 +699,29 @@ export const LivroCaixaView: React.FC = () => {
             gap: '12px',
             boxShadow: '0 4px 14px rgba(0, 0, 0, 0.25)'
           }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
-              <span style={{ fontSize: '12.5px', fontWeight: 800, color: '#F8D117', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                📊 Fechamento Consolidado do Mês ({competenciaAtiva})
+            <div style={{
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              textAlign: 'center',
+              gap: '5px'
+            }}>
+              <span style={{ fontSize: '13px', fontWeight: 800, color: '#F8D117', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                📊 Fechamento Consolidado do Mês
               </span>
-              <span style={{ fontSize: '11.5px', color: '#AAB4BE' }}>
+              <span style={{
+                fontSize: '12px',
+                fontWeight: 800,
+                color: '#5090D3',
+                backgroundColor: 'rgba(80, 144, 211, 0.12)',
+                border: '1px solid rgba(80, 144, 211, 0.3)',
+                padding: '2px 10px',
+                borderRadius: '8px'
+              }}>
+                {competenciaAtiva}
+              </span>
+              <span style={{ fontSize: '11px', color: '#AAB4BE', marginTop: '2px' }}>
                 {lancamentosDoMes.length} {lancamentosDoMes.length === 1 ? 'movimentação registrada' : 'movimentações registradas'}
               </span>
             </div>

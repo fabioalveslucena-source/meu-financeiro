@@ -1,5 +1,10 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { interpretarComandoVoz, type VozInterpretada } from './voiceInterpreter';
+import { 
+  interpretarComandoVoz, 
+  detectarComandoConfirmacao, 
+  detectarComandoEfetuar, 
+  type VozInterpretada 
+} from './voiceInterpreter';
 
 // Declaração de tipos para a Web Speech API
 declare global {
@@ -7,6 +12,12 @@ declare global {
     SpeechRecognition: any;
     webkitSpeechRecognition: any;
   }
+}
+
+export interface VoiceRecognitionOptions {
+  onResultadoFinal?: (res: VozInterpretada) => void;
+  onComandoConfirmar?: () => void;
+  onComandoEfetuar?: () => void;
 }
 
 export interface UseVoiceRecognitionReturn {
@@ -48,7 +59,13 @@ function removerRepeticoes(texto: string): string {
   return filtradas.join(' ');
 }
 
-export function useVoiceRecognition(onResultadoFinal?: (res: VozInterpretada) => void): UseVoiceRecognitionReturn {
+export function useVoiceRecognition(
+  opcoes?: ((res: VozInterpretada) => void) | VoiceRecognitionOptions
+): UseVoiceRecognitionReturn {
+  const onResultadoFinal = typeof opcoes === 'function' ? opcoes : opcoes?.onResultadoFinal;
+  const onComandoConfirmar = typeof opcoes === 'object' ? opcoes.onComandoConfirmar : undefined;
+  const onComandoEfetuar = typeof opcoes === 'object' ? opcoes.onComandoEfetuar : undefined;
+
   const [estaOuvindo, setEstaOuvindo] = useState(false);
   const [transcricao, setTranscricao] = useState('');
   const [resultado, setResultado] = useState<VozInterpretada | null>(null);
@@ -80,16 +97,29 @@ export function useVoiceRecognition(onResultadoFinal?: (res: VozInterpretada) =>
     const textoLimpo = removerRepeticoes(texto);
     if (!textoLimpo) return;
 
+    if (onComandoEfetuar && detectarComandoEfetuar(textoLimpo)) {
+      onComandoEfetuar();
+      return;
+    }
+
+    if (onComandoConfirmar && detectarComandoConfirmacao(textoLimpo)) {
+      onComandoConfirmar();
+      return;
+    }
+
     try {
       const interpretado = interpretarComandoVoz(textoLimpo);
       setResultado(interpretado);
       if (onResultadoFinal && interpretado.sucesso) {
         onResultadoFinal(interpretado);
       }
+      if (interpretado.sucesso && onComandoConfirmar && detectarComandoConfirmacao(textoLimpo)) {
+        onComandoConfirmar();
+      }
     } catch (e) {
       console.error('Erro ao interpretar comando de voz:', e);
     }
-  }, [onResultadoFinal]);
+  }, [onResultadoFinal, onComandoConfirmar, onComandoEfetuar]);
 
   const pararGravacao = useCallback(() => {
     limparTimers();
@@ -149,6 +179,17 @@ export function useVoiceRecognition(onResultadoFinal?: (res: VozInterpretada) =>
         const textoProcessado = removerRepeticoes(textoBruto);
         textoAtualRef.current = textoProcessado;
         setTranscricao(textoProcessado);
+
+        // Disparo imediato se capturar comando direto de efetuar ou confirmar
+        if (onComandoEfetuar && detectarComandoEfetuar(textoProcessado)) {
+          onComandoEfetuar();
+          return;
+        }
+
+        if (onComandoConfirmar && detectarComandoConfirmacao(textoProcessado)) {
+          onComandoConfirmar();
+          return;
+        }
 
         // Debounce da interpretação para não travar a thread UI no celular
         if (debounceTimerRef.current) {

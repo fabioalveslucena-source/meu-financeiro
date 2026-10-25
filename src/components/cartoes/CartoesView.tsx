@@ -11,12 +11,21 @@ export const CartoesView: React.FC = () => {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
-        <div>
-          <h2 style={{ fontSize: '1.4rem', fontWeight: 800, margin: 0 }}>
+      {/* Cabeçalho Centralizado de Cartões & Faturas */}
+      <div style={{
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        textAlign: 'center',
+        gap: '8px',
+        width: '100%'
+      }}>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
+          <h2 style={{ fontSize: '1.45rem', fontWeight: 800, margin: 0, textAlign: 'center' }}>
             Cartões de Crédito & Faturas
           </h2>
-          <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', margin: 0 }}>
+          <p style={{ fontSize: '0.88rem', color: 'var(--text-secondary)', margin: 0, textAlign: 'center' }}>
             Acompanhamento de faturas, limites e compras parceladas ({competenciaAtiva})
           </p>
         </div>
@@ -25,10 +34,11 @@ export const CartoesView: React.FC = () => {
           type="button"
           onClick={() => setModalConfigAberto(true)}
           style={{
-            display: 'flex',
+            display: 'inline-flex',
             alignItems: 'center',
+            justifyContent: 'center',
             gap: '6px',
-            padding: '8px 14px',
+            padding: '8px 16px',
             borderRadius: '12px',
             backgroundColor: '#132F4C',
             border: '1px solid #1E3A5F',
@@ -36,7 +46,8 @@ export const CartoesView: React.FC = () => {
             fontSize: '12.5px',
             fontWeight: 800,
             cursor: 'pointer',
-            transition: 'all 0.15s ease'
+            transition: 'all 0.15s ease',
+            marginTop: '4px'
           }}
         >
           <Settings size={15} />

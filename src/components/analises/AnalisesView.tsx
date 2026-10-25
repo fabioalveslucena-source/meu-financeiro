@@ -522,31 +522,61 @@ export const AnalisesView: React.FC = () => {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
       
-      {/* Cabeçalho da Aba */}
+      {/* Cabeçalho Centralizado da Aba */}
       <div style={{
         display: 'flex',
-        justifyContent: 'space-between',
+        flexDirection: 'column',
         alignItems: 'center',
-        flexWrap: 'wrap',
-        gap: '12px'
+        justifyContent: 'center',
+        textAlign: 'center',
+        gap: '8px',
+        width: '100%'
       }}>
-        <div>
-          <h2 style={{ fontSize: '1.35rem', fontWeight: 900, margin: 0, display: 'flex', alignItems: 'center', gap: '8px', color: '#FFFFFF' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '3px' }}>
+          <h2 style={{ fontSize: '1.4rem', fontWeight: 900, margin: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', color: '#FFFFFF' }}>
             <Layers size={22} color="#5090D3" />
             Análise Financeira & Naturezas
           </h2>
-          <p style={{ fontSize: '0.85rem', color: '#AAB4BE', margin: '4px 0 0 0' }}>
-            Consumo setorial, gráficos tridimensionais e auditoria • {competenciaAtiva}
+          <p style={{ fontSize: '0.88rem', color: '#AAB4BE', margin: 0, textAlign: 'center' }}>
+            Consumo setorial, gráficos tridimensionais e auditoria
           </p>
+          <span style={{
+            fontSize: '12.5px',
+            fontWeight: 800,
+            color: '#F8D117',
+            backgroundColor: 'rgba(248, 209, 23, 0.12)',
+            border: '1px solid rgba(248, 209, 23, 0.35)',
+            padding: '2px 12px',
+            borderRadius: '10px',
+            marginTop: '3px'
+          }}>
+            {competenciaAtiva}
+          </span>
         </div>
 
+        {/* Botões Expandir Todas e Recolher Todas Centralizados Lado a Lado */}
         {abaVisualizacao === 'lista' && (
-          <div style={{ display: 'flex', gap: '8px' }}>
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '10px',
+            marginTop: '4px',
+            width: '100%'
+          }}>
             <button
               type="button"
               onClick={expandirTodas}
               className="btn-secondary"
-              style={{ padding: '6px 12px', fontSize: '12px', fontWeight: 700 }}
+              style={{
+                padding: '7px 16px',
+                fontSize: '12px',
+                fontWeight: 700,
+                borderRadius: '10px',
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}
             >
               Expandir Todas
             </button>
@@ -554,7 +584,15 @@ export const AnalisesView: React.FC = () => {
               type="button"
               onClick={recolherTodas}
               className="btn-secondary"
-              style={{ padding: '6px 12px', fontSize: '12px', fontWeight: 700 }}
+              style={{
+                padding: '7px 16px',
+                fontSize: '12px',
+                fontWeight: 700,
+                borderRadius: '10px',
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}
             >
               Recolher Todas
             </button>
@@ -669,9 +707,9 @@ export const AnalisesView: React.FC = () => {
         <div style={{
           padding: '14px 12px',
           borderRadius: '16px',
-          background: 'linear-gradient(135deg, #0F2744 0%, #132F4C 100%)',
-          border: '1.5px solid #1E3A5F',
-          boxShadow: '0 4px 14px rgba(11, 25, 41, 0.4)',
+          background: 'linear-gradient(135deg, rgba(248, 209, 23, 0.14) 0%, rgba(60, 48, 10, 0.28) 100%)',
+          border: '1.5px solid #F8D117',
+          boxShadow: '0 4px 14px rgba(248, 209, 23, 0.22)',
           minWidth: 0
         }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>

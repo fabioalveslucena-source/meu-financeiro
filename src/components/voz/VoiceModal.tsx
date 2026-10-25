@@ -15,6 +15,16 @@ export const VoiceModal: React.FC<VoiceModalProps> = ({
   onFechar,
   onConfirmarDados,
 }) => {
+  const resultadoRef = React.useRef<VozInterpretada | null>(null);
+
+  const handleConfirmar = React.useCallback((resParaConfirmar?: VozInterpretada) => {
+    const dados = resParaConfirmar || resultadoRef.current;
+    if (dados && dados.sucesso) {
+      onConfirmarDados(dados);
+      onFechar();
+    }
+  }, [onConfirmarDados, onFechar]);
+
   const {
     estaOuvindo,
     transcricao,
@@ -24,7 +34,27 @@ export const VoiceModal: React.FC<VoiceModalProps> = ({
     iniciarGravacao,
     pararGravacao,
     limparResultado,
-  } = useVoiceRecognition();
+  } = useVoiceRecognition({
+    onComandoConfirmar: () => {
+      handleConfirmar();
+    }
+  });
+
+  useEffect(() => {
+    resultadoRef.current = resultado;
+  }, [resultado]);
+
+  // Se já identificou os dados com sucesso, mantém o microfone escutando para capturar "confirmar" ou "ok"
+  useEffect(() => {
+    if (resultado && resultado.sucesso && aberto && suportado && !estaOuvindo) {
+      const timer = setTimeout(() => {
+        if (aberto) {
+          iniciarGravacao();
+        }
+      }, 400);
+      return () => clearTimeout(timer);
+    }
+  }, [resultado, aberto, suportado, estaOuvindo, iniciarGravacao]);
 
   useEffect(() => {
     if (aberto && suportado) {
@@ -233,15 +263,35 @@ export const VoiceModal: React.FC<VoiceModalProps> = ({
 
         {/* Prévia do Resultado Interpretado */}
         {resultado && resultado.sucesso && (
-          <div style={{
-            backgroundColor: '#132F4C',
-            border: '1.5px solid #4CAF50',
-            borderRadius: '16px',
-            padding: '14px',
-            width: '100%',
-            textAlign: 'left',
-            marginBottom: '16px'
-          }}>
+          <>
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '8px',
+              backgroundColor: 'rgba(76, 175, 80, 0.15)',
+              border: '1px solid rgba(76, 175, 80, 0.4)',
+              borderRadius: '12px',
+              padding: '8px 12px',
+              marginBottom: '12px',
+              width: '100%',
+              color: '#81C784',
+              fontSize: '12.5px',
+              fontWeight: 800
+            }}>
+              <span style={{ fontSize: '15px' }}>🎙️</span>
+              <span>Microfone ligado: Diga <strong>"Confirmar"</strong> ou <strong>"OK"</strong></span>
+            </div>
+
+            <div style={{
+              backgroundColor: '#132F4C',
+              border: '1.5px solid #4CAF50',
+              borderRadius: '16px',
+              padding: '14px',
+              width: '100%',
+              textAlign: 'left',
+              marginBottom: '16px'
+            }}>
             <p style={{ fontSize: '0.8rem', fontWeight: 900, color: '#4CAF50', textTransform: 'uppercase', margin: '0 0 8px 0' }}>
               ✓ Identificado com Sucesso:
             </p>
@@ -266,7 +316,8 @@ export const VoiceModal: React.FC<VoiceModalProps> = ({
               ) : null}
             </div>
           </div>
-        )}
+        </>
+      )}
 
         {/* Botões de Ação */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', width: '100%' }}>

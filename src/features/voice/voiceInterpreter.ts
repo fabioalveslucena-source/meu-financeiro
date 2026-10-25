@@ -234,8 +234,8 @@ export function identificarPagamentoVoz(texto: string, parcelasIdentificadas?: n
     return '💳 Crédito';
   }
 
-  // 4. Pix (exige 'pix' ou 'chave pix' para não colidir com 'chave de fenda', 'chave inglesa', etc)
-  if (/\b(pix|chave\s*pix|chave\s*aleatoria|chave\s*cpf|chave\s*telefone)\b/.test(norm)) {
+  // 4. Pix (exige 'pix' ou variações fonéticas comuns captadas pelo reconhecimento de voz: pics, piks, pic, pick, pique, piques, px)
+  if (/\b(pix|pics|piks|pic|pick|pixs|piqs|pique|piques|peex|px|chave\s*pix|chave\s*aleatoria|chave\s*cpf|chave\s*telefone)\b/.test(norm)) {
     return '📱 Pix';
   }
 
@@ -322,7 +322,8 @@ export function identificarNaturezaECategoria(texto: string, tipo: TipoLancament
       categoriaNome: 'Aluguel / Condomínio' 
     },
 
-    // Moradia (Contas de Consumo Residencial)
+    // Moradia (Contas de Consumo Residencial e Cama/Mesa/Banho)
+    { regex: /\b(cobertor|cobertores|edredom|edredons|lencol|lencois|travesseiro|travesseiros|cama|cortina|toalha|toalhas|tapete|tapetes|almofada)\b/, naturezaLabel: '🏠 Moradia', categoriaNome: 'Cuidados da Casa / Conforto' },
     { regex: /\b(luz|energia|enel|cemig)\b/, naturezaLabel: '🏠 Moradia', categoriaNome: 'Energia Elétrica' },
     { regex: /\b(internet|wifi|fibra|claro|vivo|tv)\b/, naturezaLabel: '🏠 Moradia', categoriaNome: 'Internet / TV a Cabo' },
     { regex: /\b(agua|gas|encanado)\b/, naturezaLabel: '🏠 Moradia', categoriaNome: 'Água e Gás' },
@@ -450,8 +451,8 @@ export function interpretarComandoVoz(frase: string): VozInterpretada {
       .replace(/(?<!\d)[,.;:!?](?!\d)/gu, ' ')
       .replace(/r\$/gi, ' ');
 
-    // 1. Formas de pagamento completas ("no débito", "via pix", "em 2x")
-    s = s.replace(/(?:é|e|foi|será|sera|no|na|em|via|pelo|pela|com|de)?\s*(?:débito|debito|crédito|credito|cartão|cartao|pix|dinheiro|espécie|especie|boleto)\b/giu, ' ');
+    // 1. Formas de pagamento completas ("no débito", "via pix", "no pics", "em 2x")
+    s = s.replace(/(?:é|e|foi|será|sera|no|na|em|via|pelo|pela|com|de)?\s*(?:débito|debito|crédito|credito|cartão|cartao|pix|pics|piks|pic|pick|pixs|piqs|pique|piques|peex|px|dinheiro|espécie|especie|boleto)\b/giu, ' ');
 
     // 2. Parcelas
     s = s.replace(/(?:em|de|para)?\s*\d{1,2}\s*x\b/giu, ' ');
@@ -501,4 +502,22 @@ export function interpretarComandoVoz(frase: string): VozInterpretada {
     parcelas,
     textoOriginal: frase,
   };
+}
+
+/**
+ * Detecta comandos de voz de confirmação ("confirmar", "ok", "sim", "correto", "pode salvar", etc)
+ */
+export function detectarComandoConfirmacao(texto: string): boolean {
+  if (!texto) return false;
+  const norm = normalizarTexto(texto);
+  return /\b(confirmar|confirma|confirmado|confirmou|ok|oquei|sim|correto|pode salvar|salvar|pode confirmar)\b/.test(norm);
+}
+
+/**
+ * Detecta comandos de voz para efetuar o lançamento na tela final ("efetuar", "sim", "ok", "gravar", "salvar")
+ */
+export function detectarComandoEfetuar(texto: string): boolean {
+  if (!texto) return false;
+  const norm = normalizarTexto(texto);
+  return /\b(efetuar|efetua|efetuado|sim|ok|oquei|gravar|salvar|concluir|confirmar)\b/.test(norm);
 }
