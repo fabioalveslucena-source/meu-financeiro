@@ -4,8 +4,6 @@ import { TIPOS_LANCAMENTO } from '../../lib/constants';
 import { formatarDataInput, formatarMoeda, parseMoedaBR } from '../../lib/formatters';
 import type { FormaPagamento, TipoLancamento } from '../../types';
 import { Mic, Plus, X, Check } from 'lucide-react';
-import { useVoiceRecognition } from '../../features/voice/useVoiceRecognition';
-import { detectarComandoEfetuar } from '../../features/voice/voiceInterpreter';
 
 interface FormLancamentoProps {
   onAbrirVoz: () => void;
@@ -86,6 +84,8 @@ export const FormLancamento: React.FC<FormLancamentoProps> = ({
     }
   }, [cartoes, contas]);
 
+  const [avisoVozAtivo, setAvisoVozAtivo] = useState(false);
+
   // Preenchimento vindo do comando de voz
   useEffect(() => {
     if (dadosPreenchidosVoz) {
@@ -104,12 +104,10 @@ export const FormLancamento: React.FC<FormLancamentoProps> = ({
         const bb = cartoes.find(c => c.nome.includes('Banco do Brasil'));
         setCartao(bb ? bb.nome : cartoes[0].nome);
       }
+
+      setAvisoVozAtivo(true);
     }
   }, [dadosPreenchidosVoz]);
-
-  const [modoVozEfetuar, setModoVozEfetuar] = useState(false);
-  const [revisaoLiberada, setRevisaoLiberada] = useState(false);
-  const [comandoEfetuarDetectado, setComandoEfetuarDetectado] = useState(false);
 
   const submeterLancamento = useCallback(() => {
     setErros([]);
@@ -155,60 +153,11 @@ export const FormLancamento: React.FC<FormLancamentoProps> = ({
       setValorTexto('');
       setDescricao('');
       setParcelas(1);
-      setModoVozEfetuar(false);
-      setRevisaoLiberada(false);
-      setComandoEfetuarDetectado(false);
-      pararEscutaEfetuar();
+      setAvisoVozAtivo(false);
       return true;
     }
     return false;
   }, [valorTexto, descricao, categoria, pagamento, cartao, conta, data, tipo, natureza, parcelas, adicionarLancamento]);
-
-  const {
-    estaOuvindo: ouvindoEfetuar,
-    transcricao: transcricaoEfetuar,
-    iniciarGravacao: iniciarEscutaEfetuar,
-    pararGravacao: pararEscutaEfetuar,
-  } = useVoiceRecognition();
-
-  // Quando chegam dados preenchidos por voz, dá 2 segundos de pausa para o usuário revisar a tela
-  useEffect(() => {
-    if (dadosPreenchidosVoz) {
-      setModoVozEfetuar(true);
-      setRevisaoLiberada(false);
-      setComandoEfetuarDetectado(false);
-
-      const timer = setTimeout(() => {
-        setRevisaoLiberada(true);
-        iniciarEscutaEfetuar();
-      }, 2000);
-
-      return () => clearTimeout(timer);
-    }
-  }, [dadosPreenchidosVoz, iniciarEscutaEfetuar]);
-
-  // Se o microfone de efetivação parar por silêncio no Android, reativa apenas se ainda estiver no modo de voz
-  useEffect(() => {
-    if (modoVozEfetuar && revisaoLiberada && !ouvindoEfetuar && !comandoEfetuarDetectado) {
-      const timer = setTimeout(() => {
-        if (modoVozEfetuar && revisaoLiberada) iniciarEscutaEfetuar();
-      }, 500);
-      return () => clearTimeout(timer);
-    }
-  }, [modoVozEfetuar, revisaoLiberada, ouvindoEfetuar, comandoEfetuarDetectado, iniciarEscutaEfetuar]);
-
-  // Captura comando de efetivar quando a revisão já foi liberada
-  useEffect(() => {
-    if (modoVozEfetuar && revisaoLiberada && transcricaoEfetuar && !comandoEfetuarDetectado) {
-      if (detectarComandoEfetuar(transcricaoEfetuar)) {
-        setComandoEfetuarDetectado(true);
-        pararEscutaEfetuar();
-        setTimeout(() => {
-          submeterLancamento();
-        }, 500);
-      }
-    }
-  }, [modoVozEfetuar, revisaoLiberada, transcricaoEfetuar, comandoEfetuarDetectado, pararEscutaEfetuar, submeterLancamento]);
 
   const handleSubmit = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
@@ -283,85 +232,48 @@ export const FormLancamento: React.FC<FormLancamentoProps> = ({
           </button>
         </div>
 
-        {/* Banner de Revisão Tranquila e Comando de Voz para Efetuar */}
-        {modoVozEfetuar && (
+        {/* Aviso de Preenchimento por Voz com Tranquilidade para Revisar */}
+        {avisoVozAtivo && (
           <div style={{
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
-            backgroundColor: revisaoLiberada ? 'rgba(76, 175, 80, 0.16)' : 'rgba(40, 126, 165, 0.16)',
-            border: `1.5px solid ${revisaoLiberada ? '#4CAF50' : '#287EA5'}`,
+            backgroundColor: 'rgba(76, 175, 80, 0.15)',
+            border: '1.5px solid #4CAF50',
             borderRadius: '14px',
-            padding: '11px 16px',
+            padding: '12px 16px',
             marginBottom: '16px',
             gap: '12px',
             transition: 'all 0.3s ease'
           }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px', textAlign: 'left' }}>
-              <span style={{ fontSize: '22px' }}>{revisaoLiberada ? (comandoEfetuarDetectado ? '✓' : '🎙️') : '👀'}</span>
+              <span style={{ fontSize: '20px' }}>✓</span>
               <div>
-                <strong style={{ fontSize: '13px', color: revisaoLiberada ? '#81C784' : '#82B1FF', display: 'block' }}>
-                  {comandoEfetuarDetectado ? (
-                    'Confirmado! Gravando lançamento...'
-                  ) : revisaoLiberada ? (
-                    'Efetuar lançamento?'
-                  ) : (
-                    'Revise os dados preenchidos com calma:'
-                  )}
+                <strong style={{ fontSize: '13px', color: '#81C784', display: 'block' }}>
+                  Lançamento preenchido por voz!
                 </strong>
                 <span style={{ fontSize: '11.5px', color: '#E2E8F0' }}>
-                  {comandoEfetuarDetectado ? (
-                    'Salvando movimentação financeira...'
-                  ) : revisaoLiberada ? (
-                    <>Diga <strong>"Sim"</strong> ou <strong>"OK"</strong> para efetuar (ou clique no botão verde)</>
-                  ) : (
-                    'O microfone será armado em instantes para sua segurança.'
-                  )}
+                  Revise os campos abaixo com calma e clique no botão verde para efetuar.
                 </span>
               </div>
             </div>
-            <div style={{ display: 'flex', gap: '6px' }}>
-              {!revisaoLiberada && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setRevisaoLiberada(true);
-                    iniciarEscutaEfetuar();
-                  }}
-                  style={{
-                    background: 'rgba(80, 144, 211, 0.25)',
-                    border: '1px solid #5090D3',
-                    borderRadius: '8px',
-                    padding: '5px 10px',
-                    color: '#FFFFFF',
-                    fontSize: '11.5px',
-                    fontWeight: 800,
-                    cursor: 'pointer'
-                  }}
-                >
-                  Falar Agora
-                </button>
-              )}
-              <button
-                type="button"
-                onClick={() => {
-                  pararEscutaEfetuar();
-                  setModoVozEfetuar(false);
-                }}
-                style={{
-                  background: 'rgba(255, 255, 255, 0.12)',
-                  border: '1px solid rgba(255, 255, 255, 0.25)',
-                  borderRadius: '8px',
-                  padding: '5px 9px',
-                  color: '#FFFFFF',
-                  fontSize: '11.5px',
-                  fontWeight: 700,
-                  cursor: 'pointer'
-                }}
-              >
-                Pausar Voz
-              </button>
-            </div>
+            <button
+              type="button"
+              onClick={() => setAvisoVozAtivo(false)}
+              style={{
+                background: 'rgba(255, 255, 255, 0.12)',
+                border: '1px solid rgba(255, 255, 255, 0.25)',
+                borderRadius: '8px',
+                padding: '4px 8px',
+                color: '#FFFFFF',
+                fontSize: '11.5px',
+                fontWeight: 700,
+                cursor: 'pointer'
+              }}
+              title="Dispensar aviso"
+            >
+              OK
+            </button>
           </div>
         )}
 

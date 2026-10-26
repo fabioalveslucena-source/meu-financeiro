@@ -2,7 +2,6 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { 
   interpretarComandoVoz, 
   detectarComandoConfirmacao, 
-  detectarComandoEfetuar, 
   type VozInterpretada 
 } from './voiceInterpreter';
 
@@ -17,7 +16,6 @@ declare global {
 export interface VoiceRecognitionOptions {
   onResultadoFinal?: (res: VozInterpretada) => void;
   onComandoConfirmar?: () => void;
-  onComandoEfetuar?: () => void;
 }
 
 export interface UseVoiceRecognitionReturn {
@@ -64,7 +62,6 @@ export function useVoiceRecognition(
 ): UseVoiceRecognitionReturn {
   const onResultadoFinal = typeof opcoes === 'function' ? opcoes : opcoes?.onResultadoFinal;
   const onComandoConfirmar = typeof opcoes === 'object' ? opcoes.onComandoConfirmar : undefined;
-  const onComandoEfetuar = typeof opcoes === 'object' ? opcoes.onComandoEfetuar : undefined;
 
   const [estaOuvindo, setEstaOuvindo] = useState(false);
   const [transcricao, setTranscricao] = useState('');
@@ -97,11 +94,6 @@ export function useVoiceRecognition(
     const textoLimpo = removerRepeticoes(texto);
     if (!textoLimpo) return;
 
-    if (onComandoEfetuar && detectarComandoEfetuar(textoLimpo)) {
-      onComandoEfetuar();
-      return;
-    }
-
     if (onComandoConfirmar && detectarComandoConfirmacao(textoLimpo)) {
       onComandoConfirmar();
       return;
@@ -116,7 +108,20 @@ export function useVoiceRecognition(
     } catch (e) {
       console.error('Erro ao interpretar comando de voz:', e);
     }
-  }, [onResultadoFinal, onComandoConfirmar, onComandoEfetuar]);
+  }, [onResultadoFinal, onComandoConfirmar]);
+
+  const abortarInstanciaAnterior = useCallback(() => {
+    if (recognitionRef.current) {
+      try {
+        recognitionRef.current.onstart = null;
+        recognitionRef.current.onresult = null;
+        recognitionRef.current.onerror = null;
+        recognitionRef.current.onend = null;
+        recognitionRef.current.abort();
+      } catch (_) {}
+      recognitionRef.current = null;
+    }
+  }, []);
 
   const pararGravacao = useCallback(() => {
     limparTimers();
@@ -135,11 +140,13 @@ export function useVoiceRecognition(
 
   const iniciarGravacao = useCallback((preservarResultado: boolean = false) => {
     if (!SpeechRecognition) {
-      setErro('Seu navegador não suporta reconhecimento de voz nativo.');
+      setErro('Seu navegador não suporta reconhecimento de voz nativo. Use o Google Chrome ou ative as permissões.');
       return;
     }
 
     limparTimers();
+    abortarInstanciaAnterior();
+
     setErro(null);
     setTranscricao('');
     if (!preservarResultado) {
@@ -151,7 +158,6 @@ export function useVoiceRecognition(
       const recognition = new SpeechRecognition();
       recognition.lang = 'pt-BR';
       
-      // No Android WebView e mobile, continuous=false é crucial para evitar loop infinito de buffers
       const isMobile = typeof navigator !== 'undefined' && /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
       recognition.continuous = !isMobile;
       recognition.interimResults = true;
@@ -179,18 +185,11 @@ export function useVoiceRecognition(
         textoAtualRef.current = textoProcessado;
         setTranscricao(textoProcessado);
 
-        // Disparo imediato se capturar comando direto de efetuar ou confirmar
-        if (onComandoEfetuar && detectarComandoEfetuar(textoProcessado)) {
-          onComandoEfetuar();
-          return;
-        }
-
         if (onComandoConfirmar && detectarComandoConfirmacao(textoProcessado)) {
           onComandoConfirmar();
           return;
         }
 
-        // Debounce da interpretação para não travar a thread UI no celular
         if (debounceTimerRef.current) {
           clearTimeout(debounceTimerRef.current);
         }
@@ -203,12 +202,12 @@ export function useVoiceRecognition(
 
       recognition.onerror = (event: any) => {
         console.warn('SpeechRecognition erro:', event.error);
-        if (event.error === 'not-allowed') {
-          setErro('Permissão de microfone negada. Conceda acesso nas permissões do app.');
+        if (event.error === 'not-allowed' || event.error === 'service-not-allowed') {
+          setErro('Permissão de microfone negada. Conceda acesso nas permissões do navegador.');
         } else if (event.error === 'no-speech') {
-          if (!textoAtualRef.current) {
-            setErro('Nenhuma fala detectada. Toque no microfone e fale perto do celular.');
-          }
+          // Apenas silêncio temporário
+        } else if (event.error === 'aborted') {
+          // Abort proposital ao reiniciar
         } else {
           setErro(`Microfone: ${event.error}`);
         }
@@ -222,38 +221,58 @@ export function useVoiceRecognition(
         }
       };
 
-      // Watchdog de segurança: máximo 12 segundos gravando para não prender o usuário
       maxTimerRef.current = setTimeout(() => {
         pararGravacao();
-      }, 12000);
+      }, 15000);
 
       recognitionRef.current = recognition;
-      recognition.start();
+      try {
+        recognition.start();
+      } catch (startErr: any) {
+        console.warn('SpeechRecognition.start falhou diretamente, tentando limpar e rearmar:', startErr);
+        abortarInstanciaAnterior();
+        setTimeout(() => {
+          try {
+            const novaRec = new SpeechRecognition();
+            novaRec.lang = 'pt-BR';
+            novaRec.continuous = !isMobile;
+            novaRec.interimResults = true;
+            novaRec.maxAlternatives = 1;
+            novaRec.onstart = recognition.onstart;
+            novaRec.onresult = recognition.onresult;
+            novaRec.onerror = recognition.onerror;
+            novaRec.onend = recognition.onend;
+            recognitionRef.current = novaRec;
+            novaRec.start();
+          } catch (e2) {
+            console.error('Falha ao reiniciar SpeechRecognition:', e2);
+            setErro('Toque no microfone novamente para ativar.');
+            setEstaOuvindo(false);
+          }
+        }, 100);
+      }
     } catch (err: any) {
-      console.error('Falha ao iniciar SpeechRecognition:', err);
-      setErro('Não foi possível iniciar o microfone no momento.');
+      console.error('Falha ao instanciar SpeechRecognition:', err);
+      setErro('Não foi possível iniciar o microfone no momento. Toque para tentar.');
       setEstaOuvindo(false);
     }
-  }, [SpeechRecognition, limparTimers, pararGravacao, finalizarComTexto]);
+  }, [SpeechRecognition, limparTimers, abortarInstanciaAnterior, pararGravacao, finalizarComTexto, onComandoConfirmar]);
 
   const limparResultado = useCallback(() => {
     limparTimers();
+    abortarInstanciaAnterior();
     textoAtualRef.current = '';
     setTranscricao('');
     setResultado(null);
     setErro(null);
-  }, [limparTimers]);
+  }, [limparTimers, abortarInstanciaAnterior]);
 
   useEffect(() => {
     return () => {
       limparTimers();
-      if (recognitionRef.current) {
-        try {
-          recognitionRef.current.abort();
-        } catch (_) {}
-      }
+      abortarInstanciaAnterior();
     };
-  }, [limparTimers]);
+  }, [limparTimers, abortarInstanciaAnterior]);
 
   return {
     estaOuvindo,

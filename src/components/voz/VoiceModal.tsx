@@ -1,7 +1,7 @@
-import React, { useEffect, useState, useCallback, useRef } from 'react';
+import React, { useEffect, useCallback, useRef } from 'react';
 import { useVoiceRecognition } from '../../features/voice/useVoiceRecognition';
 import { formatarMoeda } from '../../lib/formatters';
-import { detectarComandoConfirmacao, type VozInterpretada } from '../../features/voice/voiceInterpreter';
+import type { VozInterpretada } from '../../features/voice/voiceInterpreter';
 import { Mic, MicOff, X, Check, AlertCircle, Sparkles, RefreshCw, Square } from 'lucide-react';
 
 interface VoiceModalProps {
@@ -16,7 +16,14 @@ export const VoiceModal: React.FC<VoiceModalProps> = ({
   onConfirmarDados,
 }) => {
   const resultadoRef = useRef<VozInterpretada | null>(null);
-  const [tempoAnaliseLiberado, setTempoAnaliseLiberado] = useState(false);
+
+  const handleConfirmar = useCallback((resParaConfirmar?: VozInterpretada) => {
+    const dados = resParaConfirmar || resultadoRef.current;
+    if (dados && dados.sucesso) {
+      onConfirmarDados(dados);
+      onFechar();
+    }
+  }, [onConfirmarDados, onFechar]);
 
   const {
     estaOuvindo,
@@ -27,59 +34,20 @@ export const VoiceModal: React.FC<VoiceModalProps> = ({
     iniciarGravacao,
     pararGravacao,
     limparResultado,
-  } = useVoiceRecognition();
-
-  const handleConfirmar = useCallback((resParaConfirmar?: VozInterpretada) => {
-    const dados = resParaConfirmar || resultadoRef.current || resultado;
-    if (dados && dados.sucesso) {
-      pararGravacao();
-      onConfirmarDados(dados);
-      onFechar();
+  } = useVoiceRecognition({
+    onComandoConfirmar: () => {
+      handleConfirmar();
     }
-  }, [resultado, onConfirmarDados, onFechar, pararGravacao]);
+  });
 
   useEffect(() => {
     resultadoRef.current = resultado;
   }, [resultado]);
 
-  // Dá um tempo de 2 segundos para o usuário ler os dados antes de armar comando de voz
-  useEffect(() => {
-    if (resultado && resultado.sucesso) {
-      setTempoAnaliseLiberado(false);
-      const timer = setTimeout(() => {
-        setTempoAnaliseLiberado(true);
-      }, 2000);
-      return () => clearTimeout(timer);
-    } else {
-      setTempoAnaliseLiberado(false);
-    }
-  }, [resultado]);
-
-  // Se já identificou os dados com sucesso, reativa o microfone mantendo o resultado para ouvir "confirmar" ou "ok"
-  useEffect(() => {
-    if (resultado && resultado.sucesso && aberto && suportado && !estaOuvindo) {
-      const timer = setTimeout(() => {
-        if (aberto && !estaOuvindo) {
-          iniciarGravacao(true); // Mantém o card na tela!
-        }
-      }, 600);
-      return () => clearTimeout(timer);
-    }
-  }, [resultado, aberto, suportado, estaOuvindo, iniciarGravacao]);
-
-  // Captura comando de confirmação APENAS após o tempo de análise ser liberado
-  useEffect(() => {
-    if (tempoAnaliseLiberado && resultado && resultado.sucesso && transcricao) {
-      if (detectarComandoConfirmacao(transcricao)) {
-        handleConfirmar();
-      }
-    }
-  }, [transcricao, tempoAnaliseLiberado, resultado, handleConfirmar]);
-
+  // Ao abrir o modal, inicia a gravação com estado limpo
   useEffect(() => {
     if (aberto && suportado) {
       limparResultado();
-      setTempoAnaliseLiberado(false);
       iniciarGravacao(false);
     } else {
       pararGravacao();
@@ -118,7 +86,7 @@ export const VoiceModal: React.FC<VoiceModalProps> = ({
         borderRadius: '24px',
         boxShadow: '0 12px 40px rgba(0, 0, 0, 0.6)'
       }}>
-        {/* Botão de Fechar no Topo Direito (Sempre Acessível e Visível) */}
+        {/* Botão de Fechar no Topo Direito */}
         <button
           type="button"
           onClick={onFechar}
@@ -181,7 +149,7 @@ export const VoiceModal: React.FC<VoiceModalProps> = ({
               transition: 'all 0.2s ease',
               cursor: 'pointer'
             }}
-            title={estaOuvindo ? 'Clique para parar' : 'Clique para falar'}
+            title={estaOuvindo ? 'Clique para pausar / processar' : 'Clique para falar'}
           >
             {estaOuvindo ? <Mic size={38} /> : <MicOff size={38} />}
           </button>
@@ -193,10 +161,10 @@ export const VoiceModal: React.FC<VoiceModalProps> = ({
           color: estaOuvindo ? '#F8D117' : '#AAB4BE',
           margin: '0 0 12px 0'
         }}>
-          {estaOuvindo ? '🎙️ Ouvindo... Pode falar!' : 'Microfone pausado'}
+          {estaOuvindo ? '🎙️ Ouvindo... Pode falar!' : 'Microfone pausado (toque para falar)'}
         </p>
 
-        {/* Botão Rápido de Concluir Fala durante gravação */}
+        {/* Botão de Concluir Fala durante a gravação */}
         {estaOuvindo && (
           <button
             type="button"
@@ -221,7 +189,7 @@ export const VoiceModal: React.FC<VoiceModalProps> = ({
           </button>
         )}
 
-        {/* Exemplos de Frase */}
+        {/* Exemplos de Frase quando ainda não falou */}
         {!transcricao && !resultado && !estaOuvindo && (
           <div style={{
             backgroundColor: '#132F4C',
@@ -235,9 +203,9 @@ export const VoiceModal: React.FC<VoiceModalProps> = ({
             marginBottom: '16px'
           }}>
             <p style={{ fontWeight: 800, margin: '0 0 6px 0', color: '#F8D117' }}>Exemplos de frases:</p>
-            <p style={{ margin: '4px 0' }}>• <em>"3 sacos de cimento, 90 reais cada, 3 vezes no cartão"</em></p>
-            <p style={{ margin: '4px 0' }}>• <em>"Chave de fenda 12 e 80 no débito"</em></p>
-            <p style={{ margin: '4px 0' }}>• <em>"Recebi 4500 de salário no pix"</em></p>
+            <p style={{ margin: '4px 0' }}>• <em>"Milho 5 reais no débito"</em></p>
+            <p style={{ margin: '4px 0' }}>• <em>"Farofa 8 reais no pix"</em></p>
+            <p style={{ margin: '4px 0' }}>• <em>"3 sacos de arroz, 15 reais cada, em 3 vezes no cartão"</em></p>
           </div>
         )}
 
@@ -284,42 +252,15 @@ export const VoiceModal: React.FC<VoiceModalProps> = ({
 
         {/* Prévia do Resultado Interpretado */}
         {resultado && resultado.sucesso && (
-          <>
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '8px',
-              backgroundColor: tempoAnaliseLiberado ? 'rgba(76, 175, 80, 0.15)' : 'rgba(40, 126, 165, 0.15)',
-              border: `1px solid ${tempoAnaliseLiberado ? 'rgba(76, 175, 80, 0.4)' : 'rgba(40, 126, 165, 0.4)'}`,
-              borderRadius: '12px',
-              padding: '9px 14px',
-              marginBottom: '12px',
-              width: '100%',
-              color: tempoAnaliseLiberado ? '#81C784' : '#82B1FF',
-              fontSize: '12.5px',
-              fontWeight: 800,
-              transition: 'all 0.3s ease'
-            }}>
-              <span style={{ fontSize: '16px' }}>{tempoAnaliseLiberado ? '🎙️' : '👀'}</span>
-              <span>
-                {tempoAnaliseLiberado ? (
-                  <>Microfone pronto: Diga <strong>"Confirmar"</strong> ou <strong>"OK"</strong> (ou toque no botão)</>
-                ) : (
-                  <>Analise os dados identificados abaixo com calma...</>
-                )}
-              </span>
-            </div>
-
-            <div style={{
-              backgroundColor: '#132F4C',
-              border: '1.5px solid #4CAF50',
-              borderRadius: '16px',
-              padding: '14px',
-              width: '100%',
-              textAlign: 'left',
-              marginBottom: '16px'
-            }}>
+          <div style={{
+            backgroundColor: '#132F4C',
+            border: '1.5px solid #4CAF50',
+            borderRadius: '16px',
+            padding: '14px',
+            width: '100%',
+            textAlign: 'left',
+            marginBottom: '16px'
+          }}>
             <p style={{ fontSize: '0.8rem', fontWeight: 900, color: '#4CAF50', textTransform: 'uppercase', margin: '0 0 8px 0' }}>
               ✓ Identificado com Sucesso:
             </p>
@@ -330,10 +271,13 @@ export const VoiceModal: React.FC<VoiceModalProps> = ({
                 <strong style={{ color: '#AAB4BE' }}>Natureza:</strong> <span style={{ color: '#5090D3', fontWeight: 800 }}>{resultado.natureza}</span>
               </div>
               <div style={{ gridColumn: 'span 2' }}>
+                <strong style={{ color: '#AAB4BE' }}>Categoria:</strong> <span style={{ color: '#81C784', fontWeight: 800 }}>{resultado.categoria}</span>
+              </div>
+              <div style={{ gridColumn: 'span 2' }}>
                 <strong style={{ color: '#AAB4BE' }}>Pagamento:</strong> <span style={{ color: '#F8D117', fontWeight: 800 }}>{resultado.pagamento}</span>
               </div>
               {resultado.descricao ? (
-                <div style={{ gridColumn: 'span 2', color: '#81C784', fontWeight: 700 }}>
+                <div style={{ gridColumn: 'span 2', color: '#E2E8F0', fontWeight: 700 }}>
                   <strong style={{ color: '#AAB4BE' }}>Descrição:</strong> {resultado.descricao}
                 </div>
               ) : null}
@@ -344,8 +288,7 @@ export const VoiceModal: React.FC<VoiceModalProps> = ({
               ) : null}
             </div>
           </div>
-        </>
-      )}
+        )}
 
         {/* Botões de Ação */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', width: '100%' }}>
@@ -362,7 +305,7 @@ export const VoiceModal: React.FC<VoiceModalProps> = ({
                 alignItems: 'center',
                 justifyContent: 'center',
                 gap: '8px',
-                padding: '12px',
+                padding: '13px',
                 borderRadius: '12px',
                 background: 'linear-gradient(135deg, #4CAF50 0%, #388E3C 100%)',
                 color: '#FFFFFF',
@@ -382,7 +325,10 @@ export const VoiceModal: React.FC<VoiceModalProps> = ({
             {!estaOuvindo && (
               <button
                 type="button"
-                onClick={() => iniciarGravacao()}
+                onClick={() => {
+                  limparResultado();
+                  iniciarGravacao(false);
+                }}
                 style={{
                   flex: 1,
                   display: 'flex',
