@@ -62,9 +62,19 @@ function removerRepeticoes(texto: string): string {
 export function useVoiceRecognition(
   opcoes?: ((res: VozInterpretada) => void) | VoiceRecognitionOptions
 ): UseVoiceRecognitionReturn {
-  const onResultadoFinal = typeof opcoes === 'function' ? opcoes : opcoes?.onResultadoFinal;
-  const onComandoConfirmar = typeof opcoes === 'object' ? opcoes.onComandoConfirmar : undefined;
-  const onComandoEfetuar = typeof opcoes === 'object' ? opcoes.onComandoEfetuar : undefined;
+  const opcoesRef = useRef(opcoes);
+  useEffect(() => {
+    opcoesRef.current = opcoes;
+  });
+
+  const getCallbacks = useCallback(() => {
+    const opts = opcoesRef.current;
+    return {
+      onResultadoFinal: typeof opts === 'function' ? opts : opts?.onResultadoFinal,
+      onComandoConfirmar: typeof opts === 'object' ? opts?.onComandoConfirmar : undefined,
+      onComandoEfetuar: typeof opts === 'object' ? opts?.onComandoEfetuar : undefined,
+    };
+  }, []);
 
   const [estaOuvindo, setEstaOuvindo] = useState(false);
   const [transcricao, setTranscricao] = useState('');
@@ -97,6 +107,8 @@ export function useVoiceRecognition(
     const textoLimpo = removerRepeticoes(texto);
     if (!textoLimpo) return;
 
+    const { onResultadoFinal, onComandoConfirmar, onComandoEfetuar } = getCallbacks();
+
     if (onComandoEfetuar && detectarComandoEfetuar(textoLimpo)) {
       textoAtualRef.current = '';
       onComandoEfetuar();
@@ -118,7 +130,7 @@ export function useVoiceRecognition(
     } catch (e) {
       console.error('Erro ao interpretar comando de voz:', e);
     }
-  }, [onResultadoFinal, onComandoConfirmar, onComandoEfetuar]);
+  }, [getCallbacks]);
 
   const abortarInstanciaAnterior = useCallback(() => {
     if (recognitionRef.current) {
@@ -194,6 +206,8 @@ export function useVoiceRecognition(
         const textoProcessado = removerRepeticoes(textoBruto);
         textoAtualRef.current = textoProcessado;
         setTranscricao(textoProcessado);
+
+        const { onComandoConfirmar, onComandoEfetuar } = getCallbacks();
 
         if (onComandoEfetuar && detectarComandoEfetuar(textoProcessado)) {
           textoAtualRef.current = '';
@@ -273,7 +287,7 @@ export function useVoiceRecognition(
       setErro('Não foi possível iniciar o microfone no momento. Toque para tentar.');
       setEstaOuvindo(false);
     }
-  }, [SpeechRecognition, limparTimers, abortarInstanciaAnterior, pararGravacao, finalizarComTexto, onComandoConfirmar, onComandoEfetuar]);
+  }, [SpeechRecognition, limparTimers, abortarInstanciaAnterior, pararGravacao, finalizarComTexto, getCallbacks]);
 
   const limparResultado = useCallback(() => {
     limparTimers();

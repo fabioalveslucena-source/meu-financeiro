@@ -165,6 +165,8 @@ export const FormLancamento: React.FC<FormLancamentoProps> = ({
 
   const {
     estaOuvindo: ouvindoEfetuar,
+    transcricao: transcricaoEfetuar,
+    erro: erroEfetuar,
     iniciarGravacao: iniciarEscutaEfetuar,
     pararGravacao: pararEscutaEfetuar,
   } = useVoiceRecognition({
@@ -280,48 +282,97 @@ export const FormLancamento: React.FC<FormLancamentoProps> = ({
         {aguardandoEfetuarVoz && (
           <div style={{
             display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
+            flexDirection: 'column',
             backgroundColor: 'rgba(76, 175, 80, 0.18)',
             border: '1.5px solid #4CAF50',
             borderRadius: '16px',
-            padding: '12px 16px',
+            padding: '14px 16px',
             marginBottom: '16px',
-            gap: '12px',
+            gap: '10px',
             boxShadow: '0 4px 15px rgba(76, 175, 80, 0.25)',
             transition: 'all 0.3s ease'
           }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', textAlign: 'left' }}>
-              <span style={{ fontSize: '24px' }}>🎙️</span>
-              <div>
-                <strong style={{ fontSize: '13px', color: '#81C784', display: 'block' }}>
-                  Microfone ligado: Diga "SIM" ou "OK" para efetuar
-                </strong>
-                <span style={{ fontSize: '11.5px', color: '#E2E8F0' }}>
-                  Ou toque no botão verde <strong>"Efetuar Lançamento"</strong> abaixo.
-                </span>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', textAlign: 'left' }}>
+                <span style={{ fontSize: '24px' }}>{ouvindoEfetuar ? '🎙️' : '⏸️'}</span>
+                <div>
+                  <strong style={{ fontSize: '13.5px', color: '#81C784', display: 'block' }}>
+                    {ouvindoEfetuar ? 'Microfone Ativo: Diga "SIM" ou "OK"' : 'Microfone Pausado'}
+                  </strong>
+                  <span style={{ fontSize: '12px', color: '#E2E8F0' }}>
+                    {ouvindoEfetuar 
+                      ? 'Diga "sim" ou "ok" para efetuar o lançamento agora.' 
+                      : 'Toque em Ativar para falar "sim/ok" ou clique no botão verde abaixo.'}
+                  </span>
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', gap: '6px' }}>
+                {!ouvindoEfetuar ? (
+                  <button
+                    type="button"
+                    onClick={() => iniciarEscutaEfetuar()}
+                    style={{
+                      background: '#287EA5',
+                      border: '1px solid #5090D3',
+                      borderRadius: '8px',
+                      padding: '6px 12px',
+                      color: '#FFFFFF',
+                      fontSize: '12px',
+                      fontWeight: 800,
+                      cursor: 'pointer'
+                    }}
+                  >
+                    🎙️ Ativar
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      pararEscutaEfetuar();
+                      setAguardandoEfetuarVoz(false);
+                    }}
+                    style={{
+                      background: 'rgba(255, 255, 255, 0.12)',
+                      border: '1px solid rgba(255, 255, 255, 0.25)',
+                      borderRadius: '8px',
+                      padding: '6px 12px',
+                      color: '#FFFFFF',
+                      fontSize: '12px',
+                      fontWeight: 700,
+                      cursor: 'pointer'
+                    }}
+                    title="Pausar microfone"
+                  >
+                    Pausar Voz
+                  </button>
+                )}
               </div>
             </div>
-            <button
-              type="button"
-              onClick={() => {
-                pararEscutaEfetuar();
-                setAguardandoEfetuarVoz(false);
-              }}
-              style={{
-                background: 'rgba(255, 255, 255, 0.12)',
-                border: '1px solid rgba(255, 255, 255, 0.25)',
+
+            {transcricaoEfetuar && (
+              <div style={{
+                backgroundColor: 'rgba(0, 0, 0, 0.35)',
+                padding: '6px 12px',
                 borderRadius: '8px',
-                padding: '5px 10px',
-                color: '#FFFFFF',
-                fontSize: '11.5px',
-                fontWeight: 700,
-                cursor: 'pointer'
-              }}
-              title="Pausar microfone"
-            >
-              Pausar Voz
-            </button>
+                fontSize: '12.5px',
+                color: '#F8D117',
+                fontStyle: 'italic',
+                textAlign: 'left'
+              }}>
+                Ouvindo: "{transcricaoEfetuar}"
+              </div>
+            )}
+
+            {erroEfetuar && (
+              <div style={{
+                color: '#F44336',
+                fontSize: '12px',
+                textAlign: 'left'
+              }}>
+                {erroEfetuar}
+              </div>
+            )}
           </div>
         )}
 
