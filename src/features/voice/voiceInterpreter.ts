@@ -110,7 +110,7 @@ function extrairPrecoFinal(str: string): { val: number; antes?: string } | null 
 export function detectarMultiplicadorVoz(texto: string): InfoMultiplicadorVoz | null {
   if (!texto) return null;
 
-  // Encontrar o padrão "X ... cada" aceitando sufixos após cada (ex: "3 sacos de cimento, 90 BRL cada, 3 vezes no cartão")
+  // Encontrar o padrão "X ... cada" aceitando sufixos após cada (ex: "3 sacos de arroz, 15 reais cada, em 3 vezes no cartão")
   const matchCada = texto.match(/^(.*?)[,;\s]+(?:a|por|de)?\s*([0-9a-zA-Z\s.,$]+?)\s*(?:cada(?:\s+um|\s+uma)?|a\s+unidade|por\s+unidade)\b(?:\s*[,;]?\s*(.*))?$/i);
   if (!matchCada) return null;
 
@@ -120,24 +120,30 @@ export function detectarMultiplicadorVoz(texto: string): InfoMultiplicadorVoz | 
   const unitario = precoInfo.val;
   let resto = (matchCada[1] + ' ' + (precoInfo.antes || '')).trim().replace(/[,;]+$/, '').trim();
 
-  // Extrair quantidade do início
+  // 1. Remover verbos introdutórios e preposições iniciais (ex: "comprei", "paguei", "gastei com", "foram", "lance")
+  resto = resto
+    .replace(/^(?:comprei|compre|gastei|gasto|paguei|paga|foram|foi|lance|lancar|lançar|coloque|bote|peguei|levei|adicione|adicionar)\s+/i, '')
+    .replace(/^(?:com|de|em|para|pra|por)\s+/i, '')
+    .trim();
+
+  // 2. Extrair quantidade do início (dígitos ou números por extenso)
   let qtd = 1;
-  const matchQtd = resto.match(/^(\d+|um|uma|dois|duas|tres|três|quatro|cinco|seis|meia|sete|oito|nove|dez|doze|vinte)\s+/i);
+  const matchQtd = resto.match(/^(\d+|um|uma|dois|duas|tres|três|quatro|cinco|seis|meia|sete|oito|nove|dez|onze|doze|treze|quatorze|catorze|quinze|dezesseis|dezessete|dezoito|dezenove|vinte|trinta|quarenta|cinquenta)\s+/i);
   if (matchQtd) {
     const qStr = matchQtd[1].toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
     qtd = TABELA_NUMEROS[qStr] !== undefined ? TABELA_NUMEROS[qStr] : parseInt(qStr, 10);
     resto = resto.slice(matchQtd[0].length).trim();
   }
 
-  // Extrair unidade de medida opcional (sacos, latas, garrafas, caixas, etc)
+  // 3. Extrair e remover unidade de medida opcional (sacos, latas, garrafas, caixas, etc)
   let unidade: string | undefined = undefined;
-  const matchUnidade = resto.match(/^(sacos?|unidades?|peças?|pecas?|caixas?|latas?|metros?|kilos?|quilos?|kg|itens?|pacotes?|rolos?|barras?|tubos?|fardos?|garrafas?)\s+(?:de\s+)?/i);
+  const matchUnidade = resto.match(/^(sacos?|unidades?|peças?|pecas?|caixas?|latas?|metros?|kilos?|quilos?|kg|itens?|pacotes?|rolos?|barras?|tubos?|fardos?|garrafas?|potes?|litros?)\s+(?:de\s+)?/i);
   if (matchUnidade) {
     unidade = matchUnidade[1];
     resto = resto.slice(matchUnidade[0].length).trim();
   }
 
-  resto = resto.replace(/^(?:de|da|do)\s+/i, '').replace(/[,;]+$/, '').trim();
+  resto = resto.replace(/^(?:de|da|do|dos|das)\s+/i, '').replace(/[,;]+$/, '').trim();
 
   if (resto && !['vezes', 'parcelas', 'dias', 'meses', 'horas'].includes(resto.toLowerCase())) {
     return {
@@ -432,19 +438,13 @@ export function interpretarComandoVoz(frase: string): VozInterpretada {
   let descricao = '';
 
   if (mult) {
-    // Quando detecta quantidade x unitário ("3 sacos de cimento, 90 reais cada")
+    // Quando detecta quantidade x unitário ("3 sacos de arroz, 15 reais cada")
     const itemLimpo = mult.itemNome
-      .replace(/^(?:de|da|do)\s+/i, '')
-      .replace(/\s+(?:de|da|do)$/i, '')
+      .replace(/^(?:de|da|do|dos|das)\s+/i, '')
+      .replace(/\s+(?:de|da|do|dos|das)$/i, '')
       .trim();
-    const itemCap = itemLimpo.charAt(0).toUpperCase() + itemLimpo.slice(1);
-    const unitarioFormatado = mult.unitario.toFixed(2).replace('.', ',');
-
-    if (mult.unidadeNome) {
-      descricao = `${mult.qtd} ${mult.unidadeNome} de ${itemCap} (R$ ${unitarioFormatado} cada)`;
-    } else {
-      descricao = `${mult.qtd}x ${itemCap} (R$ ${unitarioFormatado} cada)`;
-    }
+    // O usuário deseja que a descrição seja diretamente o nome limpo do produto (ex: "Arroz")
+    descricao = itemLimpo.charAt(0).toUpperCase() + itemLimpo.slice(1);
   } else {
     // Sanitização inteligente da descrição: remove moedas, números, formas de pagamento, parcelas e verbos financeiros
     let s = frase
@@ -516,11 +516,11 @@ export function detectarComandoConfirmacao(texto: string): boolean {
 }
 
 /**
- * Detecta comandos explícitos de voz para efetuar o lançamento na tela do formulário ("efetuar", "efetuar lançamento", "gravar")
+ * Detecta comandos de voz para efetuar o lançamento na tela do formulário ("sim", "ok", "efetuar", "gravar")
  */
 export function detectarComandoEfetuar(texto: string): boolean {
   if (!texto) return false;
   const norm = normalizarTexto(texto).trim();
-  if (/^(efetuar|efetua|efetuado|gravar|concluir|concluido|concluído|ok|oquei)$/i.test(norm)) return true;
-  return /\b(efetuar lancamento|efetuar lançamento|gravar lancamento|gravar lançamento|concluir lancamento|concluir lançamento|pode efetuar|pode gravar)\b/i.test(norm);
+  if (/^(sim|ok|oquei|efetuar|efetua|efetuado|gravar|salvar|concluir|confirmar)$/i.test(norm)) return true;
+  return /\b(sim pode|sim grava|sim efetua|sim salva|pode efetuar|pode salvar|pode gravar|efetuar lancamento|efetuar lançamento|gravar lancamento|gravar lançamento)\b/i.test(norm);
 }

@@ -171,7 +171,7 @@ export const FormLancamento: React.FC<FormLancamentoProps> = ({
     pararGravacao: pararEscutaEfetuar,
   } = useVoiceRecognition();
 
-  // Quando chegam dados preenchidos por voz, dá 3.5 segundos de revisão calma antes de abrir o microfone
+  // Quando chegam dados preenchidos por voz, dá 2 segundos de pausa para o usuário revisar a tela
   useEffect(() => {
     if (dadosPreenchidosVoz) {
       setModoVozEfetuar(true);
@@ -181,7 +181,7 @@ export const FormLancamento: React.FC<FormLancamentoProps> = ({
       const timer = setTimeout(() => {
         setRevisaoLiberada(true);
         iniciarEscutaEfetuar();
-      }, 3500);
+      }, 2000);
 
       return () => clearTimeout(timer);
     }
@@ -302,9 +302,9 @@ export const FormLancamento: React.FC<FormLancamentoProps> = ({
               <div>
                 <strong style={{ fontSize: '13px', color: revisaoLiberada ? '#81C784' : '#82B1FF', display: 'block' }}>
                   {comandoEfetuarDetectado ? (
-                    'Comando "Efetuar" reconhecido! Gravando lançamento...'
+                    'Confirmado! Gravando lançamento...'
                   ) : revisaoLiberada ? (
-                    'Microfone pronto para gravar:'
+                    'Efetuar lançamento?'
                   ) : (
                     'Revise os dados preenchidos com calma:'
                   )}
@@ -313,7 +313,7 @@ export const FormLancamento: React.FC<FormLancamentoProps> = ({
                   {comandoEfetuarDetectado ? (
                     'Salvando movimentação financeira...'
                   ) : revisaoLiberada ? (
-                    <>Diga <strong>"Efetuar"</strong> ou <strong>"Gravar"</strong> (ou toque no botão verde abaixo)</>
+                    <>Diga <strong>"Sim"</strong> ou <strong>"OK"</strong> para efetuar (ou clique no botão verde)</>
                   ) : (
                     'O microfone será armado em instantes para sua segurança.'
                   )}
