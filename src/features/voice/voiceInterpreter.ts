@@ -107,10 +107,48 @@ function extrairPrecoFinal(str: string): { val: number; antes?: string } | null 
   return null;
 }
 
+const REGEX_UNIDADES_MEDIDA = '(?:sacos?|unidades?|peças?|pecas?|caixas?|latas?|metros?|kilos?|quilos?|kg|itens?|pacotes?|rolos?|barras?|tubos?|fardos?|garrafas?|potes?|litros?|latinhas?)';
+const REGEX_NUMEROS_EXTENSO_OU_DIGITOS = '(?:\\d+|um|uma|dois|duas|tres|três|quatro|cinco|seis|meia|sete|oito|nove|dez|onze|doze|treze|quatorze|catorze|quinze|dezesseis|dezessete|dezoito|dezenove|vinte|trinta|quarenta|cinquenta)';
+
+function extrairQtdEItem(texto: string): { qtd: number; unidade?: string; item: string } {
+  let s = texto
+    .replace(/^(?:comprei|compre|gastei|gasto|paguei|paga|foram|foi|lance|lancar|lançar|coloque|bote|peguei|levei|adicione|adicionar)\s+/i, '')
+    .replace(/^(?:com|de|em|para|pra|por)\s+/i, '')
+    .trim()
+    .replace(/[,;]+$/, '')
+    .trim();
+
+  // Opção A: Quantidade no início (ex: '3 sacos de arroz', '3 caixas de sabão em pó', '3 sabão em pó')
+  const matchInicio = s.match(new RegExp(`^(${REGEX_NUMEROS_EXTENSO_OU_DIGITOS})\\s*(?:(${REGEX_UNIDADES_MEDIDA})\\s*(?:de\\s+)?)?(.*)$`, 'i'));
+  if (matchInicio && matchInicio[3] && matchInicio[3].trim()) {
+    const qStr = matchInicio[1].toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    const qtd = TABELA_NUMEROS[qStr] !== undefined ? TABELA_NUMEROS[qStr] : parseInt(qStr, 10);
+    const unidade = matchInicio[2] ? matchInicio[2].trim() : undefined;
+    let item = matchInicio[3].replace(/^(?:de|da|do|dos|das)\s+/i, '').replace(/[,;]+$/, '').trim();
+    if (item && !['vezes', 'parcelas', 'dias', 'meses', 'horas'].includes(item.toLowerCase())) {
+      return { qtd: qtd > 0 ? qtd : 1, unidade, item };
+    }
+  }
+
+  // Opção B: Quantidade no fim (ex: 'Sabão em pó, 3 unidades', 'Sabão em pó 3 caixas', 'Sabão em pó 3')
+  const matchFim = s.match(new RegExp(`^(.*?)(?:,\\s*|\\s+)(${REGEX_NUMEROS_EXTENSO_OU_DIGITOS})\\s*(${REGEX_UNIDADES_MEDIDA})?$`, 'i'));
+  if (matchFim && matchFim[1] && matchFim[1].trim()) {
+    const qStr = matchFim[2].toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    const qtd = TABELA_NUMEROS[qStr] !== undefined ? TABELA_NUMEROS[qStr] : parseInt(qStr, 10);
+    const unidade = matchFim[3] ? matchFim[3].trim() : undefined;
+    let item = matchFim[1].replace(/^(?:de|da|do|dos|das)\s+/i, '').replace(/[,;]+$/, '').trim();
+    if (item && !['vezes', 'parcelas', 'dias', 'meses', 'horas'].includes(item.toLowerCase())) {
+      return { qtd: qtd > 0 ? qtd : 1, unidade, item };
+    }
+  }
+
+  return { qtd: 1, unidade: undefined, item: s };
+}
+
 export function detectarMultiplicadorVoz(texto: string): InfoMultiplicadorVoz | null {
   if (!texto) return null;
 
-  // Encontrar o padrão "X ... cada" aceitando sufixos após cada (ex: "3 sacos de arroz, 15 reais cada, em 3 vezes no cartão")
+  // Encontrar o padrão "... cada" aceitando sufixos após cada (ex: "3 sacos de arroz, 15 reais cada, em 3 vezes no cartão")
   const matchCada = texto.match(/^(.*?)[,;\s]+(?:a|por|de)?\s*([0-9a-zA-Z\s.,$]+?)\s*(?:cada(?:\s+um|\s+uma)?|a\s+unidade|por\s+unidade)\b(?:\s*[,;]?\s*(.*))?$/i);
   if (!matchCada) return null;
 
@@ -118,40 +156,16 @@ export function detectarMultiplicadorVoz(texto: string): InfoMultiplicadorVoz | 
   if (!precoInfo || precoInfo.val <= 0) return null;
 
   const unitario = precoInfo.val;
-  let resto = (matchCada[1] + ' ' + (precoInfo.antes || '')).trim().replace(/[,;]+$/, '').trim();
+  const textoQtdEItem = (matchCada[1] + ' ' + (precoInfo.antes || '')).trim().replace(/[,;]+$/, '').trim();
+  const { qtd, unidade, item } = extrairQtdEItem(textoQtdEItem);
 
-  // 1. Remover verbos introdutórios e preposições iniciais (ex: "comprei", "paguei", "gastei com", "foram", "lance")
-  resto = resto
-    .replace(/^(?:comprei|compre|gastei|gasto|paguei|paga|foram|foi|lance|lancar|lançar|coloque|bote|peguei|levei|adicione|adicionar)\s+/i, '')
-    .replace(/^(?:com|de|em|para|pra|por)\s+/i, '')
-    .trim();
-
-  // 2. Extrair quantidade do início (dígitos ou números por extenso)
-  let qtd = 1;
-  const matchQtd = resto.match(/^(\d+|um|uma|dois|duas|tres|três|quatro|cinco|seis|meia|sete|oito|nove|dez|onze|doze|treze|quatorze|catorze|quinze|dezesseis|dezessete|dezoito|dezenove|vinte|trinta|quarenta|cinquenta)\s+/i);
-  if (matchQtd) {
-    const qStr = matchQtd[1].toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-    qtd = TABELA_NUMEROS[qStr] !== undefined ? TABELA_NUMEROS[qStr] : parseInt(qStr, 10);
-    resto = resto.slice(matchQtd[0].length).trim();
-  }
-
-  // 3. Extrair e remover unidade de medida opcional (sacos, latas, garrafas, caixas, etc)
-  let unidade: string | undefined = undefined;
-  const matchUnidade = resto.match(/^(sacos?|unidades?|peças?|pecas?|caixas?|latas?|metros?|kilos?|quilos?|kg|itens?|pacotes?|rolos?|barras?|tubos?|fardos?|garrafas?|potes?|litros?)\s+(?:de\s+)?/i);
-  if (matchUnidade) {
-    unidade = matchUnidade[1];
-    resto = resto.slice(matchUnidade[0].length).trim();
-  }
-
-  resto = resto.replace(/^(?:de|da|do|dos|das)\s+/i, '').replace(/[,;]+$/, '').trim();
-
-  if (resto && !['vezes', 'parcelas', 'dias', 'meses', 'horas'].includes(resto.toLowerCase())) {
+  if (item && !['vezes', 'parcelas', 'dias', 'meses', 'horas'].includes(item.toLowerCase())) {
     return {
       qtd,
       unitario,
       total: Math.round(qtd * unitario * 100) / 100,
       unidadeNome: unidade,
-      itemNome: resto
+      itemNome: item
     };
   }
 
