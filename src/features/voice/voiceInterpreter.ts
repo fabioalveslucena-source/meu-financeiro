@@ -272,29 +272,60 @@ export function identificarNaturezaECategoria(texto: string, tipo: TipoLancament
     { regex: /\b(curso|treinamento|workshop|aula)\b/, naturezaLabel: '📚 Educação', categoriaNome: 'Cursos e Treinamentos' },
     { regex: /\b(livro|didatico|papelaria|material escolar)\b/, naturezaLabel: '📚 Educação', categoriaNome: 'Livros e Material Didático' },
     
-    // Alimentação & Bebidas (Supermercado, Alimentos e Bebidas em Geral)
+    // Manutenção Veicular (Prioridade para oficina, troca de óleo de motor e mecânica não confundir com óleo de cozinha)
     { 
-      regex: /\b(cerveja|cervejas|chope|chopp|refrigerante|suco|bebida|bebidas|vinho|vodka|whisky|agua mineral|energetico)\b/, 
-      naturezaLabel: '🛒 Alimentação', 
-      categoriaNome: 'Supermercado' 
-    },
-    { 
-      regex: /\b(extrato de tomate|tomate|tomates|molho|arroz|feijao|macarrao|leite|cafe|acucar|oleo|azeite|farinha|manteiga|queijo|presunto|frango|carne|peixe|verdura|legume|fruta|iogurte|bolacha|biscoito|sabonete|detergente|amaciante|desinfetante|papel higienico)\b/, 
-      naturezaLabel: '🛒 Alimentação', 
-      categoriaNome: 'Supermercado' 
-    },
-    { regex: /\b(mercado|supermercado|compras|feira|acougue|padaria)\b/, naturezaLabel: '🛒 Alimentação', categoriaNome: 'Supermercado' },
-    { regex: /\b(almoço|almoco|jantar|restaurante|lanche|delivery|ifood|pizza|hamburguer)\b/, naturezaLabel: '🛒 Alimentação', categoriaNome: 'Restaurante / Delivery' },
-    
-    // Manutenção Veicular (Oficina, Mecânica, Peças de Carro e Moto)
-    { 
-      regex: /\b(manutencao veicular|veicular|oficina|mecanica|mecanico|revisao|troca de oleo|oleo do motor|pneu|pneus|alinhamento|balanceamento|funilaria|autopecas|auto pecas|bateria do carro|freio|pastilha|suspensao)\b/, 
+      regex: /\b(manutencao veicular|veicular|oficina|mecanica|mecanico|revisao|troca de oleo|oleo do motor|oleo motor|oleo de motor|pneu|pneus|alinhamento|balanceamento|funilaria|autopecas|auto pecas|bateria do carro|freio|pastilha|suspensao)\b/, 
       naturezaLabel: '🔧 Manutenção Veicular', 
       categoriaNome: 'Oficina e Mecânica' 
     },
     { regex: /\b(combustivel|gasolina|etanol|alcool|posto|abasteci)\b/, naturezaLabel: '🚗 Transporte', categoriaNome: 'Combustível' },
     { regex: /\b(uber|taxi|corrida|99)\b/, naturezaLabel: '🚗 Transporte', categoriaNome: 'Uber / Táxi / 99' },
     { regex: /\b(ipva|seguro veiculo)\b/, naturezaLabel: '🚗 Transporte', categoriaNome: 'Seguro Veicular' },
+
+    // Alimentação & Bebidas (Restaurante, Açougue, Hortifrúti, Padaria e Supermercado Completo)
+    { 
+      // Restaurante, Delivery, Refeições Prontas e Lanches
+      regex: /\b(almoco|almoço|jantar|refeicao|refeição|restaurante|delivery|ifood|marmita|marmitas|marmitex|quentinha|buffet|self service|rodizio|churrascaria|pizzaria|pizza|pizzas|lanche|lanches|lanchonete|hamburguer|hamburgueres|hambúrguer|burger|hamburgueria|pastel|pastelaria|pasteis|pastéis|coxinha|coxinhas|salgado|salgados|esfiha|esfirra|kibe|quibe|acai|açaí|sorveteria|aiqfome|rappi|uber eats)\b/, 
+      naturezaLabel: '🛒 Alimentação', 
+      categoriaNome: 'Restaurante / Delivery' 
+    },
+    { 
+      // Açougue e Peixaria (Carnes bovinas, suínas, aves, peixes e cortes)
+      regex: /\b(acougue|açougue|peixaria|carne|carnes|carne bovina|carne moida|carne moída|bife|bifes|alcatra|picanha|contrafile|contrafilé|patinho|acem|açém|maminha|costela|cupim|musculo|músculo|fraldinha|coxao mole|coxão mole|coxao duro|coxão duro|lagarto|frango|frangos|peito de frango|file de frango|filé de frango|coxa|coxas|sobrecoxa|sobrecoxas|asa|asas|tulipa|galinha|peixe|peixes|tilapia|tilápia|salmao|salmão|bacalhau|merluza|cacao|cação|camarao|camarão|camaroes|camarões|frutos do mar|lombo|bisteca|pernil|costelinha|panceta|torresmo|toucinho|bacon|calabresa|linguica|linguiça|salsicha|salsichas)\b/, 
+      naturezaLabel: '🛒 Alimentação', 
+      categoriaNome: 'Açougue e Peixaria' 
+    },
+    { 
+      // Padaria e Cafeteria (Pães, bolos, tortas e matinais)
+      regex: /\b(padaria|panificadora|confeitaria|cafeteria|pao|pão|paes|pães|pao frances|pão francês|pao de queijo|pão de queijo|pao de forma|pão de forma|bisnaguinha|croissant|brioche|torrada|torradas|bolo|bolos|torta|tortas|sonho|rosquinha|rosquinhas|cafe expresso|café expresso|expresso|cappuccino|capuccino)\b/, 
+      naturezaLabel: '🛒 Alimentação', 
+      categoriaNome: 'Padaria e Cafeteria' 
+    },
+    { 
+      // Hortifrúti e Feira (Frutas, verduras, legumes, temperos frescos e ovos)
+      regex: /\b(hortifruti|hortifrúti|sacolao|sacolão|feira|feira livre|verdura|verduras|legume|legumes|fruta|frutas|banana|bananas|maca|maçã|macas|maçãs|laranja|laranjas|limao|limão|limoes|limões|abacaxi|melancia|melao|melão|mamao|mamão|uva|uvas|morango|morangos|manga|mangas|pera|pêra|peras|abacate|abacates|pessego|pêssego|ameixa|goiaba|maracuja|maracujá|tangerina|mexerica|bergamota|caju|kiwi|acerola|jabuticaba|alface|couve|repolho|brocolis|brócolis|rucula|rúcula|espinafre|acelga|agriao|agrião|tomate|tomates|cenoura|cenouras|chuchu|abobora|abóbora|abobrinha|berinjela|pepino|pepinos|quiabo|jilo|jiló|vagem|pimentao|pimentão|beterraba|mandioca|aipim|macaxeira|batata|batatas|batata doce|batata inglesa|batata palha|alho|cebola|cebolas|salsa|salsinha|cebolinha|coentro|hortela|hortelã|manjericao|manjericão|ovo|ovos|duzia de ovos|cartela de ovos)\b/, 
+      naturezaLabel: '🛒 Alimentação', 
+      categoriaNome: 'Hortifruti e Feira' 
+    },
+    { 
+      // Bebidas em Geral
+      regex: /\b(cerveja|cervejas|chope|chopp|heineken|amstel|brahma|skol|budweiser|stella|refrigerante|refrigerantes|coca|coca cola|pepsi|guarana|guaraná|fanta|sprite|suco|sucos|bebida|bebidas|vinho|vinhos|espumante|vodka|whisky|whiskey|gin|cachaca|cachaça|rum|licor|agua mineral|água mineral|agua com gas|água com gás|energetico|energético|red bull|monster|isotonico|gatorade)\b/, 
+      naturezaLabel: '🛒 Alimentação', 
+      categoriaNome: 'Supermercado' 
+    },
+    { 
+      // Supermercado / Mercearia / Despensa / Grãos / Matinais / Laticínios / Conservas / Condimentos
+      // Inclui expressamente milho, farofa, arroz, feijão, fubá, cuscuz, massas, etc.
+      regex: /\b(milho|milho verde|farofa|fuba|fubá|cuscuz|flocao|flocão|arroz|feijao|feijão|feijoes|feijões|macarrao|macarrão|massa|massas|espaguete|penne|parafuso|lasanha|miojo|nhoque|farinha|farinhas|farinha de mandioca|farinha de trigo|polvilho|tapioca|amido|maizena|aveia|granola|cereal|cereais|trigo|lentilha|grao de bico|grão de bico|ervilha|ervilhas|soja|canjica|pipoca|chia|linhaca|linhaça|leite|leite em po|leite em pó|leite condensado|creme de leite|iogurte|iogurtes|danone|coalhada|yakult|manteiga|margarina|requeijao|requeijão|queijo|queijos|mussarela|muçarela|mucarela|prato|parmesao|parmesão|provolone|ricota|presunto|apresuntado|mortadela|salame|cafe|café|cafe em po|café em pó|cha|chá|acucar|açúcar|adocante|adoçante|achocolatado|toddy|nescau|chocolate em po|cacau|oleo|óleo|oleo de soja|azeite|azeite de oliva|vinagre|shoyu|sal|sal refinado|sal grosso|tempero|temperos|sazon|caldo knorr|molho|molhos|extrato de tomate|molho de tomate|passata|pomarola|maionese|ketchup|catchup|mostarda|barbecue|azeitona|azeitonas|palmito|palmitos|cogumelo|cogumelos|champignon|seleta|seleta de legumes|sardinha|atum|conserva|conservas|picles|fermento|bicarbonato|gelatina|pudim|doce de leite|goiabada|geleia|mel|pasta de amendoim|nutella|chocolate|chocolates|bombom|bombons|barra de chocolate|bolacha|bolachas|biscoito|biscoitos|wafer|cookie|cookies|salgadinho|salgadinhos|doritos|ruffles|cheetos|amendoim|castanha|castanhas|nozes|sorvete|sorvetes|picole|picolé)\b/, 
+      naturezaLabel: '🛒 Alimentação', 
+      categoriaNome: 'Supermercado' 
+    },
+    { 
+      // Higiene e Limpeza Doméstica de Supermercado
+      regex: /\b(supermercado|mercado|hipermercado|mercearia|atacadao|atacadão|assai|assaí|carrefour|compras do mes|compras do mês|compras de mercado|rancho|sabonete|sabonetes|sabonete liquido|detergente|detergentes|amaciante|amaciantes|desinfetante|desinfetantes|sabao|sabão|sabao em po|sabão em pó|sabao liquido|sabão líquido|agua sanitaria|água sanitária|cloro|alvejante|limpa vidro|multiuso|desengordurante|esponja|esponjas|palha de aco|bombril|pano de chao|pano de chão|pano de prato|flanela|vassoura|rodo|balde|saco de lixo|papel higienico|papel higiênico|papel toalha|papel aluminio|papel alumínio|papel filme|guardanapo|guardanapos|filtro de cafe|filtro de café|shampoo|xampu|condicionador|creme dental|pasta de dente|escova de dente|fio dental|enxaguante bucal|desodorante|absorvente|fralda|fraldas|cotonete|algodao|algodão|lamina de barbear|gilete)\b/, 
+      naturezaLabel: '🛒 Alimentação', 
+      categoriaNome: 'Supermercado' 
+    },
     
     // Imóveis (Materiais de Construção, Ferramentas, Elétrica, Hidráulica, Aluguel e Reformas)
     { 
