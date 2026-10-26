@@ -54,6 +54,19 @@ export const VoiceModal: React.FC<VoiceModalProps> = ({
     }
   }, [aberto, suportado]);
 
+  // Quando o resultado foi identificado e o microfone pausar por silêncio,
+  // reativa o microfone mantendo a prévia na tela para capturar "OK" ou "Confirmar"
+  useEffect(() => {
+    if (aberto && suportado && resultado && resultado.sucesso && !estaOuvindo) {
+      const timer = setTimeout(() => {
+        if (aberto && !estaOuvindo) {
+          iniciarGravacao(true);
+        }
+      }, 500);
+      return () => clearTimeout(timer);
+    }
+  }, [aberto, suportado, resultado, estaOuvindo, iniciarGravacao]);
+
   if (!aberto) return null;
 
   return (
@@ -161,7 +174,7 @@ export const VoiceModal: React.FC<VoiceModalProps> = ({
           color: estaOuvindo ? '#F8D117' : '#AAB4BE',
           margin: '0 0 12px 0'
         }}>
-          {estaOuvindo ? '🎙️ Ouvindo... Pode falar!' : 'Microfone pausado (toque para falar)'}
+          {estaOuvindo ? '🎙️ Ouvindo... Pode falar!' : 'Microfone pronto (toque para falar)'}
         </p>
 
         {/* Botão de Concluir Fala durante a gravação */}
@@ -203,9 +216,9 @@ export const VoiceModal: React.FC<VoiceModalProps> = ({
             marginBottom: '16px'
           }}>
             <p style={{ fontWeight: 800, margin: '0 0 6px 0', color: '#F8D117' }}>Exemplos de frases:</p>
+            <p style={{ margin: '4px 0' }}>• <em>"Sabão em pó, 3 unidades, 30 BRL cada, 3 vezes no cartão"</em></p>
             <p style={{ margin: '4px 0' }}>• <em>"Milho 5 reais no débito"</em></p>
             <p style={{ margin: '4px 0' }}>• <em>"Farofa 8 reais no pix"</em></p>
-            <p style={{ margin: '4px 0' }}>• <em>"3 sacos de arroz, 15 reais cada, em 3 vezes no cartão"</em></p>
           </div>
         )}
 
@@ -252,42 +265,63 @@ export const VoiceModal: React.FC<VoiceModalProps> = ({
 
         {/* Prévia do Resultado Interpretado */}
         {resultado && resultado.sucesso && (
-          <div style={{
-            backgroundColor: '#132F4C',
-            border: '1.5px solid #4CAF50',
-            borderRadius: '16px',
-            padding: '14px',
-            width: '100%',
-            textAlign: 'left',
-            marginBottom: '16px'
-          }}>
-            <p style={{ fontSize: '0.8rem', fontWeight: 900, color: '#4CAF50', textTransform: 'uppercase', margin: '0 0 8px 0' }}>
-              ✓ Identificado com Sucesso:
-            </p>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', fontSize: '0.9rem' }}>
-              <div><strong style={{ color: '#AAB4BE' }}>Tipo:</strong> <span style={{ color: resultado.tipo === 'Receita' ? '#4CAF50' : '#F44336', fontWeight: 800 }}>{resultado.tipo}</span></div>
-              <div><strong style={{ color: '#AAB4BE' }}>Valor:</strong> <span style={{ color: '#FFFFFF', fontWeight: 900 }}>{formatarMoeda(resultado.valor || 0)}</span></div>
-              <div style={{ gridColumn: 'span 2' }}>
-                <strong style={{ color: '#AAB4BE' }}>Natureza:</strong> <span style={{ color: '#5090D3', fontWeight: 800 }}>{resultado.natureza}</span>
-              </div>
-              <div style={{ gridColumn: 'span 2' }}>
-                <strong style={{ color: '#AAB4BE' }}>Categoria:</strong> <span style={{ color: '#81C784', fontWeight: 800 }}>{resultado.categoria}</span>
-              </div>
-              <div style={{ gridColumn: 'span 2' }}>
-                <strong style={{ color: '#AAB4BE' }}>Pagamento:</strong> <span style={{ color: '#F8D117', fontWeight: 800 }}>{resultado.pagamento}</span>
-              </div>
-              {resultado.descricao ? (
-                <div style={{ gridColumn: 'span 2', color: '#E2E8F0', fontWeight: 700 }}>
-                  <strong style={{ color: '#AAB4BE' }}>Descrição:</strong> {resultado.descricao}
-                </div>
-              ) : null}
-              {resultado.parcelas && resultado.parcelas > 1 ? (
-                <div style={{ gridColumn: 'span 2', backgroundColor: 'rgba(248, 209, 23, 0.15)', padding: '6px 10px', borderRadius: '8px', color: '#F8D117', fontWeight: 800 }}>
-                  💳 Cartão Parcelado: {resultado.parcelas}x de {formatarMoeda((resultado.valor || 0) / resultado.parcelas)}
-                </div>
-              ) : null}
+          <>
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '8px',
+              backgroundColor: 'rgba(76, 175, 80, 0.18)',
+              border: '1.5px solid #4CAF50',
+              borderRadius: '14px',
+              padding: '10px 14px',
+              marginBottom: '14px',
+              width: '100%',
+              color: '#81C784',
+              fontSize: '13px',
+              fontWeight: 800
+            }}>
+              <span style={{ fontSize: '18px' }}>🎙️</span>
+              <span>Diga <strong>"OK"</strong> ou <strong>"Confirmar"</strong> para avançar</span>
             </div>
-          </div>
+
+            <div style={{
+              backgroundColor: '#132F4C',
+              border: '1.5px solid #4CAF50',
+              borderRadius: '16px',
+              padding: '14px',
+              width: '100%',
+              textAlign: 'left',
+              marginBottom: '16px'
+            }}>
+              <p style={{ fontSize: '0.8rem', fontWeight: 900, color: '#4CAF50', textTransform: 'uppercase', margin: '0 0 8px 0' }}>
+                ✓ Identificado com Sucesso:
+              </p>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', fontSize: '0.9rem' }}>
+                <div><strong style={{ color: '#AAB4BE' }}>Tipo:</strong> <span style={{ color: resultado.tipo === 'Receita' ? '#4CAF50' : '#F44336', fontWeight: 800 }}>{resultado.tipo}</span></div>
+                <div><strong style={{ color: '#AAB4BE' }}>Valor:</strong> <span style={{ color: '#FFFFFF', fontWeight: 900 }}>{formatarMoeda(resultado.valor || 0)}</span></div>
+                <div style={{ gridColumn: 'span 2' }}>
+                  <strong style={{ color: '#AAB4BE' }}>Natureza:</strong> <span style={{ color: '#5090D3', fontWeight: 800 }}>{resultado.natureza}</span>
+                </div>
+                <div style={{ gridColumn: 'span 2' }}>
+                  <strong style={{ color: '#AAB4BE' }}>Categoria:</strong> <span style={{ color: '#81C784', fontWeight: 800 }}>{resultado.categoria}</span>
+                </div>
+                <div style={{ gridColumn: 'span 2' }}>
+                  <strong style={{ color: '#AAB4BE' }}>Pagamento:</strong> <span style={{ color: '#F8D117', fontWeight: 800 }}>{resultado.pagamento}</span>
+                </div>
+                {resultado.descricao ? (
+                  <div style={{ gridColumn: 'span 2', color: '#E2E8F0', fontWeight: 700 }}>
+                    <strong style={{ color: '#AAB4BE' }}>Descrição:</strong> {resultado.descricao}
+                  </div>
+                ) : null}
+                {resultado.parcelas && resultado.parcelas > 1 ? (
+                  <div style={{ gridColumn: 'span 2', backgroundColor: 'rgba(248, 209, 23, 0.15)', padding: '6px 10px', borderRadius: '8px', color: '#F8D117', fontWeight: 800 }}>
+                    💳 Cartão Parcelado: {resultado.parcelas}x de {formatarMoeda((resultado.valor || 0) / resultado.parcelas)}
+                  </div>
+                ) : null}
+              </div>
+            </div>
+          </>
         )}
 
         {/* Botões de Ação */}

@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { 
   interpretarComandoVoz, 
   detectarComandoConfirmacao, 
+  detectarComandoEfetuar,
   type VozInterpretada 
 } from './voiceInterpreter';
 
@@ -16,6 +17,7 @@ declare global {
 export interface VoiceRecognitionOptions {
   onResultadoFinal?: (res: VozInterpretada) => void;
   onComandoConfirmar?: () => void;
+  onComandoEfetuar?: () => void;
 }
 
 export interface UseVoiceRecognitionReturn {
@@ -62,6 +64,7 @@ export function useVoiceRecognition(
 ): UseVoiceRecognitionReturn {
   const onResultadoFinal = typeof opcoes === 'function' ? opcoes : opcoes?.onResultadoFinal;
   const onComandoConfirmar = typeof opcoes === 'object' ? opcoes.onComandoConfirmar : undefined;
+  const onComandoEfetuar = typeof opcoes === 'object' ? opcoes.onComandoEfetuar : undefined;
 
   const [estaOuvindo, setEstaOuvindo] = useState(false);
   const [transcricao, setTranscricao] = useState('');
@@ -94,7 +97,14 @@ export function useVoiceRecognition(
     const textoLimpo = removerRepeticoes(texto);
     if (!textoLimpo) return;
 
+    if (onComandoEfetuar && detectarComandoEfetuar(textoLimpo)) {
+      textoAtualRef.current = '';
+      onComandoEfetuar();
+      return;
+    }
+
     if (onComandoConfirmar && detectarComandoConfirmacao(textoLimpo)) {
+      textoAtualRef.current = '';
       onComandoConfirmar();
       return;
     }
@@ -108,7 +118,7 @@ export function useVoiceRecognition(
     } catch (e) {
       console.error('Erro ao interpretar comando de voz:', e);
     }
-  }, [onResultadoFinal, onComandoConfirmar]);
+  }, [onResultadoFinal, onComandoConfirmar, onComandoEfetuar]);
 
   const abortarInstanciaAnterior = useCallback(() => {
     if (recognitionRef.current) {
@@ -185,7 +195,14 @@ export function useVoiceRecognition(
         textoAtualRef.current = textoProcessado;
         setTranscricao(textoProcessado);
 
+        if (onComandoEfetuar && detectarComandoEfetuar(textoProcessado)) {
+          textoAtualRef.current = '';
+          onComandoEfetuar();
+          return;
+        }
+
         if (onComandoConfirmar && detectarComandoConfirmacao(textoProcessado)) {
+          textoAtualRef.current = '';
           onComandoConfirmar();
           return;
         }
@@ -207,7 +224,7 @@ export function useVoiceRecognition(
         } else if (event.error === 'no-speech') {
           // Apenas silêncio temporário
         } else if (event.error === 'aborted') {
-          // Abort proposital ao reiniciar
+          // Abort normal
         } else {
           setErro(`Microfone: ${event.error}`);
         }
@@ -256,7 +273,7 @@ export function useVoiceRecognition(
       setErro('Não foi possível iniciar o microfone no momento. Toque para tentar.');
       setEstaOuvindo(false);
     }
-  }, [SpeechRecognition, limparTimers, abortarInstanciaAnterior, pararGravacao, finalizarComTexto, onComandoConfirmar]);
+  }, [SpeechRecognition, limparTimers, abortarInstanciaAnterior, pararGravacao, finalizarComTexto, onComandoConfirmar, onComandoEfetuar]);
 
   const limparResultado = useCallback(() => {
     limparTimers();

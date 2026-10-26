@@ -1,9 +1,10 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useFinanceStore } from '../../stores/financeStore';
 import { TIPOS_LANCAMENTO } from '../../lib/constants';
 import { formatarDataInput, formatarMoeda, parseMoedaBR } from '../../lib/formatters';
 import type { FormaPagamento, TipoLancamento } from '../../types';
 import { Mic, Plus, X, Check } from 'lucide-react';
+import { useVoiceRecognition } from '../../features/voice/useVoiceRecognition';
 
 interface FormLancamentoProps {
   onAbrirVoz: () => void;
@@ -84,7 +85,7 @@ export const FormLancamento: React.FC<FormLancamentoProps> = ({
     }
   }, [cartoes, contas]);
 
-  const [avisoVozAtivo, setAvisoVozAtivo] = useState(false);
+  const [aguardandoEfetuarVoz, setAguardandoEfetuarVoz] = useState(false);
 
   // Preenchimento vindo do comando de voz
   useEffect(() => {
@@ -104,8 +105,6 @@ export const FormLancamento: React.FC<FormLancamentoProps> = ({
         const bb = cartoes.find(c => c.nome.includes('Banco do Brasil'));
         setCartao(bb ? bb.nome : cartoes[0].nome);
       }
-
-      setAvisoVozAtivo(true);
     }
   }, [dadosPreenchidosVoz]);
 
@@ -153,11 +152,56 @@ export const FormLancamento: React.FC<FormLancamentoProps> = ({
       setValorTexto('');
       setDescricao('');
       setParcelas(1);
-      setAvisoVozAtivo(false);
+      setAguardandoEfetuarVoz(false);
       return true;
     }
     return false;
   }, [valorTexto, descricao, categoria, pagamento, cartao, conta, data, tipo, natureza, parcelas, adicionarLancamento]);
+
+  const submeterLancamentoRef = useRef(submeterLancamento);
+  useEffect(() => {
+    submeterLancamentoRef.current = submeterLancamento;
+  }, [submeterLancamento]);
+
+  const {
+    estaOuvindo: ouvindoEfetuar,
+    iniciarGravacao: iniciarEscutaEfetuar,
+    pararGravacao: pararEscutaEfetuar,
+  } = useVoiceRecognition({
+    onComandoEfetuar: () => {
+      pararEscutaEfetuar();
+      setAguardandoEfetuarVoz(false);
+      submeterLancamentoRef.current();
+    }
+  });
+
+  // Quando chegam dados preenchidos por voz, dá 450ms para desocupação do microfone e arma escuta de "SIM" ou "OK"
+  useEffect(() => {
+    if (dadosPreenchidosVoz) {
+      setAguardandoEfetuarVoz(true);
+
+      const timer = setTimeout(() => {
+        iniciarEscutaEfetuar();
+      }, 450);
+
+      return () => {
+        clearTimeout(timer);
+        pararEscutaEfetuar();
+      };
+    }
+  }, [dadosPreenchidosVoz, iniciarEscutaEfetuar, pararEscutaEfetuar]);
+
+  // Se o microfone parar por silêncio enquanto ainda estiver aguardando confirmação, reativa suavemente
+  useEffect(() => {
+    if (aguardandoEfetuarVoz && !ouvindoEfetuar) {
+      const timer = setTimeout(() => {
+        if (aguardandoEfetuarVoz && !ouvindoEfetuar) {
+          iniciarEscutaEfetuar();
+        }
+      }, 500);
+      return () => clearTimeout(timer);
+    }
+  }, [aguardandoEfetuarVoz, ouvindoEfetuar, iniciarEscutaEfetuar]);
 
   const handleSubmit = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
@@ -232,47 +276,51 @@ export const FormLancamento: React.FC<FormLancamentoProps> = ({
           </button>
         </div>
 
-        {/* Aviso de Preenchimento por Voz com Tranquilidade para Revisar */}
-        {avisoVozAtivo && (
+        {/* Banner de Confirmação por Voz para Efetuar Lançamento */}
+        {aguardandoEfetuarVoz && (
           <div style={{
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
-            backgroundColor: 'rgba(76, 175, 80, 0.15)',
+            backgroundColor: 'rgba(76, 175, 80, 0.18)',
             border: '1.5px solid #4CAF50',
-            borderRadius: '14px',
+            borderRadius: '16px',
             padding: '12px 16px',
             marginBottom: '16px',
             gap: '12px',
+            boxShadow: '0 4px 15px rgba(76, 175, 80, 0.25)',
             transition: 'all 0.3s ease'
           }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px', textAlign: 'left' }}>
-              <span style={{ fontSize: '20px' }}>✓</span>
+              <span style={{ fontSize: '24px' }}>🎙️</span>
               <div>
                 <strong style={{ fontSize: '13px', color: '#81C784', display: 'block' }}>
-                  Lançamento preenchido por voz!
+                  Microfone ligado: Diga "SIM" ou "OK" para efetuar
                 </strong>
                 <span style={{ fontSize: '11.5px', color: '#E2E8F0' }}>
-                  Revise os campos abaixo com calma e clique no botão verde para efetuar.
+                  Ou toque no botão verde <strong>"Efetuar Lançamento"</strong> abaixo.
                 </span>
               </div>
             </div>
             <button
               type="button"
-              onClick={() => setAvisoVozAtivo(false)}
+              onClick={() => {
+                pararEscutaEfetuar();
+                setAguardandoEfetuarVoz(false);
+              }}
               style={{
                 background: 'rgba(255, 255, 255, 0.12)',
                 border: '1px solid rgba(255, 255, 255, 0.25)',
                 borderRadius: '8px',
-                padding: '4px 8px',
+                padding: '5px 10px',
                 color: '#FFFFFF',
                 fontSize: '11.5px',
                 fontWeight: 700,
                 cursor: 'pointer'
               }}
-              title="Dispensar aviso"
+              title="Pausar microfone"
             >
-              OK
+              Pausar Voz
             </button>
           </div>
         )}

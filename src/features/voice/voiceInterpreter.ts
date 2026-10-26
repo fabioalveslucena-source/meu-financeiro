@@ -550,14 +550,12 @@ export function interpretarComandoVoz(frase: string): VozInterpretada {
 }
 
 /**
- * Detecta comandos explícitos de voz para confirmação no modal ("confirmar", "ok", "confirmado")
- * Exige comando deliberado para não disparar acidentalmente em ruídos ou falas intermediárias.
+ * Detecta comandos explícitos de voz para confirmação no modal ("confirmar", "ok", "confirmar ok", "sim")
  */
 export function detectarComandoConfirmacao(texto: string): boolean {
   if (!texto) return false;
   const norm = normalizarTexto(texto).trim();
-  if (/^(confirmar|confirma|confirmado|ok|oquei)$/i.test(norm)) return true;
-  return /\b(pode confirmar|confirmar dados|esta correto|está correto|tudo certo)\b/i.test(norm);
+  return /\b(confirmar|confirma|confirmado|confirme|ok|oquei|sim|pode|correto|certo|tudo certo|esta certo|esta correto|preencher|concluir)\b/i.test(norm);
 }
 
 /**
@@ -566,6 +564,5 @@ export function detectarComandoConfirmacao(texto: string): boolean {
 export function detectarComandoEfetuar(texto: string): boolean {
   if (!texto) return false;
   const norm = normalizarTexto(texto).trim();
-  if (/^(sim|ok|oquei|efetuar|efetua|efetuado|gravar|salvar|concluir|confirmar)$/i.test(norm)) return true;
-  return /\b(sim pode|sim grava|sim efetua|sim salva|pode efetuar|pode salvar|pode gravar|efetuar lancamento|efetuar lançamento|gravar lancamento|gravar lançamento)\b/i.test(norm);
+  return /\b(sim|ok|oquei|efetuar|efetua|efetuado|gravar|grava|salvar|salva|concluir|conclui|confirmar|confirma|pode|vai|lancar|lançar)\b/i.test(norm);
 }
