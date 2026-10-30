@@ -1258,6 +1258,10 @@ export const useFinanceStore = create<FinanceState>((set, get) => {
         return { sucesso: false, count: 0 };
       }
 
+      const { contas, cartoes } = get();
+      const bbConta = contas.find((c) => c.nome.toLowerCase().includes('banco do brasil'))?.nome || contas[0]?.nome || 'Conta Corrente Banco do Brasil';
+      const bbCartao = cartoes.find((c) => c.nome.toLowerCase().includes('banco do brasil'))?.nome || cartoes[0]?.nome || 'Banco do Brasil Ourocard';
+
       let count = 0;
       selecionadas.forEach((t) => {
         const res = get().adicionarLancamento(
@@ -1269,6 +1273,8 @@ export const useFinanceStore = create<FinanceState>((set, get) => {
             natureza: t.natureza,
             categoria: t.categoria,
             pagamento: t.pagamento,
+            conta: t.pagamento !== '💳 Crédito' ? bbConta : undefined,
+            cartao: t.pagamento === '💳 Crédito' ? bbCartao : undefined,
           },
           false // Não emitir evento por cada item individual para performance
         );
