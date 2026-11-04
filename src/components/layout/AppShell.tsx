@@ -39,12 +39,28 @@ export const AppShell: React.FC = () => {
     cartoes
   } = useFinanceStore();
 
-  // Verifica se o usuário precisa de Onboarding (quando está logado e não tem cartões)
+  // Verifica se o usuário precisa de Onboarding (apenas uma vez na vida, nunca mais reabre se já cadastrou ou dispensou)
   useEffect(() => {
-    if (usuario.uid && usuario.nome !== 'Novo Usuário' && cartoes.length === 0) {
+    const uid = usuario.uid || 'anonimo';
+    const chaveConcluido = `mf_onboarding_concluido_${uid}`;
+    const jaConcluiu = localStorage.getItem(chaveConcluido) === 'true';
+
+    // Se já concluiu anteriormente ou já possui cartões cadastrados, nunca mais exibe
+    if (jaConcluiu || cartoes.length > 0) {
+      setModalOnboardingAberto(false);
+      return;
+    }
+
+    if (usuario.uid && usuario.nome !== 'Novo Usuário') {
       setModalOnboardingAberto(true);
     }
   }, [usuario.uid, usuario.nome, cartoes.length]);
+
+  const fecharOnboardingDefinitivo = () => {
+    const uid = usuario.uid || 'anonimo';
+    localStorage.setItem(`mf_onboarding_concluido_${uid}`, 'true');
+    setModalOnboardingAberto(false);
+  };
 
   // Carrega a lista de usuários autorizados (whitelist) apenas se for administrador
   useEffect(() => {
@@ -216,8 +232,9 @@ export const AppShell: React.FC = () => {
       {/* Modal de Onboarding para Usuário Sem Cartão */}
       <OnboardingModal
         aberto={modalOnboardingAberto}
-        onFechar={() => setModalOnboardingAberto(false)}
+        onFechar={fecharOnboardingDefinitivo}
         onCadastrarCartao={() => {
+          fecharOnboardingDefinitivo();
           setAbaModalConfig('banco');
           setModalConfigCartaoAberto(true);
         }}

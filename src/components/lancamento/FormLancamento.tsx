@@ -4,7 +4,6 @@ import { TIPOS_LANCAMENTO } from '../../lib/constants';
 import { formatarDataInput, formatarMoeda, parseMoedaBR } from '../../lib/formatters';
 import type { FormaPagamento, TipoLancamento } from '../../types';
 import { Mic, Plus, X, Check } from 'lucide-react';
-import { useVoiceRecognition } from '../../features/voice/useVoiceRecognition';
 
 interface FormLancamentoProps {
   onAbrirVoz: () => void;
@@ -114,8 +113,6 @@ export const FormLancamento: React.FC<FormLancamentoProps> = ({
     }
   }, [cartoes, contas]);
 
-  const [aguardandoEfetuarVoz, setAguardandoEfetuarVoz] = useState(false);
-
   // Preenchimento vindo do comando de voz
   useEffect(() => {
     if (dadosPreenchidosVoz) {
@@ -181,58 +178,10 @@ export const FormLancamento: React.FC<FormLancamentoProps> = ({
       setValorTexto('');
       setDescricao('');
       setParcelas(1);
-      setAguardandoEfetuarVoz(false);
       return true;
     }
     return false;
   }, [valorTexto, descricao, categoria, pagamento, cartao, conta, data, tipo, natureza, parcelas, adicionarLancamento]);
-
-  const submeterLancamentoRef = useRef(submeterLancamento);
-  useEffect(() => {
-    submeterLancamentoRef.current = submeterLancamento;
-  }, [submeterLancamento]);
-
-  const {
-    estaOuvindo: ouvindoEfetuar,
-    transcricao: transcricaoEfetuar,
-    erro: erroEfetuar,
-    iniciarGravacao: iniciarEscutaEfetuar,
-    pararGravacao: pararEscutaEfetuar,
-  } = useVoiceRecognition({
-    onComandoEfetuar: () => {
-      pararEscutaEfetuar();
-      setAguardandoEfetuarVoz(false);
-      submeterLancamentoRef.current();
-    }
-  });
-
-  // Quando chegam dados preenchidos por voz, dá 450ms para desocupação do microfone e arma escuta de "SIM" ou "OK"
-  useEffect(() => {
-    if (dadosPreenchidosVoz) {
-      setAguardandoEfetuarVoz(true);
-
-      const timer = setTimeout(() => {
-        iniciarEscutaEfetuar();
-      }, 450);
-
-      return () => {
-        clearTimeout(timer);
-        pararEscutaEfetuar();
-      };
-    }
-  }, [dadosPreenchidosVoz, iniciarEscutaEfetuar, pararEscutaEfetuar]);
-
-  // Se o microfone parar por silêncio enquanto ainda estiver aguardando confirmação, reativa suavemente
-  useEffect(() => {
-    if (aguardandoEfetuarVoz && !ouvindoEfetuar) {
-      const timer = setTimeout(() => {
-        if (aguardandoEfetuarVoz && !ouvindoEfetuar) {
-          iniciarEscutaEfetuar();
-        }
-      }, 500);
-      return () => clearTimeout(timer);
-    }
-  }, [aguardandoEfetuarVoz, ouvindoEfetuar, iniciarEscutaEfetuar]);
 
   const handleSubmit = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
@@ -251,160 +200,15 @@ export const FormLancamento: React.FC<FormLancamentoProps> = ({
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
       
       {/* =====================================================
-           ⚡ FORMULÁRIO DE LANÇAMENTO (NO TOPO DA TELA)
+           ⚡ FORMULÁRIO DE LANÇAMENTO
          ===================================================== */}
       <div style={{
         backgroundColor: '#0F2744',
         border: '1px solid #1E3A5F',
         borderRadius: '20px',
-        padding: '20px 18px',
+        padding: '16px 14px',
         boxShadow: '0 6px 20px rgba(11, 25, 41, 0.4)'
       }}>
-        {/* Cabeçalho do formulário centralizado com botão de voz integrado */}
-        <div style={{
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
-          textAlign: 'center',
-          marginBottom: '16px',
-          borderBottom: '1px solid #1E3A5F',
-          paddingBottom: '14px',
-          gap: '10px'
-        }}>
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '3px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
-              <span style={{ fontSize: '22px' }}>⚡</span>
-              <h2 style={{ fontSize: '18px', fontWeight: 800, margin: 0, color: '#FFFFFF' }}>
-                Novo Lançamento
-              </h2>
-            </div>
-            <span style={{ fontSize: '12px', color: '#AAB4BE' }}>Preencha os dados ou fale por voz</span>
-          </div>
-
-          <button
-            type="button"
-            onClick={onAbrirVoz}
-            style={{
-              padding: '9px 18px',
-              borderRadius: '14px',
-              border: '1px solid #287EA5',
-              background: 'linear-gradient(135deg, #173F5F 0%, #287EA5 100%)',
-              color: '#FFFFFF',
-              fontSize: '13px',
-              fontWeight: 800,
-              cursor: 'pointer',
-              display: 'inline-flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '8px',
-              boxShadow: '0 3px 12px rgba(40, 126, 165, 0.35)',
-              transition: 'transform 0.15s ease'
-            }}
-          >
-            <Mic size={16} />
-            <span>Falar Lançamento 🎙️</span>
-          </button>
-        </div>
-
-        {/* Banner de Confirmação por Voz para Efetuar Lançamento */}
-        {aguardandoEfetuarVoz && (
-          <div style={{
-            display: 'flex',
-            flexDirection: 'column',
-            backgroundColor: 'rgba(76, 175, 80, 0.18)',
-            border: '1.5px solid #4CAF50',
-            borderRadius: '16px',
-            padding: '14px 16px',
-            marginBottom: '16px',
-            gap: '10px',
-            boxShadow: '0 4px 15px rgba(76, 175, 80, 0.25)',
-            transition: 'all 0.3s ease'
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', textAlign: 'left' }}>
-                <span style={{ fontSize: '24px' }}>{ouvindoEfetuar ? '🎙️' : '⏸️'}</span>
-                <div>
-                  <strong style={{ fontSize: '13.5px', color: '#81C784', display: 'block' }}>
-                    {ouvindoEfetuar ? 'Microfone Ativo: Diga "SIM" ou "OK"' : 'Microfone Pausado'}
-                  </strong>
-                  <span style={{ fontSize: '12px', color: '#E2E8F0' }}>
-                    {ouvindoEfetuar 
-                      ? 'Diga "sim" ou "ok" para efetuar o lançamento agora.' 
-                      : 'Toque em Ativar para falar "sim/ok" ou clique no botão verde abaixo.'}
-                  </span>
-                </div>
-              </div>
-
-              <div style={{ display: 'flex', gap: '6px' }}>
-                {!ouvindoEfetuar ? (
-                  <button
-                    type="button"
-                    onClick={() => iniciarEscutaEfetuar()}
-                    style={{
-                      background: '#287EA5',
-                      border: '1px solid #5090D3',
-                      borderRadius: '8px',
-                      padding: '6px 12px',
-                      color: '#FFFFFF',
-                      fontSize: '12px',
-                      fontWeight: 800,
-                      cursor: 'pointer'
-                    }}
-                  >
-                    🎙️ Ativar
-                  </button>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      pararEscutaEfetuar();
-                      setAguardandoEfetuarVoz(false);
-                    }}
-                    style={{
-                      background: 'rgba(255, 255, 255, 0.12)',
-                      border: '1px solid rgba(255, 255, 255, 0.25)',
-                      borderRadius: '8px',
-                      padding: '6px 12px',
-                      color: '#FFFFFF',
-                      fontSize: '12px',
-                      fontWeight: 700,
-                      cursor: 'pointer'
-                    }}
-                    title="Pausar microfone"
-                  >
-                    Pausar Voz
-                  </button>
-                )}
-              </div>
-            </div>
-
-            {transcricaoEfetuar && (
-              <div style={{
-                backgroundColor: 'rgba(0, 0, 0, 0.35)',
-                padding: '6px 12px',
-                borderRadius: '8px',
-                fontSize: '12.5px',
-                color: '#F8D117',
-                fontStyle: 'italic',
-                textAlign: 'left'
-              }}>
-                Ouvindo: "{transcricaoEfetuar}"
-              </div>
-            )}
-
-            {erroEfetuar && (
-              <div style={{
-                color: '#F44336',
-                fontSize: '12px',
-                textAlign: 'left'
-              }}>
-                {erroEfetuar}
-              </div>
-            )}
-          </div>
-        )}
-
         {erros.length > 0 && (
           <div style={{
             backgroundColor: 'rgba(244, 67, 54, 0.1)',
@@ -421,13 +225,36 @@ export const FormLancamento: React.FC<FormLancamentoProps> = ({
           </div>
         )}
 
-        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
           
-          {/* Seletor de Tipo (Despesa, Receita, Investimento) */}
+          {/* Seletor de Tipo (Despesa, Receita, Investimento) com atalho de voz discreto */}
           <div>
-            <label style={{ fontSize: '11px', fontWeight: 800, color: '#607789', textTransform: 'uppercase', display: 'block', marginBottom: '6px' }}>
-              Tipo de Movimento
-            </label>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+              <label style={{ fontSize: '11px', fontWeight: 800, color: '#607789', textTransform: 'uppercase' }}>
+                Tipo de Movimento
+              </label>
+              <button
+                type="button"
+                onClick={onAbrirVoz}
+                style={{
+                  padding: '4px 10px',
+                  borderRadius: '14px',
+                  border: '1px solid rgba(40, 126, 165, 0.4)',
+                  background: 'rgba(40, 126, 165, 0.15)',
+                  color: '#5090D3',
+                  fontSize: '11px',
+                  fontWeight: 800,
+                  cursor: 'pointer',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '4px'
+                }}
+                title="Lançar por comando de voz"
+              >
+                <Mic size={13} />
+                <span>Falar</span>
+              </button>
+            </div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px' }}>
               {TIPOS_LANCAMENTO.map((t) => {
                 const ativo = tipo === t;
@@ -834,8 +661,7 @@ export const FormLancamento: React.FC<FormLancamentoProps> = ({
             />
           </div>
 
-          {/* Botão de Lançar Principal Verde Original */}
-          {/* Botão de Lançar Principal Verde Original (sem ícone redundante) */}
+          {/* Botão de Salvar Lançamento Otimizado */}
           <button
             ref={submitButtonRef}
             type="submit"
@@ -843,24 +669,24 @@ export const FormLancamento: React.FC<FormLancamentoProps> = ({
             style={{
               width: '100%',
               border: 'none',
-              borderRadius: '16px',
-              padding: '16px',
+              borderRadius: '14px',
+              padding: '13px',
               background: modoApenasLeitura ? 'linear-gradient(135deg, #607789 0%, #455A64 100%)' : 'linear-gradient(135deg, #2E8B57 0%, #237447 100%)',
               color: '#FFFFFF',
-              fontSize: '17px',
+              fontSize: '15px',
               fontWeight: 800,
-              boxShadow: modoApenasLeitura ? 'none' : '0 6px 18px rgba(46, 139, 87, 0.35)',
+              boxShadow: modoApenasLeitura ? 'none' : '0 4px 14px rgba(46, 139, 87, 0.35)',
               cursor: modoApenasLeitura ? 'not-allowed' : 'pointer',
               opacity: modoApenasLeitura ? 0.7 : 1,
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
               gap: '8px',
-              marginTop: '6px',
+              marginTop: '4px',
               transition: 'transform 0.15s ease'
             }}
           >
-            <span>{modoApenasLeitura ? 'MODO SUPERVISÃO (APENAS LEITURA)' : 'EFETUAR LANÇAMENTO'}</span>
+            <span>{modoApenasLeitura ? 'Modo Supervisão (Apenas Leitura)' : 'Salvar Lançamento'}</span>
           </button>
         </form>
 

@@ -220,8 +220,8 @@ export const CartaoVisual: React.FC<CartaoVisualProps> = ({
         onClick={onClick}
         style={{
           width: '100%',
-          maxWidth: '430px',
-          minHeight: estiloCompacto ? '185px' : '205px',
+          maxWidth: '480px',
+          minHeight: estiloCompacto ? '195px' : '220px',
           background: 'radial-gradient(circle at 85% 15%, #FFF066 0%, #F8D117 40%, #E5B20D 100%)',
           borderRadius: '22px',
           padding: estiloCompacto ? '14px 18px' : '18px 20px',
@@ -290,24 +290,17 @@ export const CartaoVisual: React.FC<CartaoVisualProps> = ({
             </span>
           </div>
 
-          {/* Fechamento e Vencimento na Parte Inferior Direita */}
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '5px' }}>
-            <div style={{
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'flex-end',
-              backgroundColor: 'rgba(0, 61, 165, 0.09)',
-              border: '1px solid rgba(0, 61, 165, 0.2)',
-              padding: '3px 8px',
-              borderRadius: '8px'
+          {/* Fechamento e Vencimento em Linha Única na Parte Inferior Direita */}
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>
+            <span style={{
+              fontSize: '9.5px',
+              fontWeight: 800,
+              color: '#173F5F',
+              letterSpacing: '0.2px',
+              whiteSpace: 'nowrap'
             }}>
-              <span style={{ fontSize: '8.5px', fontWeight: 800, color: '#173F5F', textTransform: 'uppercase' }}>
-                Fech. Dia <strong>{cartao.diaFechamento}</strong>
-              </span>
-              <span style={{ fontSize: '9px', fontWeight: 900, color: '#003DA5', textTransform: 'uppercase' }}>
-                Venc. Dia <strong>{cartao.diaVencimento}</strong>
-              </span>
-            </div>
+              Fech. dia <strong>{cartao.diaFechamento}</strong> • Venc. dia <strong>{cartao.diaVencimento}</strong>
+            </span>
             <LogoVisa dark={true} />
           </div>
         </div>
@@ -324,8 +317,8 @@ export const CartaoVisual: React.FC<CartaoVisualProps> = ({
         onClick={onClick}
         style={{
           width: '100%',
-          maxWidth: '430px',
-          minHeight: estiloCompacto ? '185px' : '205px',
+          maxWidth: '480px',
+          minHeight: estiloCompacto ? '195px' : '220px',
           background: 'linear-gradient(135deg, #004797 0%, #002D62 60%, #001A3D 100%)',
           borderRadius: '22px',
           padding: estiloCompacto ? '14px 18px' : '18px 20px',
@@ -398,24 +391,17 @@ export const CartaoVisual: React.FC<CartaoVisualProps> = ({
               </div>
             </div>
 
-            {/* Fechamento e Vencimento na Parte Inferior Direita */}
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '5px' }}>
-              <div style={{
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'flex-end',
-                backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                border: '1px solid rgba(255, 255, 255, 0.2)',
-                padding: '3px 8px',
-                borderRadius: '8px'
+            {/* Fechamento e Vencimento em Linha Única na Parte Inferior Direita */}
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>
+              <span style={{
+                fontSize: '9.5px',
+                fontWeight: 700,
+                color: '#A0C4E8',
+                letterSpacing: '0.2px',
+                whiteSpace: 'nowrap'
               }}>
-                <span style={{ fontSize: '8.5px', fontWeight: 700, color: '#A0C4E8', textTransform: 'uppercase' }}>
-                  Fech. Dia <strong>{cartao.diaFechamento}</strong>
-                </span>
-                <span style={{ fontSize: '9px', fontWeight: 900, color: '#FFFFFF', textTransform: 'uppercase' }}>
-                  Venc. Dia <strong>{cartao.diaVencimento}</strong>
-                </span>
-              </div>
+                Fech. dia <strong>{cartao.diaFechamento}</strong> • Venc. dia <strong>{cartao.diaVencimento}</strong>
+              </span>
               <LogoVisa />
             </div>
           </div>
@@ -433,8 +419,8 @@ export const CartaoVisual: React.FC<CartaoVisualProps> = ({
         onClick={onClick}
         style={{
           width: '100%',
-          maxWidth: '430px',
-          minHeight: estiloCompacto ? '185px' : '205px',
+          maxWidth: '480px',
+          minHeight: estiloCompacto ? '195px' : '220px',
           background: 'linear-gradient(145deg, #18191B 0%, #0D0E10 50%, #050506 100%)',
           borderRadius: '22px',
           padding: estiloCompacto ? '14px 18px' : '18px 20px',
@@ -496,24 +482,17 @@ export const CartaoVisual: React.FC<CartaoVisualProps> = ({
             </span>
           </div>
 
-          {/* Fechamento e Vencimento na Parte Inferior Direita */}
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '5px' }}>
-            <div style={{
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'flex-end',
-              backgroundColor: 'rgba(255, 255, 255, 0.08)',
-              border: '1px solid rgba(255, 255, 255, 0.15)',
-              padding: '3px 8px',
-              borderRadius: '8px'
+          {/* Fechamento e Vencimento em Linha Única na Parte Inferior Direita */}
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>
+            <span style={{
+              fontSize: '9.5px',
+              fontWeight: 700,
+              color: '#A0AEC0',
+              letterSpacing: '0.2px',
+              whiteSpace: 'nowrap'
             }}>
-              <span style={{ fontSize: '8.5px', fontWeight: 700, color: '#A0AEC0', textTransform: 'uppercase' }}>
-                Fech. Dia <strong>{cartao.diaFechamento}</strong>
-              </span>
-              <span style={{ fontSize: '9px', fontWeight: 900, color: '#FFFFFF', textTransform: 'uppercase' }}>
-                Venc. Dia <strong>{cartao.diaVencimento}</strong>
-              </span>
-            </div>
+              Fech. dia <strong>{cartao.diaFechamento}</strong> • Venc. dia <strong>{cartao.diaVencimento}</strong>
+            </span>
             <LogoVisa infinite={true} />
           </div>
         </div>
@@ -530,8 +509,8 @@ export const CartaoVisual: React.FC<CartaoVisualProps> = ({
         onClick={onClick}
         style={{
           width: '100%',
-          maxWidth: '430px',
-          minHeight: estiloCompacto ? '185px' : '205px',
+          maxWidth: '480px',
+          minHeight: estiloCompacto ? '195px' : '220px',
           background: 'radial-gradient(circle at 50% 30%, #0B1933 0%, #050E1D 60%, #020710 100%)',
           borderRadius: '22px',
           padding: estiloCompacto ? '14px 18px' : '18px 20px',
@@ -584,24 +563,17 @@ export const CartaoVisual: React.FC<CartaoVisualProps> = ({
             </span>
           </div>
 
-          {/* Fechamento e Vencimento na Parte Inferior Direita */}
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '5px' }}>
-            <div style={{
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'flex-end',
-              backgroundColor: 'rgba(212, 175, 55, 0.1)',
-              border: '1px solid rgba(212, 175, 55, 0.25)',
-              padding: '3px 8px',
-              borderRadius: '8px'
+          {/* Fechamento e Vencimento em Linha Única na Parte Inferior Direita */}
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>
+            <span style={{
+              fontSize: '9.5px',
+              fontWeight: 700,
+              color: '#D4AF37',
+              letterSpacing: '0.2px',
+              whiteSpace: 'nowrap'
             }}>
-              <span style={{ fontSize: '8.5px', fontWeight: 700, color: '#D4AF37', textTransform: 'uppercase' }}>
-                Fech. Dia <strong>{cartao.diaFechamento}</strong>
-              </span>
-              <span style={{ fontSize: '9px', fontWeight: 900, color: '#FFFFFF', textTransform: 'uppercase' }}>
-                Venc. Dia <strong>{cartao.diaVencimento}</strong>
-              </span>
-            </div>
+              Fech. dia <strong>{cartao.diaFechamento}</strong> • Venc. dia <strong>{cartao.diaVencimento}</strong>
+            </span>
             <LogoVisa infinite={true} />
           </div>
         </div>
@@ -618,8 +590,8 @@ export const CartaoVisual: React.FC<CartaoVisualProps> = ({
         onClick={onClick}
         style={{
           width: '100%',
-          maxWidth: '430px',
-          minHeight: estiloCompacto ? '185px' : '205px',
+          maxWidth: '480px',
+          minHeight: estiloCompacto ? '195px' : '220px',
           background: 'linear-gradient(135deg, #8A05BE 0%, #820AD1 40%, #6805A6 100%)',
           borderRadius: '22px',
           padding: estiloCompacto ? '14px 18px' : '18px 20px',
@@ -667,24 +639,17 @@ export const CartaoVisual: React.FC<CartaoVisualProps> = ({
             </span>
           </div>
 
-          {/* Fechamento e Vencimento na Parte Inferior Direita */}
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '5px' }}>
-            <div style={{
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'flex-end',
-              backgroundColor: 'rgba(255, 255, 255, 0.12)',
-              border: '1px solid rgba(255, 255, 255, 0.25)',
-              padding: '3px 8px',
-              borderRadius: '8px'
+          {/* Fechamento e Vencimento em Linha Única na Parte Inferior Direita */}
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>
+            <span style={{
+              fontSize: '9.5px',
+              fontWeight: 700,
+              color: 'rgba(255, 255, 255, 0.85)',
+              letterSpacing: '0.2px',
+              whiteSpace: 'nowrap'
             }}>
-              <span style={{ fontSize: '8.5px', fontWeight: 700, color: 'rgba(255,255,255,0.8)', textTransform: 'uppercase' }}>
-                Fech. Dia <strong>{cartao.diaFechamento}</strong>
-              </span>
-              <span style={{ fontSize: '9px', fontWeight: 900, color: '#FFFFFF', textTransform: 'uppercase' }}>
-                Venc. Dia <strong>{cartao.diaVencimento}</strong>
-              </span>
-            </div>
+              Fech. dia <strong>{cartao.diaFechamento}</strong> • Venc. dia <strong>{cartao.diaVencimento}</strong>
+            </span>
             <LogoNu />
           </div>
         </div>
@@ -701,8 +666,8 @@ export const CartaoVisual: React.FC<CartaoVisualProps> = ({
       onClick={onClick}
       style={{
         width: '100%',
-        maxWidth: '430px',
-        minHeight: estiloCompacto ? '185px' : '205px',
+        maxWidth: '480px',
+        minHeight: estiloCompacto ? '195px' : '220px',
         background: `linear-gradient(135deg, ${corBase} 0%, #0F2744 100%)`,
         borderRadius: '22px',
         padding: estiloCompacto ? '14px 18px' : '18px 20px',
@@ -759,23 +724,17 @@ export const CartaoVisual: React.FC<CartaoVisualProps> = ({
           </span>
         </div>
 
-        {/* Fechamento e Vencimento na Parte Inferior Direita */}
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '5px' }}>
-          <div style={{
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'flex-end',
-            backgroundColor: 'rgba(255, 255, 255, 0.1)',
-            padding: '3px 8px',
-            borderRadius: '8px'
+        {/* Fechamento e Vencimento em Linha Única na Parte Inferior Direita */}
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>
+          <span style={{
+            fontSize: '9.5px',
+            fontWeight: 700,
+            color: 'rgba(255, 255, 255, 0.85)',
+            letterSpacing: '0.2px',
+            whiteSpace: 'nowrap'
           }}>
-            <span style={{ fontSize: '8.5px', fontWeight: 700, color: 'rgba(255,255,255,0.8)' }}>
-              Fech. Dia <strong>{cartao.diaFechamento}</strong>
-            </span>
-            <span style={{ fontSize: '9px', fontWeight: 900, color: '#FFFFFF' }}>
-              Venc. Dia <strong>{cartao.diaVencimento}</strong>
-            </span>
-          </div>
+            Fech. dia <strong>{cartao.diaFechamento}</strong> • Venc. dia <strong>{cartao.diaVencimento}</strong>
+          </span>
           <LogoVisa />
         </div>
       </div>

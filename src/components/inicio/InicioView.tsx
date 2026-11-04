@@ -11,7 +11,9 @@ import {
   ArrowRight,
   ChevronDown,
   ChevronUp,
-  ShoppingCart
+  ShoppingCart,
+  Eye,
+  EyeOff
 } from 'lucide-react';
 import type { Lancamento, TipoLancamento } from '../../types';
 import { CartaoVisual } from '../cartoes/CartaoVisual';
@@ -55,6 +57,7 @@ export const InicioView: React.FC<InicioViewProps> = ({
   const [mostrarUltimasMovimentacoes, setMostrarUltimasMovimentacoes] = useState(false);
   const [lancamentoMercado, setLancamentoMercado] = useState<Lancamento | null>(null);
   const [lancamentoDetalhes, setLancamentoDetalhes] = useState<Lancamento | null>(null);
+  const [saldoVisivel, setSaldoVisivel] = useState(false);
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
@@ -267,38 +270,38 @@ export const InicioView: React.FC<InicioViewProps> = ({
           </div>
         </div>
 
-        {/* Grade com os 4 Cards Principais Interativos (Com Hover e Redirecionamento) */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '10px' }}>
+        {/* Grade com os 4 Cards Principais Interativos (Mais compacta e elegante) */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '8px' }}>
           {/* Receitas */}
           <div 
             onClick={() => onIrParaLancar?.('Receita')}
             style={{
-              padding: '14px 12px',
-              borderRadius: '16px',
+              padding: '10px 10px',
+              borderRadius: '14px',
               background: 'linear-gradient(135deg, rgba(76, 175, 80, 0.18) 0%, rgba(20, 80, 35, 0.28) 100%)',
               border: '1.5px solid #4CAF50',
-              boxShadow: '0 4px 14px rgba(76, 175, 80, 0.2)',
+              boxShadow: '0 3px 10px rgba(76, 175, 80, 0.2)',
               minWidth: 0,
               cursor: 'pointer',
               transition: 'transform 0.18s ease, box-shadow 0.18s ease'
             }}
             onMouseEnter={(e) => {
               e.currentTarget.style.transform = 'translateY(-2px)';
-              e.currentTarget.style.boxShadow = '0 6px 18px rgba(76, 175, 80, 0.35)';
+              e.currentTarget.style.boxShadow = '0 5px 14px rgba(76, 175, 80, 0.35)';
             }}
             onMouseLeave={(e) => {
               e.currentTarget.style.transform = 'translateY(0)';
-              e.currentTarget.style.boxShadow = '0 4px 14px rgba(76, 175, 80, 0.2)';
+              e.currentTarget.style.boxShadow = '0 3px 10px rgba(76, 175, 80, 0.2)';
             }}
             title="Clique para lançar uma nova Receita"
           >
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <span style={{ fontSize: '11.5px', fontWeight: 800, color: '#4CAF50' }}>🟢 Receitas</span>
-              <ArrowUpRight size={15} color="#4CAF50" />
+              <span style={{ fontSize: '11px', fontWeight: 800, color: '#4CAF50' }}>🟢 Receitas</span>
+              <ArrowUpRight size={14} color="#4CAF50" />
             </div>
             <div style={{ 
-              marginTop: '5px', 
-              fontSize: 'clamp(14px, 4.2vw, 19px)', 
+              marginTop: '4px', 
+              fontSize: 'clamp(13px, 3.8vw, 17px)', 
               fontWeight: 900, 
               color: '#4CAF50',
               whiteSpace: 'nowrap',
@@ -307,7 +310,7 @@ export const InicioView: React.FC<InicioViewProps> = ({
             }}>
               {formatarMoeda(resumo.totalReceitas)}
             </div>
-            <span style={{ fontSize: '10px', color: '#475569', display: 'block', marginTop: '2px', fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+            <span style={{ fontSize: '9px', color: '#8A99AD', display: 'block', marginTop: '2px', fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
               Entradas registradas
             </span>
           </div>
@@ -316,32 +319,32 @@ export const InicioView: React.FC<InicioViewProps> = ({
           <div 
             onClick={() => onIrParaLancar?.('Despesa')}
             style={{
-              padding: '14px 12px',
-              borderRadius: '16px',
+              padding: '10px 10px',
+              borderRadius: '14px',
               background: 'linear-gradient(135deg, rgba(244, 67, 54, 0.18) 0%, rgba(100, 20, 20, 0.28) 100%)',
               border: '1.5px solid #F44336',
-              boxShadow: '0 4px 14px rgba(244, 67, 54, 0.2)',
+              boxShadow: '0 3px 10px rgba(244, 67, 54, 0.2)',
               minWidth: 0,
               cursor: 'pointer',
               transition: 'transform 0.18s ease, box-shadow 0.18s ease'
             }}
             onMouseEnter={(e) => {
               e.currentTarget.style.transform = 'translateY(-2px)';
-              e.currentTarget.style.boxShadow = '0 6px 18px rgba(244, 67, 54, 0.35)';
+              e.currentTarget.style.boxShadow = '0 5px 14px rgba(244, 67, 54, 0.35)';
             }}
             onMouseLeave={(e) => {
               e.currentTarget.style.transform = 'translateY(0)';
-              e.currentTarget.style.boxShadow = '0 4px 14px rgba(244, 67, 54, 0.2)';
+              e.currentTarget.style.boxShadow = '0 3px 10px rgba(244, 67, 54, 0.2)';
             }}
             title="Clique para lançar uma nova Despesa"
           >
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <span style={{ fontSize: '11.5px', fontWeight: 800, color: '#F44336' }}>🔴 Despesas</span>
-              <ArrowDownRight size={15} color="#F44336" />
+              <span style={{ fontSize: '11px', fontWeight: 800, color: '#F44336' }}>🔴 Despesas</span>
+              <ArrowDownRight size={14} color="#F44336" />
             </div>
             <div style={{ 
-              marginTop: '5px', 
-              fontSize: 'clamp(14px, 4.2vw, 19px)', 
+              marginTop: '4px', 
+              fontSize: 'clamp(13px, 3.8vw, 17px)', 
               fontWeight: 900, 
               color: '#F44336',
               whiteSpace: 'nowrap',
@@ -350,7 +353,7 @@ export const InicioView: React.FC<InicioViewProps> = ({
             }}>
               {formatarMoeda(resumo.totalDespesas)}
             </div>
-            <span style={{ fontSize: '10px', color: '#475569', display: 'block', marginTop: '2px', fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+            <span style={{ fontSize: '9px', color: '#8A99AD', display: 'block', marginTop: '2px', fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
               Gastos e saídas
             </span>
           </div>
@@ -359,32 +362,32 @@ export const InicioView: React.FC<InicioViewProps> = ({
           <div 
             onClick={() => onIrParaLancar?.('Investimento')}
             style={{
-              padding: '14px 12px',
-              borderRadius: '16px',
+              padding: '10px 10px',
+              borderRadius: '14px',
               background: 'linear-gradient(135deg, rgba(33, 150, 243, 0.18) 0%, rgba(15, 50, 100, 0.28) 100%)',
               border: '1.5px solid #2196F3',
-              boxShadow: '0 4px 14px rgba(33, 150, 243, 0.2)',
+              boxShadow: '0 3px 10px rgba(33, 150, 243, 0.2)',
               minWidth: 0,
               cursor: 'pointer',
               transition: 'transform 0.18s ease, box-shadow 0.18s ease'
             }}
             onMouseEnter={(e) => {
               e.currentTarget.style.transform = 'translateY(-2px)';
-              e.currentTarget.style.boxShadow = '0 6px 18px rgba(33, 150, 243, 0.35)';
+              e.currentTarget.style.boxShadow = '0 5px 14px rgba(33, 150, 243, 0.35)';
             }}
             onMouseLeave={(e) => {
               e.currentTarget.style.transform = 'translateY(0)';
-              e.currentTarget.style.boxShadow = '0 4px 14px rgba(33, 150, 243, 0.2)';
+              e.currentTarget.style.boxShadow = '0 3px 10px rgba(33, 150, 243, 0.2)';
             }}
             title="Clique para lançar um Investimento"
           >
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <span style={{ fontSize: '11.5px', fontWeight: 800, color: '#5090D3' }}>🔵 Investimentos</span>
-              <PiggyBank size={15} color="#5090D3" />
+              <span style={{ fontSize: '11px', fontWeight: 800, color: '#5090D3' }}>🔵 Investir</span>
+              <PiggyBank size={14} color="#5090D3" />
             </div>
             <div style={{ 
-              marginTop: '5px', 
-              fontSize: 'clamp(14px, 4.2vw, 19px)', 
+              marginTop: '4px', 
+              fontSize: 'clamp(13px, 3.8vw, 17px)', 
               fontWeight: 900, 
               color: '#5090D3',
               whiteSpace: 'nowrap',
@@ -393,50 +396,71 @@ export const InicioView: React.FC<InicioViewProps> = ({
             }}>
               {formatarMoeda(resumo.totalInvestimentos)}
             </div>
-            <span style={{ fontSize: '10px', color: '#475569', display: 'block', marginTop: '2px', fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+            <span style={{ fontSize: '9px', color: '#8A99AD', display: 'block', marginTop: '2px', fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
               Aportes e reservas
             </span>
           </div>
 
-          {/* Saldo Final */}
+          {/* Saldo Final com Olho Oculto/Revelado */}
           <div 
             onClick={onIrParaGerenciar}
             style={{
-              padding: '14px 12px',
-              borderRadius: '16px',
+              padding: '10px 10px',
+              borderRadius: '14px',
               background: 'linear-gradient(135deg, rgba(248, 209, 23, 0.18) 0%, rgba(70, 60, 5, 0.3) 100%)',
               border: '1.5px solid #F8D117',
-              boxShadow: '0 4px 14px rgba(248, 209, 23, 0.25)',
+              boxShadow: '0 3px 10px rgba(248, 209, 23, 0.25)',
               minWidth: 0,
               cursor: 'pointer',
               transition: 'transform 0.18s ease, box-shadow 0.18s ease'
             }}
             onMouseEnter={(e) => {
               e.currentTarget.style.transform = 'translateY(-2px)';
-              e.currentTarget.style.boxShadow = '0 6px 18px rgba(248, 209, 23, 0.4)';
+              e.currentTarget.style.boxShadow = '0 5px 14px rgba(248, 209, 23, 0.4)';
             }}
             onMouseLeave={(e) => {
               e.currentTarget.style.transform = 'translateY(0)';
-              e.currentTarget.style.boxShadow = '0 4px 14px rgba(248, 209, 23, 0.25)';
+              e.currentTarget.style.boxShadow = '0 3px 10px rgba(248, 209, 23, 0.25)';
             }}
-            title="Clique para ver o Extrato e Histórico Financeiro"
+            title="Clique para ver o Extrato ou no olho para ocultar/mostrar saldo"
           >
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <span style={{ fontSize: '11.5px', fontWeight: 800, color: '#F8D117' }}>💰 Saldo Final</span>
-              <TrendingUp size={15} color="#F8D117" />
+              <span style={{ fontSize: '11px', fontWeight: 800, color: '#F8D117' }}>💰 Saldo</span>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setSaldoVisivel(!saldoVisivel);
+                }}
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  padding: 0,
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: '#F8D117',
+                  cursor: 'pointer',
+                  opacity: 0.9
+                }}
+                title={saldoVisivel ? "Ocultar Saldo" : "Mostrar Saldo"}
+              >
+                {saldoVisivel ? <Eye size={15} color="#F8D117" /> : <EyeOff size={15} color="#F8D117" />}
+              </button>
             </div>
             <div style={{
-              marginTop: '5px',
-              fontSize: 'clamp(14px, 4.2vw, 19px)',
+              marginTop: '4px',
+              fontSize: 'clamp(13px, 3.8vw, 17px)',
               fontWeight: 900,
               color: '#F8D117',
               whiteSpace: 'nowrap',
               overflow: 'hidden',
-              textOverflow: 'ellipsis'
+              textOverflow: 'ellipsis',
+              letterSpacing: saldoVisivel ? 'normal' : '2px'
             }}>
-              {formatarMoeda(resumo.saldoFinal)}
+              {saldoVisivel ? formatarMoeda(resumo.saldoFinal) : 'R$ ••••••'}
             </div>
-            <span style={{ fontSize: '10px', color: '#475569', display: 'block', marginTop: '2px', fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+            <span style={{ fontSize: '9px', color: '#8A99AD', display: 'block', marginTop: '2px', fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
               Saldo em conta
             </span>
           </div>
@@ -444,7 +468,7 @@ export const InicioView: React.FC<InicioViewProps> = ({
       </div>
 
       {/* =====================================================
-           💳 CARTÃO PRINCIPAL DA INSTITUIÇÃO ATIVA
+           💳 CARTÃO PRINCIPAL DA INSTITUIÇÃO ATIVA (DESTACADO E MAIOR)
           ===================================================== */}
       {cartaoPrincipalResumo && (() => {
         const c = cartaoPrincipalResumo.cartao;
@@ -453,16 +477,17 @@ export const InicioView: React.FC<InicioViewProps> = ({
           <div style={{
             backgroundColor: '#0F2744',
             border: '1px solid #1E3A5F',
-            borderRadius: '20px',
-            padding: '18px 16px',
-            boxShadow: '0 6px 20px rgba(11, 25, 41, 0.4)',
+            borderRadius: '22px',
+            padding: '20px 16px',
+            boxShadow: '0 8px 25px rgba(11, 25, 41, 0.45)',
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',
-            gap: '14px'
+            gap: '14px',
+            width: '100%'
           }}>
-            {/* Cartão Visual Fiel com Logos Oficiais e Datas no Canto Inferior Direito */}
-            <div style={{ width: '100%', display: 'flex', justifyContent: 'center' }}>
+            {/* Cartão Visual Fiel com Destaque Maior e Proporção Equilibrada */}
+            <div style={{ width: '100%', maxWidth: '480px', display: 'flex', justifyContent: 'center' }}>
               <CartaoVisual 
                 cartao={c}
                 titularNome={usuario.nome}
