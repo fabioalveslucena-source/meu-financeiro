@@ -52,8 +52,6 @@ export const InicioView: React.FC<InicioViewProps> = ({
     .filter(l => l.competencia === competenciaAtiva && l.status === 'Lançado')
     .slice(0, 4);
 
-  // Controle de sanfona para parcelamentos em aberto
-  const [mostrarParcelamentos, setMostrarParcelamentos] = useState(false);
   const [mostrarUltimasMovimentacoes, setMostrarUltimasMovimentacoes] = useState(false);
   const [lancamentoMercado, setLancamentoMercado] = useState<Lancamento | null>(null);
   const [lancamentoDetalhes, setLancamentoDetalhes] = useState<Lancamento | null>(null);
@@ -450,7 +448,6 @@ export const InicioView: React.FC<InicioViewProps> = ({
           ===================================================== */}
       {cartaoPrincipalResumo && (() => {
         const c = cartaoPrincipalResumo.cartao;
-        const isBB = c.nome.toLowerCase().includes('brasil') || c.cor === '#F8D117';
 
         return (
           <div style={{
@@ -464,14 +461,17 @@ export const InicioView: React.FC<InicioViewProps> = ({
             alignItems: 'center',
             gap: '14px'
           }}>
-            {/* Cartão Visual Fiel às Imagens Oficiais dos Bancos */}
+            {/* Cartão Visual Fiel com Logos Oficiais, Datas, Limites e Parcelamentos Integrados */}
             <div style={{ width: '100%', display: 'flex', justifyContent: 'center' }}>
               <CartaoVisual 
                 cartao={c}
                 titularNome={usuario.nome}
                 valorFatura={cartaoPrincipalResumo.valorFatura}
                 limiteDisponivel={cartaoPrincipalResumo.limiteDisponivel}
+                percentualUsado={cartaoPrincipalResumo.percentualUsado}
+                parcelamentos={cartaoPrincipalResumo.parcelamentos}
                 mostrarFatura={true}
+                mostrarDetalhesCorpo={true}
                 onClick={onIrParaCartoes}
               />
             </div>
@@ -499,115 +499,6 @@ export const InicioView: React.FC<InicioViewProps> = ({
                 <span>Ver Fatura Completa</span>
                 <ArrowRight size={13} />
               </button>
-            </div>
-
-            {/* Barra de Limite do Cartão */}
-            <div style={{ marginTop: '16px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', marginBottom: '6px' }}>
-                <span style={{ color: '#AAB4BE' }}>Limite Utilizado:</span>
-                <strong style={{ color: cartaoPrincipalResumo.percentualUsado > 80 ? '#F44336' : (isBB ? '#F8D117' : '#5090D3') }}>
-                  {cartaoPrincipalResumo.percentualUsado}%
-                </strong>
-              </div>
-              <div style={{
-                height: '8px',
-                backgroundColor: '#132F4C',
-                borderRadius: '999px',
-                overflow: 'hidden'
-              }}>
-                <div style={{
-                  width: `${cartaoPrincipalResumo.percentualUsado}%`,
-                  height: '100%',
-                  backgroundColor: cartaoPrincipalResumo.percentualUsado > 80 ? '#F44336' : (isBB ? '#F8D117' : '#5090D3'),
-                  transition: 'width 0.4s ease'
-                }} />
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '4px', fontSize: '11.5px', marginTop: '6px', color: '#AAB4BE' }}>
-                <span>Disponível: <strong style={{ color: '#4CAF50' }}>{formatarMoeda(cartaoPrincipalResumo.limiteDisponivel)}</strong></span>
-                <span>Limite Total: <strong style={{ color: '#FFFFFF' }}>{formatarMoeda(c.limite)}</strong></span>
-              </div>
-            </div>
-
-            {/* Parcelamentos do Cartão (Acordeão Retrátil) */}
-            <div style={{ marginTop: '16px', paddingTop: '12px', borderTop: '1px solid #1E3A5F' }}>
-              <button
-                type="button"
-                onClick={() => setMostrarParcelamentos(!mostrarParcelamentos)}
-                style={{
-                  width: '100%',
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  padding: '8px 12px',
-                  borderRadius: '10px',
-                  backgroundColor: mostrarParcelamentos ? 'rgba(80, 144, 211, 0.12)' : '#132F4C',
-                  border: mostrarParcelamentos ? '1px solid #5090D3' : '1px solid #1E3A5F',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s ease'
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <span style={{ fontSize: '13px' }}>📦</span>
-                  <span style={{ fontSize: '11px', fontWeight: 800, color: '#E7EBF0', textTransform: 'uppercase', letterSpacing: '0.4px' }}>
-                    Parcelamentos em Aberto
-                  </span>
-                  <span style={{
-                    fontSize: '10px',
-                    fontWeight: 800,
-                    padding: '2px 7px',
-                    borderRadius: '12px',
-                    backgroundColor: 'rgba(192, 132, 252, 0.2)',
-                    border: '1px solid rgba(192, 132, 252, 0.4)',
-                    color: '#C084FC'
-                  }}>
-                    {cartaoPrincipalResumo.parcelamentos.length}
-                  </span>
-                </div>
-
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#5090D3', fontSize: '11px', fontWeight: 700 }}>
-                  <span>{mostrarParcelamentos ? 'Recolher' : 'Ver parcelas'}</span>
-                  {mostrarParcelamentos ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-                </div>
-              </button>
-
-              {mostrarParcelamentos && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '10px' }} className="animate-fade-in">
-                  {cartaoPrincipalResumo.parcelamentos.length === 0 ? (
-                    <div style={{ padding: '10px', textAlign: 'center', fontSize: '12px', color: '#AAB4BE' }}>
-                      Nenhum parcelamento ativo registrado nesta competência.
-                    </div>
-                  ) : (
-                    cartaoPrincipalResumo.parcelamentos.map((p, idx) => (
-                      <div key={idx} style={{
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'center',
-                        padding: '8px 12px',
-                        borderRadius: '10px',
-                        backgroundColor: '#132F4C',
-                        fontSize: '12px',
-                        border: '1px solid rgba(80, 144, 211, 0.15)'
-                      }}>
-                        <span style={{ fontWeight: 600, color: '#FFFFFF' }}>{p.descricao}</span>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                          <span style={{
-                            fontSize: '11px',
-                            fontWeight: 800,
-                            padding: '1px 6px',
-                            borderRadius: '4px',
-                            backgroundColor: 'rgba(138, 5, 190, 0.25)',
-                            border: '1px solid rgba(192, 132, 252, 0.4)',
-                            color: '#C084FC'
-                          }}>
-                            {p.parcelaAtual}/{p.totalParcelas}
-                          </span>
-                          <strong style={{ color: '#E7EBF0' }}>{formatarMoeda(p.valorParcela)}</strong>
-                        </div>
-                      </div>
-                    ))
-                  )}
-                </div>
-              )}
             </div>
           </div>
         );

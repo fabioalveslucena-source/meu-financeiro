@@ -41,6 +41,14 @@ export const FormLancamento: React.FC<FormLancamentoProps> = ({
   const [parcelas, setParcelas] = useState(1);
   const [erros, setErros] = useState<string[]>([]);
 
+  // Referências para o fluxo de preenchimento automático contínuo
+  const valorInputRef = useRef<HTMLInputElement>(null);
+  const formaPagamentoRef = useRef<HTMLDivElement>(null);
+  const cartaoSelectRef = useRef<HTMLSelectElement>(null);
+  const categoriaSelectRef = useRef<HTMLSelectElement>(null);
+  const descricaoInputRef = useRef<HTMLInputElement>(null);
+  const submitButtonRef = useRef<HTMLButtonElement>(null);
+
   // Modal discreto para criar Nova Categoria ou Natureza
   const [modalCriarAberto, setModalCriarAberto] = useState(false);
   const [modoCriar, setModoCriar] = useState<'categoria' | 'natureza'>('categoria');
@@ -447,7 +455,13 @@ export const FormLancamento: React.FC<FormLancamentoProps> = ({
                   <button
                     key={t}
                     type="button"
-                    onClick={() => setTipo(t)}
+                    onClick={() => {
+                      setTipo(t);
+                      setTimeout(() => {
+                        valorInputRef.current?.focus();
+                        valorInputRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                      }, 100);
+                    }}
                     style={{
                       padding: '12px 6px',
                       borderRadius: '14px',
@@ -486,12 +500,19 @@ export const FormLancamento: React.FC<FormLancamentoProps> = ({
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
               <span style={{ fontSize: '22px', fontWeight: 800, color: '#5090D3' }}>R$</span>
               <input
+                ref={valorInputRef}
                 type="text"
                 inputMode="numeric"
                 value={valorTexto}
                 onChange={(e) => {
                   const formatado = formatarMoedaAoDigitar(e.target.value);
                   setValorTexto(formatado);
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    formaPagamentoRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                  }
                 }}
                 placeholder="0,00"
                 style={{
@@ -510,7 +531,7 @@ export const FormLancamento: React.FC<FormLancamentoProps> = ({
           </div>
 
           {/* Forma de Pagamento (Grid Clássica de 5 Opções) */}
-          <div>
+          <div ref={formaPagamentoRef}>
             <label style={{ fontSize: '11px', fontWeight: 800, color: '#607789', textTransform: 'uppercase', display: 'block', marginBottom: '6px' }}>
               Forma de Pagamento
             </label>
@@ -521,7 +542,18 @@ export const FormLancamento: React.FC<FormLancamentoProps> = ({
                   <button
                     key={p}
                     type="button"
-                    onClick={() => setPagamento(p)}
+                    onClick={() => {
+                      setPagamento(p);
+                      setTimeout(() => {
+                        if (p === '💳 Crédito') {
+                          cartaoSelectRef.current?.focus();
+                          cartaoSelectRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        } else {
+                          categoriaSelectRef.current?.focus();
+                          categoriaSelectRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        }
+                      }, 100);
+                    }}
                     style={{
                       padding: '10px 4px',
                       borderRadius: '12px',
@@ -558,8 +590,15 @@ export const FormLancamento: React.FC<FormLancamentoProps> = ({
                   💳 Cartão de Crédito
                 </label>
                 <select 
+                  ref={cartaoSelectRef}
                   value={cartao} 
-                  onChange={(e) => setCartao(e.target.value)}
+                  onChange={(e) => {
+                    setCartao(e.target.value);
+                    setTimeout(() => {
+                      categoriaSelectRef.current?.focus();
+                      categoriaSelectRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    }, 100);
+                  }}
                   style={{ backgroundColor: '#0B1929', color: '#FFFFFF', fontSize: '13px', fontWeight: 600 }}
                 >
                   {cartoes.filter(c => c.ativo).map((c) => (
@@ -598,7 +637,13 @@ export const FormLancamento: React.FC<FormLancamentoProps> = ({
               </label>
               <select 
                 value={conta} 
-                onChange={(e) => setConta(e.target.value)}
+                onChange={(e) => {
+                  setConta(e.target.value);
+                  setTimeout(() => {
+                    categoriaSelectRef.current?.focus();
+                    categoriaSelectRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                  }, 100);
+                }}
                 style={{ backgroundColor: '#0B1929', color: '#FFFFFF', fontSize: '13px', fontWeight: 600 }}
               >
                 {contas.filter(c => c.ativa).map((c) => (
@@ -669,6 +714,10 @@ export const FormLancamento: React.FC<FormLancamentoProps> = ({
                     if (fil.length > 0) {
                       setCategoria(fil[0].nome);
                     }
+                    setTimeout(() => {
+                      categoriaSelectRef.current?.focus();
+                      categoriaSelectRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    }, 100);
                   }}
                   style={{ fontSize: '13px', fontWeight: 600 }}
                 >
@@ -715,6 +764,7 @@ export const FormLancamento: React.FC<FormLancamentoProps> = ({
                   </button>
                 </div>
                 <select 
+                  ref={categoriaSelectRef}
                   value={categoria} 
                   onChange={(e) => {
                     const novaCat = e.target.value;
@@ -726,6 +776,10 @@ export const FormLancamento: React.FC<FormLancamentoProps> = ({
                       return;
                     }
                     setCategoria(novaCat);
+                    setTimeout(() => {
+                      descricaoInputRef.current?.focus();
+                      descricaoInputRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    }, 100);
                   }}
                   style={{ fontSize: '13px', fontWeight: 600 }}
                 >
@@ -751,9 +805,17 @@ export const FormLancamento: React.FC<FormLancamentoProps> = ({
               </span>
             </div>
             <input
+              ref={descricaoInputRef}
               type="text"
               value={descricao}
               onChange={(e) => setDescricao(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  submitButtonRef.current?.focus();
+                  submitButtonRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+              }}
               placeholder={`Ex.: ${categoria} (ou deixe em branco para repetir)`}
               style={{ fontSize: '13px', fontWeight: 600 }}
             />
@@ -775,6 +837,7 @@ export const FormLancamento: React.FC<FormLancamentoProps> = ({
           {/* Botão de Lançar Principal Verde Original */}
           {/* Botão de Lançar Principal Verde Original (sem ícone redundante) */}
           <button
+            ref={submitButtonRef}
             type="submit"
             disabled={modoApenasLeitura}
             style={{

@@ -1,13 +1,25 @@
-import React from 'react';
+import React, { useState } from 'react';
 import type { Cartao } from '../../types';
 import { formatarMoeda } from '../../lib/formatters';
+import logoBB from '../../assets/logo-bb.png';
+import logoBradesco from '../../assets/logo-bradesco.png';
+
+interface ParcelamentoResumo {
+  descricao: string;
+  parcelaAtual: number;
+  totalParcelas: number;
+  valorParcela: number;
+}
 
 interface CartaoVisualProps {
   cartao: Cartao;
   titularNome?: string;
   valorFatura?: number;
   limiteDisponivel?: number;
+  percentualUsado?: number;
+  parcelamentos?: ParcelamentoResumo[];
   mostrarFatura?: boolean;
+  mostrarDetalhesCorpo?: boolean;
   estiloCompacto?: boolean;
   onClick?: () => void;
 }
@@ -16,11 +28,16 @@ export const CartaoVisual: React.FC<CartaoVisualProps> = ({
   cartao,
   titularNome = 'TITULAR DO CARTÃO',
   valorFatura,
-  limiteDisponivel: _limiteDisponivel,
+  limiteDisponivel,
+  percentualUsado = 0,
+  parcelamentos = [],
   mostrarFatura = true,
+  mostrarDetalhesCorpo = false,
   estiloCompacto = false,
   onClick
 }) => {
+  const [mostrarParcelasInterno, setMostrarParcelasInterno] = useState(false);
+
   const nomeLower = (cartao.nome || '').toLowerCase();
   const corLower = (cartao.cor || '').toLowerCase();
 
@@ -33,7 +50,7 @@ export const CartaoVisual: React.FC<CartaoVisualProps> = ({
 
   // SVG do Chip EMV Metálico (Prata ou Ouro)
   const ChipSvg = ({ dourado = false }: { dourado?: boolean }) => (
-    <svg width="42" height="32" viewBox="0 0 42 32" fill="none" style={{ borderRadius: '6px', overflow: 'hidden' }}>
+    <svg width="40" height="30" viewBox="0 0 42 32" fill="none" style={{ borderRadius: '6px', overflow: 'hidden' }}>
       <rect width="42" height="32" rx="5" fill={dourado ? 'url(#chipGold)' : 'url(#chipSilver)'} stroke={dourado ? '#B8860B' : '#A0AEC0'} strokeWidth="1" />
       <path d="M0 16H16M26 16H42M16 6V26M26 6V26M16 11H26M16 21H26" stroke={dourado ? '#8B6508' : '#718096'} strokeWidth="1" />
       <circle cx="21" cy="16" r="3.5" stroke={dourado ? '#8B6508' : '#718096'} strokeWidth="1" fill={dourado ? '#D4AF37' : '#CBD5E0'} />
@@ -61,14 +78,20 @@ export const CartaoVisual: React.FC<CartaoVisualProps> = ({
     </svg>
   );
 
-  // Logo Banco do Brasil (Intertwined lines)
+  // Logo Oficial Banco do Brasil (Enviado pelo usuário)
   const LogoBB = () => (
-    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-      <svg width="30" height="24" viewBox="0 0 32 26" fill="none">
-        <path d="M2 13L16 2L30 13L16 24L2 13Z" stroke="#003DA5" strokeWidth="2.5" fill="none" />
-        <path d="M8 13L16 6L24 13L16 20L8 13Z" fill="#003DA5" />
-        <path d="M13 13L16 10L19 13L16 16L13 13Z" fill="#F8D117" />
-      </svg>
+    <div style={{ display: 'flex', alignItems: 'center' }}>
+      <img 
+        src={logoBB} 
+        alt="Banco do Brasil" 
+        style={{ 
+          width: '38px', 
+          height: '38px', 
+          objectFit: 'contain',
+          borderRadius: '8px',
+          boxShadow: '0 2px 8px rgba(0,0,0,0.18)'
+        }} 
+      />
     </div>
   );
 
@@ -87,14 +110,19 @@ export const CartaoVisual: React.FC<CartaoVisualProps> = ({
     </div>
   );
 
-  // Logo Bradesco Prime
+  // Logo Oficial Bradesco (Enviado pelo usuário)
   const LogoBradescoPrime = () => (
     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-      <svg width="26" height="26" viewBox="0 0 30 30" fill="none">
-        <rect x="2" y="2" width="26" height="26" rx="6" stroke="#FFFFFF" strokeWidth="1.5" />
-        <circle cx="15" cy="11" r="4" fill="#FFFFFF" />
-        <path d="M15 15V24M10 20L15 16L20 20" stroke="#FFFFFF" strokeWidth="2" strokeLinecap="round" />
-      </svg>
+      <img 
+        src={logoBradesco} 
+        alt="Bradesco Prime" 
+        style={{ 
+          width: '32px', 
+          height: '32px', 
+          objectFit: 'contain',
+          borderRadius: '6px'
+        }} 
+      />
       <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 1 }}>
         <span style={{ fontSize: '14px', fontWeight: 900, color: '#FFFFFF', letterSpacing: '0.5px' }}>bradesco</span>
         <span style={{ fontSize: '10px', fontWeight: 400, color: 'rgba(255,255,255,0.7)', letterSpacing: '2px', textTransform: 'lowercase' }}>prime</span>
@@ -185,6 +213,121 @@ export const CartaoVisual: React.FC<CartaoVisualProps> = ({
     </div>
   );
 
+  // Bloco Compartilhado de Limite e Parcelamento dentro do Cartão
+  const renderSecaoInternaCorpo = (isDarkText: boolean) => {
+    if (!mostrarDetalhesCorpo) return null;
+
+    const corTexto = isDarkText ? '#0B2545' : '#FFFFFF';
+    const corSub = isDarkText ? '#173F5F' : 'rgba(255, 255, 255, 0.85)';
+    const corBorda = isDarkText ? 'rgba(0, 61, 165, 0.18)' : 'rgba(255, 255, 255, 0.18)';
+    const corBarraFundo = isDarkText ? 'rgba(0, 61, 165, 0.12)' : 'rgba(255, 255, 255, 0.15)';
+    const corBarraAtiva = percentualUsado > 80 ? '#F44336' : (isDarkText ? '#003DA5' : '#5090D3');
+
+    return (
+      <div style={{
+        marginTop: '14px',
+        paddingTop: '10px',
+        borderTop: `1px solid ${corBorda}`,
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '8px',
+        width: '100%',
+        zIndex: 2
+      }}>
+        {/* Limite Utilizado e Limite Disponível */}
+        <div style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          fontSize: '11px',
+          color: corSub,
+          fontWeight: 700
+        }}>
+          <span>Limite Utilizado: <strong style={{ color: corTexto }}>{percentualUsado}%</strong></span>
+          <span>Disponível: <strong style={{ color: isDarkText ? '#003DA5' : '#4CAF50' }}>{formatarMoeda(limiteDisponivel || 0)}</strong></span>
+        </div>
+
+        {/* Barra de Progresso do Limite Integrada */}
+        <div style={{
+          width: '100%',
+          height: '6px',
+          backgroundColor: corBarraFundo,
+          borderRadius: '999px',
+          overflow: 'hidden'
+        }}>
+          <div style={{
+            width: `${Math.min(percentualUsado, 100)}%`,
+            height: '100%',
+            backgroundColor: corBarraAtiva,
+            borderRadius: '999px',
+            transition: 'width 0.3s ease'
+          }} />
+        </div>
+
+        {/* Acordeão de Compras Parceladas Dentro do Próprio Cartão */}
+        {parcelamentos && parcelamentos.length > 0 && (
+          <div style={{ marginTop: '4px' }}>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                setMostrarParcelasInterno(!mostrarParcelasInterno);
+              }}
+              style={{
+                width: '100%',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                padding: '6px 10px',
+                borderRadius: '8px',
+                backgroundColor: isDarkText ? 'rgba(0, 61, 165, 0.08)' : 'rgba(255, 255, 255, 0.12)',
+                border: `1px solid ${corBorda}`,
+                color: corTexto,
+                cursor: 'pointer',
+                fontSize: '11px',
+                fontWeight: 800,
+                transition: 'all 0.15s ease'
+              }}
+            >
+              <span>📦 Compras Parceladas ({parcelamentos.length})</span>
+              <span>{mostrarParcelasInterno ? '▲ Fechar' : '▼ Ver parcelas'}</span>
+            </button>
+
+            {mostrarParcelasInterno && (
+              <div style={{
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '5px',
+                marginTop: '6px',
+                maxHeight: '120px',
+                overflowY: 'auto'
+              }}>
+                {parcelamentos.map((p, idx) => (
+                  <div key={idx} style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    padding: '5px 8px',
+                    borderRadius: '6px',
+                    backgroundColor: isDarkText ? 'rgba(255, 255, 255, 0.45)' : 'rgba(0, 0, 0, 0.3)',
+                    fontSize: '10.5px',
+                    color: corTexto
+                  }}>
+                    <span style={{ fontWeight: 600 }}>{p.descricao}</span>
+                    <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                      <span style={{ opacity: 0.85 }}>{p.parcelaAtual}/{p.totalParcelas}</span>
+                      <strong>{formatarMoeda(p.valorParcela)}</strong>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    );
+  };
+
   // ========================================================
   // RENDERIZAÇÃO ESPECÍFICA DO BANCO DO BRASIL (Ourocard Fácil)
   // ========================================================
@@ -194,11 +337,11 @@ export const CartaoVisual: React.FC<CartaoVisualProps> = ({
         onClick={onClick}
         style={{
           width: '100%',
-          maxWidth: '420px',
-          aspectRatio: '1.586 / 1',
+          maxWidth: '430px',
+          minHeight: estiloCompacto ? '210px' : '230px',
           background: 'radial-gradient(circle at 85% 15%, #FFF066 0%, #F8D117 40%, #E5B20D 100%)',
-          borderRadius: '20px',
-          padding: estiloCompacto ? '14px 18px' : '20px 22px',
+          borderRadius: '22px',
+          padding: estiloCompacto ? '14px 18px' : '18px 20px',
           display: 'flex',
           flexDirection: 'column',
           justifyContent: 'space-between',
@@ -206,7 +349,7 @@ export const CartaoVisual: React.FC<CartaoVisualProps> = ({
           boxShadow: '0 10px 30px rgba(0,0,0,0.35), 0 2px 8px rgba(248, 209, 23, 0.4)',
           position: 'relative',
           overflow: 'hidden',
-          border: '1px solid rgba(255, 255, 255, 0.4)',
+          border: '1.5px solid rgba(255, 255, 255, 0.5)',
           cursor: onClick ? 'pointer' : 'default',
           transition: 'transform 0.2s ease, box-shadow 0.2s ease'
         }}
@@ -220,26 +363,46 @@ export const CartaoVisual: React.FC<CartaoVisualProps> = ({
           pointerEvents: 'none'
         }} />
 
-        {/* Topo: Logo BB (Esquerda) e ourocard Fácil (Direita) */}
+        {/* Topo: Logo Oficial BB (Esquerda) e ourocard Fácil (Direita) */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', zIndex: 1 }}>
           <LogoBB />
           <div style={{ textAlign: 'right' }}>
             <span style={{ fontSize: '20px', fontWeight: 900, color: '#003DA5', display: 'block', lineHeight: 1.1 }}>
               ourocard
             </span>
-            <span style={{ fontSize: '11px', fontWeight: 600, color: '#3A5A80', letterSpacing: '0.5px' }}>
+            <span style={{ fontSize: '11px', fontWeight: 700, color: '#3A5A80', letterSpacing: '0.5px' }}>
               Fácil
             </span>
           </div>
         </div>
 
-        {/* Meio: Chip Metálico Prata + Contactless Azul */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', zIndex: 1, margin: '6px 0' }}>
-          <ChipSvg dourado={false} />
-          <ContactlessSvg cor="#003DA5" />
+        {/* Meio: Chip Metálico Prata + Contactless Azul + Datas de Fechamento e Vencimento */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', zIndex: 1, margin: '8px 0' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <ChipSvg dourado={false} />
+            <ContactlessSvg cor="#003DA5" />
+          </div>
+
+          {/* Fechamento e Vencimento no Cartão */}
+          <div style={{
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'flex-end',
+            backgroundColor: 'rgba(0, 61, 165, 0.09)',
+            border: '1px solid rgba(0, 61, 165, 0.2)',
+            padding: '4px 10px',
+            borderRadius: '10px'
+          }}>
+            <span style={{ fontSize: '9px', fontWeight: 800, color: '#173F5F', textTransform: 'uppercase' }}>
+              Fechamento: Dia <strong>{cartao.diaFechamento}</strong>
+            </span>
+            <span style={{ fontSize: '9.5px', fontWeight: 900, color: '#003DA5', textTransform: 'uppercase' }}>
+              Vencimento: Dia <strong>{cartao.diaVencimento}</strong>
+            </span>
+          </div>
         </div>
 
-        {/* Base: Nome do Titular e Logo VISA Metálico */}
+        {/* Base: Fatura, Titular e Logo VISA */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', zIndex: 1 }}>
           <div>
             {mostrarFatura && valorFatura !== undefined && (
@@ -253,7 +416,7 @@ export const CartaoVisual: React.FC<CartaoVisualProps> = ({
               </div>
             )}
             <span style={{
-              fontSize: '11.5px',
+              fontSize: '11px',
               fontWeight: 800,
               letterSpacing: '1px',
               textTransform: 'uppercase',
@@ -265,6 +428,9 @@ export const CartaoVisual: React.FC<CartaoVisualProps> = ({
           </div>
           <LogoVisa dark={true} />
         </div>
+
+        {/* Seção Interna: Limites e Parcelamentos dentro do próprio cartão */}
+        {renderSecaoInternaCorpo(true)}
       </div>
     );
   }
@@ -278,11 +444,11 @@ export const CartaoVisual: React.FC<CartaoVisualProps> = ({
         onClick={onClick}
         style={{
           width: '100%',
-          maxWidth: '420px',
-          aspectRatio: '1.586 / 1',
+          maxWidth: '430px',
+          minHeight: estiloCompacto ? '210px' : '230px',
           background: 'linear-gradient(135deg, #004797 0%, #002D62 60%, #001A3D 100%)',
-          borderRadius: '20px',
-          padding: estiloCompacto ? '14px 18px' : '20px 22px',
+          borderRadius: '22px',
+          padding: estiloCompacto ? '14px 18px' : '18px 20px',
           display: 'flex',
           flexDirection: 'column',
           justifyContent: 'space-between',
@@ -290,12 +456,11 @@ export const CartaoVisual: React.FC<CartaoVisualProps> = ({
           boxShadow: '0 10px 30px rgba(0,0,0,0.4), 0 2px 10px rgba(0, 71, 151, 0.4)',
           position: 'relative',
           overflow: 'hidden',
-          border: '1px solid rgba(255, 255, 255, 0.15)',
+          border: '1.5px solid rgba(255, 255, 255, 0.2)',
           cursor: onClick ? 'pointer' : 'default',
           transition: 'transform 0.2s ease, box-shadow 0.2s ease'
         }}
       >
-        {/* Curvas características em tom de azul claro da Caixa */}
         <div style={{
           position: 'absolute',
           top: '-40px',
@@ -306,31 +471,42 @@ export const CartaoVisual: React.FC<CartaoVisualProps> = ({
           border: '28px solid rgba(0, 160, 228, 0.18)',
           pointerEvents: 'none'
         }} />
-        <div style={{
-          position: 'absolute',
-          bottom: '-60px',
-          left: '-40px',
-          width: '240px',
-          height: '240px',
-          borderRadius: '50%',
-          border: '20px solid rgba(0, 160, 228, 0.12)',
-          pointerEvents: 'none'
-        }} />
 
         {/* Topo: Logo CAIXA à Direita */}
-        <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', zIndex: 1 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', zIndex: 1 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span style={{ fontSize: '11px', fontWeight: 800, letterSpacing: '1px', textTransform: 'uppercase', color: '#A0C4E8' }}>
+              Cartão Caixa
+            </span>
+          </div>
           <LogoCaixa />
         </div>
 
-        {/* Meio: Chip Metálico Ouro Dourado */}
-        <div style={{ zIndex: 1, margin: '4px 0' }}>
+        {/* Meio: Chip Ouro + Fechamento e Vencimento */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', zIndex: 1, margin: '8px 0' }}>
           <ChipSvg dourado={true} />
+          <div style={{
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'flex-end',
+            backgroundColor: 'rgba(255, 255, 255, 0.1)',
+            border: '1px solid rgba(255, 255, 255, 0.2)',
+            padding: '4px 10px',
+            borderRadius: '10px'
+          }}>
+            <span style={{ fontSize: '9px', fontWeight: 700, color: '#A0C4E8', textTransform: 'uppercase' }}>
+              Fech. Dia <strong>{cartao.diaFechamento}</strong>
+            </span>
+            <span style={{ fontSize: '9.5px', fontWeight: 900, color: '#FFFFFF', textTransform: 'uppercase' }}>
+              Venc. Dia <strong>{cartao.diaVencimento}</strong>
+            </span>
+          </div>
         </div>
 
-        {/* Base: Fatura, Titular e Informações Bancárias */}
+        {/* Base: Fatura e Titular */}
         <div style={{ zIndex: 1 }}>
           {mostrarFatura && valorFatura !== undefined && (
-            <div style={{ marginBottom: '6px' }}>
+            <div style={{ marginBottom: '4px' }}>
               <span style={{ fontSize: '9px', fontWeight: 700, color: '#A0C4E8', textTransform: 'uppercase', display: 'block' }}>
                 Fatura Aberta
               </span>
@@ -343,7 +519,7 @@ export const CartaoVisual: React.FC<CartaoVisualProps> = ({
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
             <div>
               <span style={{
-                fontSize: '12px',
+                fontSize: '11px',
                 fontWeight: 800,
                 letterSpacing: '1px',
                 textTransform: 'uppercase',
@@ -352,16 +528,17 @@ export const CartaoVisual: React.FC<CartaoVisualProps> = ({
               }}>
                 {titularNome}
               </span>
-              <div style={{ display: 'flex', gap: '10px', marginTop: '2px', fontSize: '9.5px', color: '#90BCE8' }}>
+              <div style={{ display: 'flex', gap: '8px', marginTop: '2px', fontSize: '9.5px', color: '#90BCE8' }}>
                 <span>agência <strong style={{ color: '#F37021' }}>1234</strong></span>
                 <span>conta <strong>00012345-6</strong></span>
               </div>
             </div>
-            <div style={{ fontSize: '11px', fontWeight: 800, color: '#FFFFFF', letterSpacing: '1px' }}>
-              Dia {cartao.diaVencimento || '10'}
-            </div>
+            <LogoVisa />
           </div>
         </div>
+
+        {/* Seção Interna: Limites e Parcelamentos */}
+        {renderSecaoInternaCorpo(false)}
       </div>
     );
   }
@@ -375,11 +552,11 @@ export const CartaoVisual: React.FC<CartaoVisualProps> = ({
         onClick={onClick}
         style={{
           width: '100%',
-          maxWidth: '420px',
-          aspectRatio: '1.586 / 1',
+          maxWidth: '430px',
+          minHeight: estiloCompacto ? '210px' : '230px',
           background: 'linear-gradient(145deg, #18191B 0%, #0D0E10 50%, #050506 100%)',
-          borderRadius: '20px',
-          padding: estiloCompacto ? '14px 18px' : '20px 22px',
+          borderRadius: '22px',
+          padding: estiloCompacto ? '14px 18px' : '18px 20px',
           display: 'flex',
           flexDirection: 'column',
           justifyContent: 'space-between',
@@ -387,12 +564,11 @@ export const CartaoVisual: React.FC<CartaoVisualProps> = ({
           boxShadow: '0 12px 35px rgba(0,0,0,0.7), inset 0 1px 1px rgba(255,255,255,0.1)',
           position: 'relative',
           overflow: 'hidden',
-          border: '1px solid rgba(255, 255, 255, 0.12)',
+          border: '1.5px solid rgba(255, 255, 255, 0.18)',
           cursor: onClick ? 'pointer' : 'default',
           transition: 'transform 0.2s ease, box-shadow 0.2s ease'
         }}
       >
-        {/* Facetas angulares geométricas sutis em tom de grafite */}
         <div style={{
           position: 'absolute',
           top: 0,
@@ -402,29 +578,38 @@ export const CartaoVisual: React.FC<CartaoVisualProps> = ({
           background: 'linear-gradient(125deg, transparent 40%, rgba(255, 255, 255, 0.04) 50%, transparent 60%)',
           pointerEvents: 'none'
         }} />
-        <div style={{
-          position: 'absolute',
-          bottom: '-30px',
-          right: '40px',
-          width: '180px',
-          height: '140px',
-          background: 'linear-gradient(60deg, transparent 40%, rgba(255, 255, 255, 0.03) 55%, transparent 70%)',
-          transform: 'rotate(-20deg)',
-          pointerEvents: 'none'
-        }} />
 
-        {/* Topo: Logo Bradesco Prime à Esquerda */}
+        {/* Topo: Logo Oficial Bradesco (Esquerda) */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', zIndex: 1 }}>
           <LogoBradescoPrime />
         </div>
 
-        {/* Meio: Chip Metálico Prata + Contactless */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', zIndex: 1, margin: '4px 0' }}>
-          <ChipSvg dourado={false} />
-          <ContactlessSvg cor="rgba(255, 255, 255, 0.7)" />
+        {/* Meio: Chip Prata + Contactless + Fechamento e Vencimento */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', zIndex: 1, margin: '8px 0' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <ChipSvg dourado={false} />
+            <ContactlessSvg cor="rgba(255, 255, 255, 0.7)" />
+          </div>
+
+          <div style={{
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'flex-end',
+            backgroundColor: 'rgba(255, 255, 255, 0.08)',
+            border: '1px solid rgba(255, 255, 255, 0.15)',
+            padding: '4px 10px',
+            borderRadius: '10px'
+          }}>
+            <span style={{ fontSize: '9px', fontWeight: 700, color: '#A0AEC0', textTransform: 'uppercase' }}>
+              Fech. Dia <strong>{cartao.diaFechamento}</strong>
+            </span>
+            <span style={{ fontSize: '9.5px', fontWeight: 900, color: '#FFFFFF', textTransform: 'uppercase' }}>
+              Venc. Dia <strong>{cartao.diaVencimento}</strong>
+            </span>
+          </div>
         </div>
 
-        {/* Base: Fatura, Titular e Logo VISA Infinite */}
+        {/* Base: Fatura, Titular e VISA Infinite */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', zIndex: 1 }}>
           <div>
             {mostrarFatura && valorFatura !== undefined && (
@@ -450,6 +635,9 @@ export const CartaoVisual: React.FC<CartaoVisualProps> = ({
           </div>
           <LogoVisa infinite={true} />
         </div>
+
+        {/* Seção Interna: Limites e Parcelamentos */}
+        {renderSecaoInternaCorpo(false)}
       </div>
     );
   }
@@ -463,11 +651,11 @@ export const CartaoVisual: React.FC<CartaoVisualProps> = ({
         onClick={onClick}
         style={{
           width: '100%',
-          maxWidth: '420px',
-          aspectRatio: '1.586 / 1',
+          maxWidth: '430px',
+          minHeight: estiloCompacto ? '210px' : '230px',
           background: 'radial-gradient(circle at 50% 30%, #0B1933 0%, #050E1D 60%, #020710 100%)',
-          borderRadius: '20px',
-          padding: estiloCompacto ? '14px 18px' : '20px 22px',
+          borderRadius: '22px',
+          padding: estiloCompacto ? '14px 18px' : '18px 20px',
           display: 'flex',
           flexDirection: 'column',
           justifyContent: 'space-between',
@@ -475,33 +663,40 @@ export const CartaoVisual: React.FC<CartaoVisualProps> = ({
           boxShadow: '0 12px 35px rgba(0,0,0,0.65), 0 2px 10px rgba(11, 25, 51, 0.5)',
           position: 'relative',
           overflow: 'hidden',
-          border: '1px solid rgba(212, 175, 55, 0.25)',
+          border: '1.5px solid rgba(212, 175, 55, 0.35)',
           cursor: onClick ? 'pointer' : 'default',
           transition: 'transform 0.2s ease, box-shadow 0.2s ease'
         }}
       >
-        {/* Linhas geométricas concêntricas diamante / guilloche */}
-        <div style={{
-          position: 'absolute',
-          inset: '-20px',
-          background: `repeating-linear-gradient(45deg, rgba(80, 144, 211, 0.035) 0px, rgba(80, 144, 211, 0.035) 1px, transparent 1px, transparent 8px),
-                       repeating-linear-gradient(-45deg, rgba(80, 144, 211, 0.035) 0px, rgba(80, 144, 211, 0.035) 1px, transparent 1px, transparent 8px)`,
-          pointerEvents: 'none'
-        }} />
-
-        {/* Topo: Badge Itaú Personnalité Centralizado e Contactless à Direita */}
+        {/* Topo: Badge Itaú Personnalité e Contactless */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', zIndex: 1 }}>
-          <div style={{ width: '24px' }} /> {/* Espaçador */}
+          <div style={{ width: '24px' }} />
           <LogoItauPersonnalite />
           <ContactlessSvg cor="#FFFFFF" />
         </div>
 
-        {/* Meio: Chip Metálico Prata */}
-        <div style={{ zIndex: 1, margin: '4px 0' }}>
+        {/* Meio: Chip + Fechamento e Vencimento */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', zIndex: 1, margin: '8px 0' }}>
           <ChipSvg dourado={false} />
+          <div style={{
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'flex-end',
+            backgroundColor: 'rgba(212, 175, 55, 0.1)',
+            border: '1px solid rgba(212, 175, 55, 0.25)',
+            padding: '4px 10px',
+            borderRadius: '10px'
+          }}>
+            <span style={{ fontSize: '9px', fontWeight: 700, color: '#D4AF37', textTransform: 'uppercase' }}>
+              Fech. Dia <strong>{cartao.diaFechamento}</strong>
+            </span>
+            <span style={{ fontSize: '9.5px', fontWeight: 900, color: '#FFFFFF', textTransform: 'uppercase' }}>
+              Venc. Dia <strong>{cartao.diaVencimento}</strong>
+            </span>
+          </div>
         </div>
 
-        {/* Base: Fatura, Titular e VISA Infinite Metálico */}
+        {/* Base: Fatura e Titular */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', zIndex: 1 }}>
           <div>
             {mostrarFatura && valorFatura !== undefined && (
@@ -527,6 +722,9 @@ export const CartaoVisual: React.FC<CartaoVisualProps> = ({
           </div>
           <LogoVisa infinite={true} />
         </div>
+
+        {/* Seção Interna: Limites e Parcelamentos */}
+        {renderSecaoInternaCorpo(false)}
       </div>
     );
   }
@@ -540,11 +738,11 @@ export const CartaoVisual: React.FC<CartaoVisualProps> = ({
         onClick={onClick}
         style={{
           width: '100%',
-          maxWidth: '420px',
-          aspectRatio: '1.586 / 1',
+          maxWidth: '430px',
+          minHeight: estiloCompacto ? '210px' : '230px',
           background: 'linear-gradient(135deg, #8A05BE 0%, #820AD1 40%, #6805A6 100%)',
-          borderRadius: '20px',
-          padding: estiloCompacto ? '14px 18px' : '20px 22px',
+          borderRadius: '22px',
+          padding: estiloCompacto ? '14px 18px' : '18px 20px',
           display: 'flex',
           flexDirection: 'column',
           justifyContent: 'space-between',
@@ -552,42 +750,64 @@ export const CartaoVisual: React.FC<CartaoVisualProps> = ({
           boxShadow: '0 10px 30px rgba(130, 10, 209, 0.4), 0 2px 8px rgba(0,0,0,0.3)',
           position: 'relative',
           overflow: 'hidden',
-          border: '1px solid rgba(255, 255, 255, 0.18)',
+          border: '1.5px solid rgba(255, 255, 255, 0.22)',
           cursor: onClick ? 'pointer' : 'default',
           transition: 'transform 0.2s ease, box-shadow 0.2s ease'
         }}
       >
-        {/* Topo: Mastercard (Esquerda) e Chip Metálico Prata (Direita) */}
+        {/* Topo: Mastercard (Esquerda) e Chip (Direita) */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', zIndex: 1 }}>
           <LogoMastercard />
           <ChipSvg dourado={false} />
         </div>
 
-        {/* Meio: Fatura em Aberto (se ativa) */}
-        {mostrarFatura && valorFatura !== undefined && (
-          <div style={{ zIndex: 1, margin: '4px 0' }}>
-            <span style={{ fontSize: '9px', fontWeight: 700, color: 'rgba(255,255,255,0.75)', textTransform: 'uppercase', display: 'block' }}>
-              Fatura Aberta
+        {/* Meio: Datas de Fechamento e Vencimento */}
+        <div style={{ display: 'flex', justifyContent: 'flex-end', zIndex: 1, margin: '6px 0' }}>
+          <div style={{
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'flex-end',
+            backgroundColor: 'rgba(255, 255, 255, 0.12)',
+            border: '1px solid rgba(255, 255, 255, 0.25)',
+            padding: '4px 10px',
+            borderRadius: '10px'
+          }}>
+            <span style={{ fontSize: '9px', fontWeight: 700, color: 'rgba(255,255,255,0.8)', textTransform: 'uppercase' }}>
+              Fech. Dia <strong>{cartao.diaFechamento}</strong>
             </span>
-            <span style={{ fontSize: estiloCompacto ? '16px' : '22px', fontWeight: 900, color: '#FFFFFF' }}>
-              {formatarMoeda(valorFatura)}
+            <span style={{ fontSize: '9.5px', fontWeight: 900, color: '#FFFFFF', textTransform: 'uppercase' }}>
+              Venc. Dia <strong>{cartao.diaVencimento}</strong>
             </span>
           </div>
-        )}
-
-        {/* Base: Logo 'nu' à Esquerda e Nome do Titular */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', zIndex: 1 }}>
-          <LogoNu />
-          <span style={{
-            fontSize: '11px',
-            fontWeight: 700,
-            letterSpacing: '0.5px',
-            color: '#FFFFFF',
-            textAlign: 'right'
-          }}>
-            {titularNome}
-          </span>
         </div>
+
+        {/* Base: Fatura e Titular */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', zIndex: 1 }}>
+          <div>
+            {mostrarFatura && valorFatura !== undefined && (
+              <div style={{ marginBottom: '4px' }}>
+                <span style={{ fontSize: '9px', fontWeight: 700, color: 'rgba(255,255,255,0.75)', textTransform: 'uppercase', display: 'block' }}>
+                  Fatura Aberta
+                </span>
+                <span style={{ fontSize: estiloCompacto ? '16px' : '22px', fontWeight: 900, color: '#FFFFFF' }}>
+                  {formatarMoeda(valorFatura)}
+                </span>
+              </div>
+            )}
+            <span style={{
+              fontSize: '11px',
+              fontWeight: 700,
+              letterSpacing: '0.5px',
+              color: '#FFFFFF'
+            }}>
+              {titularNome}
+            </span>
+          </div>
+          <LogoNu />
+        </div>
+
+        {/* Seção Interna: Limites e Parcelamentos */}
+        {renderSecaoInternaCorpo(false)}
       </div>
     );
   }
@@ -601,11 +821,11 @@ export const CartaoVisual: React.FC<CartaoVisualProps> = ({
       onClick={onClick}
       style={{
         width: '100%',
-        maxWidth: '420px',
-        aspectRatio: '1.586 / 1',
+        maxWidth: '430px',
+        minHeight: estiloCompacto ? '210px' : '230px',
         background: `linear-gradient(135deg, ${corBase} 0%, #0F2744 100%)`,
-        borderRadius: '20px',
-        padding: estiloCompacto ? '14px 18px' : '20px 22px',
+        borderRadius: '22px',
+        padding: estiloCompacto ? '14px 18px' : '18px 20px',
         display: 'flex',
         flexDirection: 'column',
         justifyContent: 'space-between',
@@ -613,7 +833,7 @@ export const CartaoVisual: React.FC<CartaoVisualProps> = ({
         boxShadow: '0 10px 30px rgba(0,0,0,0.35)',
         position: 'relative',
         overflow: 'hidden',
-        border: '1px solid rgba(255, 255, 255, 0.15)',
+        border: '1.5px solid rgba(255, 255, 255, 0.2)',
         cursor: onClick ? 'pointer' : 'default',
         transition: 'transform 0.2s ease, box-shadow 0.2s ease'
       }}
@@ -638,8 +858,23 @@ export const CartaoVisual: React.FC<CartaoVisualProps> = ({
         <ContactlessSvg cor="#FFFFFF" />
       </div>
 
-      <div style={{ zIndex: 1, margin: '4px 0' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', zIndex: 1, margin: '6px 0' }}>
         <ChipSvg dourado={false} />
+        <div style={{
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'flex-end',
+          backgroundColor: 'rgba(255, 255, 255, 0.1)',
+          padding: '4px 10px',
+          borderRadius: '10px'
+        }}>
+          <span style={{ fontSize: '9px', fontWeight: 700, color: 'rgba(255,255,255,0.8)' }}>
+            Fech. Dia <strong>{cartao.diaFechamento}</strong>
+          </span>
+          <span style={{ fontSize: '9.5px', fontWeight: 900, color: '#FFFFFF' }}>
+            Venc. Dia <strong>{cartao.diaVencimento}</strong>
+          </span>
+        </div>
       </div>
 
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', zIndex: 1 }}>
@@ -660,6 +895,8 @@ export const CartaoVisual: React.FC<CartaoVisualProps> = ({
         </div>
         <LogoVisa />
       </div>
+
+      {renderSecaoInternaCorpo(false)}
     </div>
   );
 };
