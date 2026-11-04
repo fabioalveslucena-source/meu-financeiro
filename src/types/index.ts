@@ -4,3 +4,4 @@ export * from './categoria';
 export * from './livroCaixa';
 export * from './conta';
 export * from './recorrente';
+export * from './usuarioAutorizado';

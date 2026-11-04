@@ -10,11 +10,13 @@ interface FormLancamentoProps {
   onAbrirVoz: () => void;
   dadosPreenchidosVoz?: any;
   onNavegarCartoes?: () => void;
+  tipoInicial?: TipoLancamento;
 }
 
 export const FormLancamento: React.FC<FormLancamentoProps> = ({ 
   onAbrirVoz,
   dadosPreenchidosVoz,
+  tipoInicial
 }) => {
   const { 
     categorias, 
@@ -24,10 +26,11 @@ export const FormLancamento: React.FC<FormLancamentoProps> = ({
     adicionarLancamento,
     adicionarCategoria,
     adicionarNatureza,
+    modoApenasLeitura,
   } = useFinanceStore();
 
   const [data, setData] = useState(formatarDataInput());
-  const [tipo, setTipo] = useState<TipoLancamento>('Despesa');
+  const [tipo, setTipo] = useState<TipoLancamento>(tipoInicial || 'Despesa');
   const [valorTexto, setValorTexto] = useState('');
   const [pagamento, setPagamento] = useState<FormaPagamento>('🏦 Débito');
   const [natureza, setNatureza] = useState('🛒 Alimentação');
@@ -44,6 +47,24 @@ export const FormLancamento: React.FC<FormLancamentoProps> = ({
   const [novoNome, setNovoNome] = useState('');
   const [novoEmoji, setNovoEmoji] = useState('📦');
   const [novaNatPai, setNovaNatPai] = useState('');
+
+  // Sincroniza tipo inicial se mudar
+  useEffect(() => {
+    if (tipoInicial) {
+      setTipo(tipoInicial);
+    }
+  }, [tipoInicial]);
+
+  // Máscara de moeda em tempo real centavo por centavo (Ex: 1 -> 0,01, 15 -> 0,15, 150 -> 1,50)
+  const formatarMoedaAoDigitar = (valorOriginal: string) => {
+    const digitos = valorOriginal.replace(/\D/g, '');
+    if (!digitos) return '';
+    const centavos = parseInt(digitos, 10);
+    return (centavos / 100).toLocaleString('pt-BR', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    });
+  };
 
   // Normalizador resiliente para casar strings com/sem emojis ou acentos
   const normalizarTexto = (s: string) =>
@@ -466,9 +487,12 @@ export const FormLancamento: React.FC<FormLancamentoProps> = ({
               <span style={{ fontSize: '22px', fontWeight: 800, color: '#5090D3' }}>R$</span>
               <input
                 type="text"
-                inputMode="decimal"
+                inputMode="numeric"
                 value={valorTexto}
-                onChange={(e) => setValorTexto(e.target.value)}
+                onChange={(e) => {
+                  const formatado = formatarMoedaAoDigitar(e.target.value);
+                  setValorTexto(formatado);
+                }}
                 placeholder="0,00"
                 style={{
                   fontSize: '28px',
@@ -752,17 +776,19 @@ export const FormLancamento: React.FC<FormLancamentoProps> = ({
           {/* Botão de Lançar Principal Verde Original (sem ícone redundante) */}
           <button
             type="submit"
+            disabled={modoApenasLeitura}
             style={{
               width: '100%',
               border: 'none',
               borderRadius: '16px',
               padding: '16px',
-              background: 'linear-gradient(135deg, #2E8B57 0%, #237447 100%)',
+              background: modoApenasLeitura ? 'linear-gradient(135deg, #607789 0%, #455A64 100%)' : 'linear-gradient(135deg, #2E8B57 0%, #237447 100%)',
               color: '#FFFFFF',
               fontSize: '17px',
               fontWeight: 800,
-              boxShadow: '0 6px 18px rgba(46, 139, 87, 0.35)',
-              cursor: 'pointer',
+              boxShadow: modoApenasLeitura ? 'none' : '0 6px 18px rgba(46, 139, 87, 0.35)',
+              cursor: modoApenasLeitura ? 'not-allowed' : 'pointer',
+              opacity: modoApenasLeitura ? 0.7 : 1,
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
@@ -771,7 +797,7 @@ export const FormLancamento: React.FC<FormLancamentoProps> = ({
               transition: 'transform 0.15s ease'
             }}
           >
-            <span>EFETUAR LANÇAMENTO</span>
+            <span>{modoApenasLeitura ? 'MODO SUPERVISÃO (APENAS LEITURA)' : 'EFETUAR LANÇAMENTO'}</span>
           </button>
         </form>
 

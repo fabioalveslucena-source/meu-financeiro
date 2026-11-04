@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
-import { useFinanceStore } from '../../stores/financeStore';
-import { Calendar, User, Check, Edit3, X, Upload, Camera, Settings, Moon, Sun, RotateCw, ShoppingCart } from 'lucide-react';
+import { useFinanceStore, isUsuarioAdmin } from '../../stores/financeStore';
+import { Calendar, User, Check, Edit3, X, Upload, Camera, Settings, Moon, Sun, RotateCw, ShoppingCart, Eye, Users } from 'lucide-react';
 import { ConfiguracoesBaseModal } from '../configuracoes/ConfiguracoesBaseModal';
 import { SincronizarMercadoModal } from '../mercado/SincronizarMercadoModal';
 import type { SecaoAtiva } from './Sidebar';
@@ -17,12 +17,28 @@ const AVATARES_PREDEFINIDOS = [
   'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=150&auto=format&fit=crop&q=80',
 ];
 
-export const Header: React.FC<HeaderProps> = () => {
-  const { competenciaAtiva, setCompetenciaAtiva, usuario, setUsuario, tema, alternarTema, sincronizarComNuvem, sincronizandoNuvem } = useFinanceStore();
+export const Header: React.FC<HeaderProps> = ({ onSelecionarSecao }) => {
+  const { 
+    competenciaAtiva, 
+    setCompetenciaAtiva, 
+    usuario, 
+    setUsuario, 
+    tema, 
+    alternarTema, 
+    sincronizarComNuvem, 
+    sincronizandoNuvem,
+    usuariosAutorizados,
+    usuarioSupervisionadoAtivo,
+    ativarModoSupervisao,
+    desativarModoSupervisao
+  } = useFinanceStore();
+
+  const ehAdmin = isUsuarioAdmin(usuario.email, usuario.uid, usuario.nome);
+
   const [modalPerfilAberto, setModalPerfilAberto] = useState(false);
   const [modalConfigAberto, setModalConfigAberto] = useState(false);
   const [modalMercadoAberto, setModalMercadoAberto] = useState(false);
-  const [abaConfigInicial, setAbaConfigInicial] = useState<'cartoes' | 'categorias' | 'banco'>('banco');
+  const [abaConfigInicial, setAbaConfigInicial] = useState<'cartoes' | 'categorias' | 'banco' | 'usuarios'>('banco');
   const [nomeTemp, setNomeTemp] = useState(usuario.nome);
   const [tituloTemp, setTituloTemp] = useState(usuario.titulo);
   const [avatarTemp, setAvatarTemp] = useState(usuario.avatarUrl);
@@ -108,6 +124,46 @@ export const Header: React.FC<HeaderProps> = () => {
           flexDirection: 'column',
           gap: '10px'
         }}>
+          {/* Tarja de Modo Supervisão Silenciosa (Apenas Leitura - Apenas Visível para Administrador) */}
+          {ehAdmin && usuarioSupervisionadoAtivo && (
+            <div style={{
+              background: 'linear-gradient(90deg, #6B21A8 0%, #4C1D95 100%)',
+              border: '1.5px solid #C084FC',
+              borderRadius: '12px',
+              padding: '7px 12px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: '8px',
+              color: '#FFFFFF',
+              boxShadow: '0 4px 14px rgba(107, 33, 168, 0.45)'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <Eye size={15} color="#F8D117" />
+                <span style={{ fontSize: '11.5px', fontWeight: 800 }}>
+                  Supervisionando: <span style={{ color: '#F8D117' }}>{usuarioSupervisionadoAtivo.nome}</span> (Apenas Leitura)
+                </span>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => desativarModoSupervisao()}
+                style={{
+                  backgroundColor: 'rgba(255, 255, 255, 0.22)',
+                  border: 'none',
+                  borderRadius: '6px',
+                  color: '#FFFFFF',
+                  padding: '3px 8px',
+                  fontSize: '10.5px',
+                  fontWeight: 800,
+                  cursor: 'pointer'
+                }}
+              >
+                Voltar p/ Minha Conta
+              </button>
+            </div>
+          )}
+
           {/* Linha 1: Perfil do Titular (Esquerda) e Seleção do Mês de Movimento (Direita) */}
           <div style={{
             display: 'flex',
@@ -192,18 +248,72 @@ export const Header: React.FC<HeaderProps> = () => {
               </div>
             </div>
 
-            {/* Lado Direito: Seleção do Mês de Movimento */}
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '5px',
-              background: 'rgba(11, 25, 41, 0.55)',
-              backdropFilter: 'blur(8px)',
-              padding: '6px 10px',
-              borderRadius: '12px',
-              border: '1px solid rgba(255, 255, 255, 0.22)',
-              flexShrink: 0
-            }}>
+            {/* Lado Direito: Seletor de Supervisão (se houver contas com acompanhamento) + Mês de Movimento */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
+              {/* Seletor Rápido de Contas Autorizadas para Supervisão */}
+              {isUsuarioAdmin(usuario.email, usuario.uid, usuario.nome) && usuariosAutorizados.some(u => u.permitirSupervisao && u.status === 'ativo') && (
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                  background: 'rgba(11, 25, 41, 0.55)',
+                  backdropFilter: 'blur(8px)',
+                  padding: '5px 8px',
+                  borderRadius: '12px',
+                  border: '1px solid rgba(192, 132, 252, 0.5)',
+                  flexShrink: 0
+                }}>
+                  <Eye size={12} color="#C084FC" />
+                  <select
+                    value={usuarioSupervisionadoAtivo ? usuarioSupervisionadoAtivo.id : 'master'}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      if (val === 'master') {
+                        desativarModoSupervisao();
+                      } else {
+                        const u = usuariosAutorizados.find(item => item.id === val);
+                        if (u) ativarModoSupervisao(u);
+                      }
+                    }}
+                    style={{
+                      background: 'transparent',
+                      border: 'none',
+                      padding: 0,
+                      fontSize: '11px',
+                      fontWeight: 800,
+                      color: usuarioSupervisionadoAtivo ? '#C084FC' : '#FFFFFF',
+                      cursor: 'pointer',
+                      outline: 'none',
+                      appearance: 'auto'
+                    }}
+                    title="Alternar visão entre sua conta e contas de supervisão autorizada"
+                  >
+                    <option value="master" style={{ background: '#0F2744', color: '#FFFFFF' }}>
+                      👤 Minha Conta
+                    </option>
+                    {usuariosAutorizados
+                      .filter(u => u.permitirSupervisao && u.status === 'ativo')
+                      .map(u => (
+                        <option key={u.id} value={u.id} style={{ background: '#0F2744', color: '#C084FC' }}>
+                          👁️ Ver: {u.nome}
+                        </option>
+                      ))}
+                  </select>
+                </div>
+              )}
+
+              {/* Seleção do Mês de Movimento */}
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '5px',
+                background: 'rgba(11, 25, 41, 0.55)',
+                backdropFilter: 'blur(8px)',
+                padding: '6px 10px',
+                borderRadius: '12px',
+                border: '1px solid rgba(255, 255, 255, 0.22)',
+                flexShrink: 0
+              }}>
               <Calendar size={14} color="#5090D3" style={{ flexShrink: 0 }} />
               <select
                 value={competenciaAtiva}
@@ -228,6 +338,7 @@ export const Header: React.FC<HeaderProps> = () => {
               </select>
             </div>
           </div>
+        </div>
 
           {/* Linha 2: BANCO DO BRASIL • MEU FINANCEIRO PRO (Esquerda) + Luazinha/Sol e Engrenagem (Direita) */}
           <div style={{
@@ -312,6 +423,34 @@ export const Header: React.FC<HeaderProps> = () => {
                 {tema === 'dark' ? <Moon size={15} /> : <Sun size={15} />}
               </button>
 
+              {/* Botão de Usuários e Autorizações (Atalho Direto para Família - Visível Apenas para Administrador) */}
+              {ehAdmin && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAbaConfigInicial('usuarios');
+                    setModalConfigAberto(true);
+                  }}
+                  title="👥 Gerenciar Usuários Autorizados & Família"
+                  style={{
+                    width: '32px',
+                    height: '32px',
+                    borderRadius: '10px',
+                    backgroundColor: 'rgba(248, 209, 23, 0.18)',
+                    border: '1.5px solid #F8D117',
+                    color: '#F8D117',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    cursor: 'pointer',
+                    flexShrink: 0,
+                    transition: 'transform 0.15s ease'
+                  }}
+                >
+                  <Users size={15} />
+                </button>
+              )}
+
               {/* Botão da Engrenagem (Configurações da Base de Dados) */}
               <button
                 type="button"
@@ -340,108 +479,110 @@ export const Header: React.FC<HeaderProps> = () => {
             </div>
           </div>
 
-          {/* Linha 3: Sincronização da Nuvem (Esquerda) e Sincronizar Meu Mercado (Direita) */}
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: '1fr 1fr',
-            gap: '8px',
-            width: '100%',
-            paddingTop: '2px'
-          }}>
-            {/* Botão Esquerda: Sincronizar Nuvem */}
-            <button 
-              type="button"
-              onClick={() => sincronizarComNuvem()}
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '5px',
-                cursor: 'pointer',
-                padding: '7px 8px',
-                borderRadius: '16px',
-                backgroundColor: sincronizandoNuvem ? 'rgba(40, 126, 165, 0.5)' : 'rgba(11, 25, 41, 0.65)',
-                border: '1.5px solid rgba(76, 175, 80, 0.6)',
-                boxShadow: '0 2px 8px rgba(0, 0, 0, 0.25)',
-                transition: 'all 0.15s ease',
-                color: '#FFFFFF',
-                width: '100%',
-                minWidth: 0
-              }}
-              title="Clique para sincronizar todos os dados entre PC e Celular agora"
-            >
-              <RotateCw size={12} color="#4CAF50" className={sincronizandoNuvem ? 'animate-spin' : ''} style={{ flexShrink: 0 }} />
-              <span style={{ 
-                fontSize: '11px', 
-                fontWeight: 800, 
-                color: '#FFFFFF',
-                whiteSpace: 'nowrap',
-                overflow: 'hidden',
-                textOverflow: 'ellipsis'
-              }}>
-                {sincronizandoNuvem ? 'Nuvem...' : 'Sincronizar Nuvem'}
-              </span>
-              <span style={{
-                fontSize: '8px',
-                fontWeight: 900,
-                padding: '1px 5px',
-                borderRadius: '6px',
-                backgroundColor: 'rgba(76, 175, 80, 0.25)',
-                color: '#4CAF50',
-                border: '1px solid #4CAF50',
-                flexShrink: 0
-              }}>
-                100%
-              </span>
-            </button>
+          {/* Linha 3: Sincronização da Nuvem (Esquerda) e Sincronizar Meu Mercado (Direita) - Exclusivo do Administrador */}
+          {ehAdmin && (
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: '1fr 1fr',
+              gap: '8px',
+              width: '100%',
+              paddingTop: '2px'
+            }}>
+              {/* Botão Esquerda: Sincronizar Nuvem */}
+              <button 
+                type="button"
+                onClick={() => sincronizarComNuvem()}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '5px',
+                  cursor: 'pointer',
+                  padding: '7px 8px',
+                  borderRadius: '16px',
+                  backgroundColor: sincronizandoNuvem ? 'rgba(40, 126, 165, 0.5)' : 'rgba(11, 25, 41, 0.65)',
+                  border: '1.5px solid rgba(76, 175, 80, 0.6)',
+                  boxShadow: '0 2px 8px rgba(0, 0, 0, 0.25)',
+                  transition: 'all 0.15s ease',
+                  color: '#FFFFFF',
+                  width: '100%',
+                  minWidth: 0
+                }}
+                title="Clique para sincronizar todos os dados entre PC e Celular agora"
+              >
+                <RotateCw size={12} color="#4CAF50" className={sincronizandoNuvem ? 'animate-spin' : ''} style={{ flexShrink: 0 }} />
+                <span style={{ 
+                  fontSize: '11px', 
+                  fontWeight: 800, 
+                  color: '#FFFFFF',
+                  whiteSpace: 'nowrap',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis'
+                }}>
+                  {sincronizandoNuvem ? 'Nuvem...' : 'Sincronizar Nuvem'}
+                </span>
+                <span style={{
+                  fontSize: '8px',
+                  fontWeight: 900,
+                  padding: '1px 5px',
+                  borderRadius: '6px',
+                  backgroundColor: 'rgba(76, 175, 80, 0.25)',
+                  color: '#4CAF50',
+                  border: '1px solid #4CAF50',
+                  flexShrink: 0
+                }}>
+                  100%
+                </span>
+              </button>
 
-            {/* Botão Direita: Sincronizar Meu Mercado */}
-            <button 
-              type="button"
-              onClick={() => setModalMercadoAberto(true)}
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '5px',
-                cursor: 'pointer',
-                padding: '7px 8px',
-                borderRadius: '16px',
-                backgroundColor: 'rgba(11, 25, 41, 0.65)',
-                border: '1.5px solid rgba(80, 144, 211, 0.6)',
-                boxShadow: '0 2px 8px rgba(0, 0, 0, 0.25)',
-                transition: 'all 0.15s ease',
-                color: '#FFFFFF',
-                width: '100%',
-                minWidth: 0
-              }}
-              title="Sincronizar compras e recibos do Meu Mercado"
-            >
-              <ShoppingCart size={12} color="#5090D3" style={{ flexShrink: 0 }} />
-              <span style={{ 
-                fontSize: '11px', 
-                fontWeight: 800, 
-                color: '#FFFFFF',
-                whiteSpace: 'nowrap',
-                overflow: 'hidden',
-                textOverflow: 'ellipsis'
-              }}>
-                Meu Mercado
-              </span>
-              <span style={{
-                fontSize: '8px',
-                fontWeight: 900,
-                padding: '1px 5px',
-                borderRadius: '6px',
-                backgroundColor: 'rgba(80, 144, 211, 0.25)',
-                color: '#5090D3',
-                border: '1px solid #5090D3',
-                flexShrink: 0
-              }}>
-                CONECTAR
-              </span>
-            </button>
-          </div>
+              {/* Botão Direita: Sincronizar Meu Mercado */}
+              <button 
+                type="button"
+                onClick={() => setModalMercadoAberto(true)}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '5px',
+                  cursor: 'pointer',
+                  padding: '7px 8px',
+                  borderRadius: '16px',
+                  backgroundColor: 'rgba(11, 25, 41, 0.65)',
+                  border: '1.5px solid rgba(80, 144, 211, 0.6)',
+                  boxShadow: '0 2px 8px rgba(0, 0, 0, 0.25)',
+                  transition: 'all 0.15s ease',
+                  color: '#FFFFFF',
+                  width: '100%',
+                  minWidth: 0
+                }}
+                title="Sincronizar compras e recibos do Meu Mercado"
+              >
+                <ShoppingCart size={12} color="#5090D3" style={{ flexShrink: 0 }} />
+                <span style={{ 
+                  fontSize: '11px', 
+                  fontWeight: 800, 
+                  color: '#FFFFFF',
+                  whiteSpace: 'nowrap',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis'
+                }}>
+                  Meu Mercado
+                </span>
+                <span style={{
+                  fontSize: '8px',
+                  fontWeight: 900,
+                  padding: '1px 5px',
+                  borderRadius: '6px',
+                  backgroundColor: 'rgba(80, 144, 211, 0.25)',
+                  color: '#5090D3',
+                  border: '1px solid #5090D3',
+                  flexShrink: 0
+                }}>
+                  CONECTAR
+                </span>
+              </button>
+            </div>
+          )}
         </div>
       </header>
 
@@ -613,7 +754,36 @@ export const Header: React.FC<HeaderProps> = () => {
               </div>
 
               {/* Botão de Atalho para Base de Dados */}
-              <div style={{ borderTop: '1px solid #1E3A5F', paddingTop: '12px', marginTop: '4px' }}>
+              <div style={{ borderTop: '1px solid #1E3A5F', paddingTop: '12px', marginTop: '4px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                {ehAdmin && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setModalPerfilAberto(false);
+                      setAbaConfigInicial('usuarios');
+                      setModalConfigAberto(true);
+                    }}
+                    style={{
+                      width: '100%',
+                      padding: '9px 12px',
+                      borderRadius: '10px',
+                      backgroundColor: 'rgba(248, 209, 23, 0.15)',
+                      border: '1.5px solid #F8D117',
+                      color: '#F8D117',
+                      fontWeight: 800,
+                      fontSize: '12px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '6px',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    <Users size={14} />
+                    <span>👥 Gerenciar Usuários Autorizados (Família)</span>
+                  </button>
+                )}
+
                 <button
                   type="button"
                   onClick={() => {
@@ -651,6 +821,11 @@ export const Header: React.FC<HeaderProps> = () => {
         aberto={modalConfigAberto}
         onFechar={() => setModalConfigAberto(false)}
         abaInicial={abaConfigInicial}
+        onNavegar={(destino) => {
+          if (destino === 'inicio' || destino === 'lancar' || destino === 'extrato' || destino === 'cartoes' || destino === 'gerenciamento') {
+            onSelecionarSecao(destino as any);
+          }
+        }}
       />
 
       {/* Modal de Sincronização com o Meu Mercado */}

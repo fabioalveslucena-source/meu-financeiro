@@ -10,7 +10,8 @@ import type {
   Natureza,
   DespesaRecorrente,
   ItemCompraMercado,
-  FormaPagamento
+  FormaPagamento,
+  UsuarioAutorizado
 } from '../types';
 import { NATUREZAS_PADRAO } from '../types/categoria';
 import { DESPESAS_RECORRENTES_PADRAO } from '../types/recorrente';
@@ -135,16 +136,53 @@ interface FinanceState {
   sincronizarComNuvem: () => Promise<{ sucesso: boolean; mensagem: string }>;
   enviarTudoParaNuvem: () => Promise<void>;
   baixarTudoDaNuvem: () => Promise<void>;
+
+  // Sessão e Multi-Usuário Independente
+  autenticarUsuario: (perfil: { uid: string; nome: string; email?: string; fotoUrl?: string }) => Promise<void>;
+  desconectarUsuario: () => Promise<void>;
+
+  // Gestão de Usuários Autorizados (Whitelist - Controle Admin)
+  usuariosAutorizados: UsuarioAutorizado[];
+  carregarUsuariosAutorizados: () => Promise<void>;
+  adicionarUsuarioAutorizado: (dados: { nome: string; email: string; permitirSupervisao: boolean }) => Promise<{ sucesso: boolean; mensagem: string }>;
+  atualizarUsuarioAutorizado: (id: string, dados: Partial<UsuarioAutorizado>) => Promise<void>;
+  excluirUsuarioAutorizado: (id: string) => Promise<void>;
+  alternarStatusUsuario: (id: string) => Promise<void>;
+  alternarSupervisaoUsuario: (id: string) => Promise<void>;
+
+  // Modo Supervisão Silenciosa (Apenas Leitura para o Admin)
+  usuarioSupervisionadoAtivo: UsuarioAutorizado | null;
+  modoApenasLeitura: boolean;
+  ativarModoSupervisao: (usuarioAlvo: UsuarioAutorizado) => Promise<void>;
+  desativarModoSupervisao: () => Promise<void>;
 }
 
-const STORAGE_KEY_LANCAMENTOS = 'mf_lancamentos_v3';
-const STORAGE_KEY_CARTOES = 'mf_cartoes_v4';
-const STORAGE_KEY_USUARIO = 'mf_usuario_v2';
-const STORAGE_KEY_CATEGORIAS = 'mf_categorias_v2';
-const STORAGE_KEY_NATUREZAS = 'mf_naturezas_v2';
-const STORAGE_KEY_RECORRENTES = 'mf_recorrentes_v2';
-const STORAGE_KEY_SEGURANCA = 'mf_seguranca_v2';
-const STORAGE_KEY_TEMA = 'mf_tema_v1';
+export const ADMIN_EMAIL = 'alveslucenafabio@gmail.com';
+
+export function isUsuarioAdmin(email?: string, uid?: string, nome?: string): boolean {
+  if (uid === MASTER_UID || uid === 'fabio-master-uid') return true;
+  if (email && email.toLowerCase().trim() === ADMIN_EMAIL.toLowerCase().trim()) return true;
+  if (nome && (nome.toUpperCase().includes('FABIO') || nome.toUpperCase().includes('LUCENA'))) return true;
+  return false;
+}
+
+export const STORAGE_KEY_ACTIVE_UID = 'mf_active_uid';
+export const STORAGE_KEY_USUARIOS_AUTORIZADOS = 'mf_usuarios_autorizados_v1';
+export const STORAGE_KEY_LANCAMENTOS = 'mf_lancamentos_v3';
+export const STORAGE_KEY_CARTOES = 'mf_cartoes_v4';
+export const STORAGE_KEY_USUARIO = 'mf_usuario_v2';
+export const STORAGE_KEY_CATEGORIAS = 'mf_categorias_v2';
+export const STORAGE_KEY_NATUREZAS = 'mf_naturezas_v2';
+export const STORAGE_KEY_RECORRENTES = 'mf_recorrentes_v2';
+export const STORAGE_KEY_SEGURANCA = 'mf_seguranca_v2';
+export const STORAGE_KEY_TEMA = 'mf_tema_v1';
+
+export function getStorageKey(chave: string, uid?: string): string {
+  if (!uid || uid === MASTER_UID || uid === 'fabio-master-uid') {
+    return chave;
+  }
+  return `${chave}_${uid}`;
+}
 
 function aplicarTemaNoDocumento(tema: 'dark' | 'light') {
   if (typeof document !== 'undefined') {
@@ -176,13 +214,10 @@ function formatarHoraAgora(): string {
 }
 
 function migrarCartoes(cartoes: Cartao[]): Cartao[] {
-  // Garantir a cor amarela do Banco do Brasil Visa e presença do Bradesco
-  let encontrouBB = false;
-  let encontrouBradesco = false;
+  if (!cartoes || cartoes.length === 0) return [];
 
-  const lista = cartoes.map((c) => {
+  return cartoes.map((c) => {
     if (c.nome.toLowerCase().includes('nubank') || c.nome.includes('Banco do Brasil')) {
-      encontrouBB = true;
       return {
         ...c,
         nome: 'Banco do Brasil Ourocard',
@@ -195,7 +230,6 @@ function migrarCartoes(cartoes: Cartao[]): Cartao[] {
       };
     }
     if (c.nome.toLowerCase().includes('bradesco')) {
-      encontrouBradesco = true;
       return {
         ...c,
         cor: '#CC092F',
@@ -205,41 +239,10 @@ function migrarCartoes(cartoes: Cartao[]): Cartao[] {
     }
     return c;
   });
-
-  if (!encontrouBB) {
-    lista.unshift({
-      id: 'cartao-1',
-      userId: 'default-user',
-      nome: 'Banco do Brasil Ourocard',
-      bandeira: 'Visa',
-      limite: 18000,
-      diaFechamento: 25,
-      diaVencimento: 5,
-      ativo: true,
-      cor: '#F8D117',
-      icone: '💳',
-    });
-  }
-
-  if (!encontrouBradesco) {
-    lista.splice(1, 0, {
-      id: 'cartao-bradesco',
-      userId: 'default-user',
-      nome: 'Bradesco Cartões',
-      bandeira: 'Visa Platinum',
-      limite: 15000,
-      diaFechamento: 10,
-      diaVencimento: 20,
-      ativo: true,
-      cor: '#CC092F',
-      icone: '💳',
-    });
-  }
-
-  return lista;
 }
 
 function migrarLancamentos(lancamentos: Lancamento[]): Lancamento[] {
+  if (!lancamentos || lancamentos.length === 0) return [];
   let lista = lancamentos
     .filter((l) => l.id !== 'lanc-mercado-1') // Remove qualquer compra teste de 650 resquicial
     .map((l) => {
@@ -357,14 +360,78 @@ function salvarNoStorage<T>(chave: string, valor: T): void {
 }
 
 export const useFinanceStore = create<FinanceState>((set, get) => {
+  const activeUid = typeof localStorage !== 'undefined' ? localStorage.getItem(STORAGE_KEY_ACTIVE_UID) : null;
+  const existeFabioLocal = typeof localStorage !== 'undefined' && Boolean(localStorage.getItem(STORAGE_KEY_USUARIO));
+
+  // Um novo dispositivo/navegador não tem nem activeUid nem chave de usuário antiga
+  const ehNovoDispositivo = !activeUid && !existeFabioLocal;
+  const uidInicial = ehNovoDispositivo ? '' : (activeUid || MASTER_UID);
+  const isFabio = !ehNovoDispositivo && (uidInicial === MASTER_UID || uidInicial === 'fabio-master-uid');
+
+  const usuarioInicial: UsuarioPerfil = ehNovoDispositivo
+    ? {
+        nome: 'Novo Usuário',
+        titulo: 'Controle Financeiro Pessoal',
+        bancoPrincipal: 'Meu Banco',
+        avatarUrl: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80',
+        email: '',
+        uid: '',
+      }
+    : carregarDoStorage<UsuarioPerfil>(
+        getStorageKey(STORAGE_KEY_USUARIO, uidInicial),
+        isFabio ? USUARIO_PADRAO : {
+          nome: 'Usuário',
+          titulo: 'Controle Financeiro Pessoal',
+          bancoPrincipal: 'Meu Banco',
+          avatarUrl: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80',
+          email: '',
+          uid: uidInicial,
+        }
+      );
+
+  // Garante que o administrador Fábio sempre possua e-mail e UID devidamente definidos
+  if (isFabio || (usuarioInicial.nome && usuarioInicial.nome.toUpperCase().includes('FABIO'))) {
+    usuarioInicial.email = usuarioInicial.email || ADMIN_EMAIL;
+    usuarioInicial.uid = MASTER_UID;
+  }
+
+  const lancamentosIniciais = ehNovoDispositivo
+    ? []
+    : carregarDoStorage<Lancamento[]>(
+        getStorageKey(STORAGE_KEY_LANCAMENTOS, uidInicial),
+        isFabio ? LANCAMENTOS_INICIAIS : []
+      );
+
+  const cartoesIniciais = ehNovoDispositivo
+    ? []
+    : carregarDoStorage<Cartao[]>(
+        getStorageKey(STORAGE_KEY_CARTOES, uidInicial),
+        isFabio ? CARTAO_PADRAO : []
+      );
+
+  const categoriasIniciais = carregarDoStorage<Categoria[]>(
+    getStorageKey(STORAGE_KEY_CATEGORIAS, uidInicial),
+    CATEGORIAS_PADRAO
+  );
+
+  const naturezasIniciais = carregarDoStorage<Natureza[]>(
+    getStorageKey(STORAGE_KEY_NATUREZAS, uidInicial),
+    NATUREZAS_PADRAO
+  );
+
   const estadoInicial = {
-    usuario: carregarDoStorage<UsuarioPerfil>(STORAGE_KEY_USUARIO, USUARIO_PADRAO),
-    lancamentos: carregarDoStorage<Lancamento[]>(STORAGE_KEY_LANCAMENTOS, LANCAMENTOS_INICIAIS),
-    cartoes: carregarDoStorage<Cartao[]>(STORAGE_KEY_CARTOES, CARTAO_PADRAO),
-    categorias: carregarDoStorage<Categoria[]>(STORAGE_KEY_CATEGORIAS, CATEGORIAS_PADRAO),
-    naturezas: carregarDoStorage<Natureza[]>(STORAGE_KEY_NATUREZAS, NATUREZAS_PADRAO),
-    contas: CONTAS_PADRAO,
-    despesasRecorrentes: carregarDoStorage<DespesaRecorrente[]>(STORAGE_KEY_RECORRENTES, DESPESAS_RECORRENTES_PADRAO),
+    usuario: usuarioInicial,
+    lancamentos: lancamentosIniciais,
+    cartoes: cartoesIniciais,
+    categorias: categoriasIniciais,
+    naturezas: naturezasIniciais,
+    contas: ehNovoDispositivo ? [] : (isFabio ? CONTAS_PADRAO : []),
+    despesasRecorrentes: ehNovoDispositivo
+      ? []
+      : carregarDoStorage<DespesaRecorrente[]>(
+          getStorageKey(STORAGE_KEY_RECORRENTES, uidInicial),
+          isFabio ? DESPESAS_RECORRENTES_PADRAO : []
+        ),
     seguranca: (() => {
       const seg = carregarDoStorage<{ bloqueioAtivo: boolean; pin: string; biometriaAtiva: boolean }>(STORAGE_KEY_SEGURANCA, {
         bloqueioAtivo: false,
@@ -403,6 +470,9 @@ export const useFinanceStore = create<FinanceState>((set, get) => {
         tipo: 'sucesso' as const,
       }
     ],
+    usuariosAutorizados: carregarDoStorage<UsuarioAutorizado[]>(STORAGE_KEY_USUARIOS_AUTORIZADOS, []),
+    usuarioSupervisionadoAtivo: null as UsuarioAutorizado | null,
+    modoApenasLeitura: false,
     ultimoEventoTimestamp: Date.now(),
   };
 
@@ -451,8 +521,9 @@ export const useFinanceStore = create<FinanceState>((set, get) => {
     setUsuario: (dados: Partial<UsuarioPerfil>) => {
       set((state) => {
         const novoUsuario = { ...state.usuario, ...dados };
-        salvarNoStorage(STORAGE_KEY_USUARIO, novoUsuario);
-        FirestoreSyncService.salvarPerfil(MASTER_UID, novoUsuario);
+        const uid = novoUsuario.uid || MASTER_UID;
+        salvarNoStorage(getStorageKey(STORAGE_KEY_USUARIO, uid), novoUsuario);
+        FirestoreSyncService.salvarPerfil(uid, novoUsuario);
         return { usuario: novoUsuario };
       });
     },
@@ -481,6 +552,7 @@ export const useFinanceStore = create<FinanceState>((set, get) => {
 
     adicionarCompraMercado: (dados) => {
       const { lancamentos, usuario, adicionarLogRealtime, mostrarToast } = get();
+      const uid = usuario.uid || MASTER_UID;
       const totalParcelas = Math.max(1, dados.totalParcelas || 1);
       const dataObj = new Date(dados.data + 'T12:00:00');
       const [anoStr, mesStr] = dados.data.split('-');
@@ -515,7 +587,7 @@ export const useFinanceStore = create<FinanceState>((set, get) => {
 
         const l: Lancamento = {
           id: docId,
-          userId: usuario.uid || 'fabio-master-uid',
+          userId: uid,
           data: dataObj,
           competencia: faturaCompetencia,
           valor: valorFinal,
@@ -548,11 +620,11 @@ export const useFinanceStore = create<FinanceState>((set, get) => {
         };
 
         novosLancamentos.push(l);
-        FirestoreSyncService.salvarLancamento(usuario.uid || MASTER_UID, l);
+        FirestoreSyncService.salvarLancamento(uid, l);
       }
 
       const novaLista = [...novosLancamentos, ...lancamentos];
-      salvarNoStorage(STORAGE_KEY_LANCAMENTOS, novaLista);
+      salvarNoStorage(getStorageKey(STORAGE_KEY_LANCAMENTOS, uid), novaLista);
       set({ lancamentos: novaLista, ultimoEventoTimestamp: Date.now() });
 
       const descMsg = totalParcelas > 1 
@@ -579,25 +651,27 @@ export const useFinanceStore = create<FinanceState>((set, get) => {
 
     atualizarCartao: (id, dados) => {
       set((state) => {
+        const uid = state.usuario.uid || MASTER_UID;
         const novosCartoes = state.cartoes.map((c) => c.id === id ? { ...c, ...dados } : c);
-        salvarNoStorage(STORAGE_KEY_CARTOES, novosCartoes);
-        FirestoreSyncService.salvarCartoes(MASTER_UID, novosCartoes);
+        salvarNoStorage(getStorageKey(STORAGE_KEY_CARTOES, uid), novosCartoes);
+        FirestoreSyncService.salvarCartoes(uid, novosCartoes);
         return { cartoes: novosCartoes, ultimoEventoTimestamp: Date.now() };
       });
       get().mostrarToast('Cartão atualizado com sucesso!', 'sucesso');
     },
 
     adicionarCartao: (cartao) => {
+      const uid = get().usuario.uid || MASTER_UID;
       const novo: Cartao = {
         ...cartao,
         id: `cartao-${Date.now()}`,
-        userId: 'default-user',
+        userId: uid,
         ativo: true,
       };
       set((state) => {
         const novosCartoes = [...state.cartoes, novo];
-        salvarNoStorage(STORAGE_KEY_CARTOES, novosCartoes);
-        FirestoreSyncService.salvarCartoes(MASTER_UID, novosCartoes);
+        salvarNoStorage(getStorageKey(STORAGE_KEY_CARTOES, uid), novosCartoes);
+        FirestoreSyncService.salvarCartoes(uid, novosCartoes);
         return { cartoes: novosCartoes, ultimoEventoTimestamp: Date.now() };
       });
       get().mostrarToast(`Cartão "${novo.nome}" cadastrado com sucesso!`, 'sucesso');
@@ -605,18 +679,20 @@ export const useFinanceStore = create<FinanceState>((set, get) => {
 
     excluirCartao: (id) => {
       set((state) => {
+        const uid = state.usuario.uid || MASTER_UID;
         const novosCartoes = state.cartoes.filter((c) => c.id !== id);
-        salvarNoStorage(STORAGE_KEY_CARTOES, novosCartoes);
-        FirestoreSyncService.salvarCartoes(MASTER_UID, novosCartoes);
+        salvarNoStorage(getStorageKey(STORAGE_KEY_CARTOES, uid), novosCartoes);
+        FirestoreSyncService.salvarCartoes(uid, novosCartoes);
         return { cartoes: novosCartoes, ultimoEventoTimestamp: Date.now() };
       });
       get().mostrarToast('Cartão removido.', 'info');
     },
 
     adicionarCategoria: (cat) => {
+      const uid = get().usuario.uid || MASTER_UID;
       const nova: Categoria = {
         id: `cat-${Date.now()}`,
-        userId: 'default-user',
+        userId: uid,
         natureza: cat.natureza,
         nome: cat.nome.trim(),
         tipo: cat.tipo || 'Despesa',
@@ -624,24 +700,26 @@ export const useFinanceStore = create<FinanceState>((set, get) => {
       };
       set((state) => {
         const novasCategorias = [...state.categorias, nova];
-        salvarNoStorage(STORAGE_KEY_CATEGORIAS, novasCategorias);
-        FirestoreSyncService.salvarCategorias(MASTER_UID, novasCategorias).catch(console.warn);
+        salvarNoStorage(getStorageKey(STORAGE_KEY_CATEGORIAS, uid), novasCategorias);
+        FirestoreSyncService.salvarCategorias(uid, novasCategorias).catch(console.warn);
         return { categorias: novasCategorias, ultimoEventoTimestamp: Date.now() };
       });
       get().mostrarToast(`Categoria "${nova.nome}" cadastrada com sucesso!`, 'sucesso');
     },
 
     excluirCategoria: (id) => {
+      const uid = get().usuario.uid || MASTER_UID;
       set((state) => {
         const novasCategorias = state.categorias.filter((c) => c.id !== id);
-        salvarNoStorage(STORAGE_KEY_CATEGORIAS, novasCategorias);
-        FirestoreSyncService.salvarCategorias(MASTER_UID, novasCategorias).catch(console.warn);
+        salvarNoStorage(getStorageKey(STORAGE_KEY_CATEGORIAS, uid), novasCategorias);
+        FirestoreSyncService.salvarCategorias(uid, novasCategorias).catch(console.warn);
         return { categorias: novasCategorias, ultimoEventoTimestamp: Date.now() };
       });
       get().mostrarToast('Categoria removida.', 'info');
     },
 
     adicionarNatureza: (nat) => {
+      const uid = get().usuario.uid || MASTER_UID;
       const emoji = nat.emoji?.trim() || '📁';
       const nome = nat.nome.trim();
       const nova: Natureza = {
@@ -652,14 +730,19 @@ export const useFinanceStore = create<FinanceState>((set, get) => {
       };
       set((state) => {
         const novasNaturezas = [...state.naturezas, nova];
-        salvarNoStorage(STORAGE_KEY_NATUREZAS, novasNaturezas);
-        FirestoreSyncService.salvarNaturezas(MASTER_UID, novasNaturezas).catch(console.warn);
+        salvarNoStorage(getStorageKey(STORAGE_KEY_NATUREZAS, uid), novasNaturezas);
+        FirestoreSyncService.salvarNaturezas(uid, novasNaturezas).catch(console.warn);
         return { naturezas: novasNaturezas, ultimoEventoTimestamp: Date.now() };
       });
       get().mostrarToast(`Natureza "${nova.label}" cadastrada com sucesso!`, 'sucesso');
     },
 
     adicionarLancamento: (input, emitirEvento = true) => {
+      if (get().modoApenasLeitura) {
+        get().mostrarToast('👁️ Modo Supervisão: Apenas leitura ativado. Edições bloqueadas por segurança.', 'info');
+        return { sucesso: false, mensagem: 'Modo Apenas Leitura ativo.' };
+      }
+
       // Se não houver descrição, replica automaticamente o nome da categoria
       const descricaoFinal = (input.descricao?.trim() || input.categoria?.trim() || 'Lançamento');
       input = { ...input, descricao: descricaoFinal };
@@ -737,10 +820,11 @@ export const useFinanceStore = create<FinanceState>((set, get) => {
         });
       }
 
+      const uid = get().usuario.uid || MASTER_UID;
       const lancamentosAtualizados = [...novos, ...get().lancamentos];
       set({ lancamentos: lancamentosAtualizados, ultimoEventoTimestamp: Date.now() });
-      salvarNoStorage(STORAGE_KEY_LANCAMENTOS, lancamentosAtualizados);
-      novos.forEach((n) => FirestoreSyncService.salvarLancamento(MASTER_UID, n));
+      salvarNoStorage(getStorageKey(STORAGE_KEY_LANCAMENTOS, uid), lancamentosAtualizados);
+      novos.forEach((n) => FirestoreSyncService.salvarLancamento(uid, n));
 
       const msg = totalParcelas > 1 
         ? `Compra parcelada em ${totalParcelas}x adicionada!`
@@ -767,7 +851,13 @@ export const useFinanceStore = create<FinanceState>((set, get) => {
     },
 
     editarLancamento: (id, dados, emitirEvento = true) => {
-      const { lancamentos } = get();
+      if (get().modoApenasLeitura) {
+        get().mostrarToast('👁️ Modo Supervisão: Apenas leitura ativado. Edições bloqueadas por segurança.', 'info');
+        return { sucesso: false, mensagem: 'Modo Apenas Leitura ativo.' };
+      }
+
+      const { lancamentos, usuario } = get();
+      const uid = usuario.uid || MASTER_UID;
       const index = lancamentos.findIndex((l) => l.id === id);
       if (index === -1) {
         return { sucesso: false, mensagem: 'Lançamento não encontrado.' };
@@ -784,8 +874,8 @@ export const useFinanceStore = create<FinanceState>((set, get) => {
       novaLista[index] = itemAtualizado;
 
       set({ lancamentos: novaLista, ultimoEventoTimestamp: Date.now() });
-      salvarNoStorage(STORAGE_KEY_LANCAMENTOS, novaLista);
-      FirestoreSyncService.salvarLancamento(MASTER_UID, itemAtualizado);
+      salvarNoStorage(getStorageKey(STORAGE_KEY_LANCAMENTOS, uid), novaLista);
+      FirestoreSyncService.salvarLancamento(uid, itemAtualizado);
       get().mostrarToast('Lançamento atualizado com sucesso!', 'sucesso');
       get().adicionarLogRealtime(
         `[UPDATE] ${itemAtualizado.descricao}`,
@@ -806,7 +896,13 @@ export const useFinanceStore = create<FinanceState>((set, get) => {
     },
 
     excluirLancamento: (id, excluirTodasParcelas = false, emitirEvento = true) => {
-      const { lancamentos } = get();
+      if (get().modoApenasLeitura) {
+        get().mostrarToast('👁️ Modo Supervisão: Apenas leitura ativado. Edições bloqueadas por segurança.', 'info');
+        return { sucesso: false, mensagem: 'Modo Apenas Leitura ativo.' };
+      }
+
+      const { lancamentos, usuario } = get();
+      const uid = usuario.uid || MASTER_UID;
       const item = lancamentos.find((l) => l.id === id);
       if (!item) {
         return { sucesso: false, mensagem: 'Lançamento não encontrado.' };
@@ -818,18 +914,18 @@ export const useFinanceStore = create<FinanceState>((set, get) => {
         novaLista = lancamentos.filter((l) => l.compraId !== item.compraId);
         lancamentos
           .filter((l) => l.compraId === item.compraId)
-          .forEach((l) => FirestoreSyncService.excluirLancamento(MASTER_UID, l.id));
+          .forEach((l) => FirestoreSyncService.excluirLancamento(uid, l.id));
         detalheLog = `Todas as parcelas da compra "${item.descricao}" foram removidas.`;
         get().mostrarToast('Todas as parcelas da compra foram removidas.', 'info');
       } else {
         novaLista = lancamentos.filter((l) => l.id !== id);
-        FirestoreSyncService.excluirLancamento(MASTER_UID, id);
+        FirestoreSyncService.excluirLancamento(uid, id);
         detalheLog = `Item "${item.descricao}" (R$ ${item.valor.toFixed(2)}) excluído.`;
         get().mostrarToast('Lançamento excluído com sucesso.', 'info');
       }
 
       set({ lancamentos: novaLista, ultimoEventoTimestamp: Date.now() });
-      salvarNoStorage(STORAGE_KEY_LANCAMENTOS, novaLista);
+      salvarNoStorage(getStorageKey(STORAGE_KEY_LANCAMENTOS, uid), novaLista);
       get().adicionarLogRealtime(`[DELETE] ${item.descricao}`, detalheLog, 'alerta');
 
       if (emitirEvento && realtimeChannel) {
@@ -1298,8 +1394,9 @@ export const useFinanceStore = create<FinanceState>((set, get) => {
     sincronizarComNuvem: async () => {
       set({ sincronizandoNuvem: true });
       const { lancamentos, cartoes, usuario, categorias, naturezas } = get();
+      const uid = usuario.uid || MASTER_UID;
       try {
-        const res = await FirestoreSyncService.sincronizarTudo(MASTER_UID, {
+        const res = await FirestoreSyncService.sincronizarTudo(uid, {
           lancamentos,
           cartoes,
           usuario,
@@ -1307,22 +1404,30 @@ export const useFinanceStore = create<FinanceState>((set, get) => {
           naturezas
         });
 
-        salvarNoStorage(STORAGE_KEY_LANCAMENTOS, res.lancamentosSincronizados);
-        salvarNoStorage(STORAGE_KEY_CARTOES, res.cartoesSincronizados);
+        salvarNoStorage(getStorageKey(STORAGE_KEY_LANCAMENTOS, uid), res.lancamentosSincronizados);
+        salvarNoStorage(getStorageKey(STORAGE_KEY_CARTOES, uid), res.cartoesSincronizados);
         if (res.usuarioSincronizado) {
-          salvarNoStorage(STORAGE_KEY_USUARIO, res.usuarioSincronizado);
+          salvarNoStorage(getStorageKey(STORAGE_KEY_USUARIO, uid), res.usuarioSincronizado);
         }
         if (res.categoriasSincronizados && res.categoriasSincronizados.length > 0) {
-          salvarNoStorage(STORAGE_KEY_CATEGORIAS, res.categoriasSincronizados);
+          salvarNoStorage(getStorageKey(STORAGE_KEY_CATEGORIAS, uid), res.categoriasSincronizados);
         }
         if (res.naturezasSincronizados && res.naturezasSincronizados.length > 0) {
-          salvarNoStorage(STORAGE_KEY_NATUREZAS, res.naturezasSincronizados);
+          salvarNoStorage(getStorageKey(STORAGE_KEY_NATUREZAS, uid), res.naturezasSincronizados);
         }
+
+        const usuarioBase = res.usuarioSincronizado || usuario;
+        const isFabioUser = uid === MASTER_UID || uid === 'fabio-master-uid' || usuarioBase.nome?.toUpperCase().includes('FABIO');
+        const usuarioFinal: UsuarioPerfil = {
+          ...usuarioBase,
+          email: usuarioBase.email || (isFabioUser ? ADMIN_EMAIL : usuario.email),
+          uid: usuarioBase.uid || uid,
+        };
 
         set({
           lancamentos: res.lancamentosSincronizados,
           cartoes: res.cartoesSincronizados,
-          usuario: res.usuarioSincronizado || usuario,
+          usuario: usuarioFinal,
           categorias: res.categoriasSincronizados || categorias,
           naturezas: res.naturezasSincronizados || naturezas,
           sincronizandoNuvem: false,
@@ -1346,10 +1451,11 @@ export const useFinanceStore = create<FinanceState>((set, get) => {
     enviarTudoParaNuvem: async () => {
       set({ sincronizandoNuvem: true });
       const { lancamentos, cartoes, usuario } = get();
+      const uid = usuario.uid || MASTER_UID;
       try {
-        await FirestoreSyncService.enviarTodosLancamentos(MASTER_UID, lancamentos);
-        await FirestoreSyncService.salvarCartoes(MASTER_UID, cartoes);
-        await FirestoreSyncService.salvarPerfil(MASTER_UID, usuario);
+        await FirestoreSyncService.enviarTodosLancamentos(uid, lancamentos);
+        await FirestoreSyncService.salvarCartoes(uid, cartoes);
+        await FirestoreSyncService.salvarPerfil(uid, usuario);
         set({ sincronizandoNuvem: false });
         get().mostrarToast(`✓ ${lancamentos.length} lançamentos enviados para a nuvem!`, 'sucesso');
       } catch (err) {
@@ -1360,22 +1466,29 @@ export const useFinanceStore = create<FinanceState>((set, get) => {
 
     baixarTudoDaNuvem: async () => {
       set({ sincronizandoNuvem: true });
+      const uid = get().usuario.uid || MASTER_UID;
       try {
-        const lancamentosNuvem = await FirestoreSyncService.baixarTodosLancamentos(MASTER_UID);
-        const cartoesNuvem = await FirestoreSyncService.baixarCartoes(MASTER_UID);
-        const perfilNuvem = await FirestoreSyncService.baixarPerfil(MASTER_UID);
+        const lancamentosNuvem = await FirestoreSyncService.baixarTodosLancamentos(uid);
+        const cartoesNuvem = await FirestoreSyncService.baixarCartoes(uid);
+        const perfilNuvem = await FirestoreSyncService.baixarPerfil(uid);
 
         if (lancamentosNuvem.length > 0) {
-          salvarNoStorage(STORAGE_KEY_LANCAMENTOS, lancamentosNuvem);
+          salvarNoStorage(getStorageKey(STORAGE_KEY_LANCAMENTOS, uid), lancamentosNuvem);
           set({ lancamentos: lancamentosNuvem });
         }
         if (cartoesNuvem.length > 0) {
-          salvarNoStorage(STORAGE_KEY_CARTOES, cartoesNuvem);
+          salvarNoStorage(getStorageKey(STORAGE_KEY_CARTOES, uid), cartoesNuvem);
           set({ cartoes: cartoesNuvem });
         }
         if (perfilNuvem) {
-          salvarNoStorage(STORAGE_KEY_USUARIO, perfilNuvem);
-          set({ usuario: perfilNuvem });
+          const isFabioUser = uid === MASTER_UID || uid === 'fabio-master-uid' || perfilNuvem.nome?.toUpperCase().includes('FABIO');
+          const perfilFinal: UsuarioPerfil = {
+            ...perfilNuvem,
+            email: perfilNuvem.email || (isFabioUser ? ADMIN_EMAIL : get().usuario.email),
+            uid: perfilNuvem.uid || uid,
+          };
+          salvarNoStorage(getStorageKey(STORAGE_KEY_USUARIO, uid), perfilFinal);
+          set({ usuario: perfilFinal });
         }
         set({ sincronizandoNuvem: false, ultimoEventoTimestamp: Date.now() });
         get().mostrarToast(`✓ ${lancamentosNuvem.length} lançamentos baixados da nuvem!`, 'sucesso');
@@ -1383,6 +1496,329 @@ export const useFinanceStore = create<FinanceState>((set, get) => {
         set({ sincronizandoNuvem: false });
         get().mostrarToast('Erro ao baixar dados da nuvem.', 'erro');
       }
+    },
+
+    autenticarUsuario: async (perfil) => {
+      const isFabio = isUsuarioAdmin(perfil.email, perfil.uid);
+      const uidFinal = isFabio ? MASTER_UID : perfil.uid;
+      const emailNorm = (perfil.email || '').toLowerCase().trim();
+
+      // Checagem estrita da Whitelist para novos acessos não-administradores
+      if (!isFabio) {
+        let listaAutorizados = get().usuariosAutorizados;
+        if (listaAutorizados.length === 0) {
+          const nuvemAutorizados = await FirestoreSyncService.baixarUsuariosAutorizados();
+          if (nuvemAutorizados.length > 0) {
+            listaAutorizados = nuvemAutorizados;
+            set({ usuariosAutorizados: nuvemAutorizados });
+          }
+        }
+
+        const entrada = listaAutorizados.find(u => u.email.toLowerCase().trim() === emailNorm);
+
+        if (!entrada) {
+          await get().desconectarUsuario();
+          get().mostrarToast('🚫 Acesso restrito. Este e-mail não possui autorização. Fale com o administrador Fábio.', 'erro');
+          return;
+        }
+
+        if (entrada.status !== 'ativo') {
+          await get().desconectarUsuario();
+          get().mostrarToast('⚠️ Seu acesso está temporariamente pausado pelo administrador.', 'erro');
+          return;
+        }
+
+        // Se ainda não tinha o UID vinculado, vincula agora e registra o acesso
+        if (entrada.uid !== uidFinal) {
+          entrada.uid = uidFinal;
+          entrada.ultimoAcessoEm = new Date().toISOString();
+          const novaLista = listaAutorizados.map(u => u.id === entrada.id ? entrada : u);
+          salvarNoStorage(STORAGE_KEY_USUARIOS_AUTORIZADOS, novaLista);
+          FirestoreSyncService.salvarUsuariosAutorizados(novaLista).catch(console.warn);
+          set({ usuariosAutorizados: novaLista });
+        }
+      }
+
+      if (typeof localStorage !== 'undefined') {
+        localStorage.setItem(STORAGE_KEY_ACTIVE_UID, uidFinal);
+      }
+
+      set({ sincronizandoNuvem: true });
+
+      try {
+        // 1. Tenta carregar dados da nuvem Firestore para o UID dessa pessoa
+        const [perfilNuvem, cartoesNuvem, lancamentosNuvem, categoriasNuvem, naturezasNuvem] = await Promise.all([
+          FirestoreSyncService.baixarPerfil(uidFinal),
+          FirestoreSyncService.baixarCartoes(uidFinal),
+          FirestoreSyncService.baixarTodosLancamentos(uidFinal),
+          FirestoreSyncService.baixarCategorias(uidFinal),
+          FirestoreSyncService.baixarNaturezas(uidFinal),
+        ]);
+
+        const keyUser = getStorageKey(STORAGE_KEY_USUARIO, uidFinal);
+        const keyLanc = getStorageKey(STORAGE_KEY_LANCAMENTOS, uidFinal);
+        const keyCart = getStorageKey(STORAGE_KEY_CARTOES, uidFinal);
+        const keyCat  = getStorageKey(STORAGE_KEY_CATEGORIAS, uidFinal);
+        const keyNat  = getStorageKey(STORAGE_KEY_NATUREZAS, uidFinal);
+
+        // Dados locais específicos para esse UID (para novo usuário, inicia limpo)
+        const lancLocal = carregarDoStorage<Lancamento[]>(keyLanc, isFabio ? LANCAMENTOS_INICIAIS : []);
+        const cartLocal = carregarDoStorage<Cartao[]>(keyCart, isFabio ? CARTAO_PADRAO : []);
+        const catLocal  = carregarDoStorage<Categoria[]>(keyCat, CATEGORIAS_PADRAO);
+        const natLocal  = carregarDoStorage<Natureza[]>(keyNat, NATUREZAS_PADRAO);
+
+        const lancamentosFinais = lancamentosNuvem.length > 0 ? lancamentosNuvem : lancLocal;
+        const cartoesFinais = cartoesNuvem.length > 0 ? cartoesNuvem : cartLocal;
+        const categoriasFinais = categoriasNuvem.length > 0 ? categoriasNuvem : catLocal;
+        const naturezasFinais = naturezasNuvem.length > 0 ? naturezasNuvem : natLocal;
+
+        const isFabioUser = isFabio || (perfil.nome && perfil.nome.toUpperCase().includes('FABIO')) || (perfilNuvem?.nome && perfilNuvem.nome.toUpperCase().includes('FABIO'));
+        const novoPerfil: UsuarioPerfil = {
+          nome: perfil.nome || perfilNuvem?.nome || (isFabioUser ? 'FABIO ALVES LUCENA' : 'Meu Perfil'),
+          titulo: perfilNuvem?.titulo || (isFabioUser ? 'Titular Master • Conta Especial' : 'Controle Financeiro Pessoal'),
+          bancoPrincipal: perfilNuvem?.bancoPrincipal || (isFabioUser ? 'Banco do Brasil' : (cartoesFinais[0]?.nome || 'Meu Banco')),
+          avatarUrl: perfil.fotoUrl || perfilNuvem?.avatarUrl || (isFabioUser ? USUARIO_PADRAO.avatarUrl : 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80'),
+          email: perfil.email || perfilNuvem?.email || (isFabioUser ? ADMIN_EMAIL : ''),
+          uid: uidFinal,
+        };
+
+        salvarNoStorage(keyUser, novoPerfil);
+        salvarNoStorage(keyLanc, lancamentosFinais);
+        salvarNoStorage(keyCart, cartoesFinais);
+        salvarNoStorage(keyCat, categoriasFinais);
+        salvarNoStorage(keyNat, naturezasFinais);
+
+        set({
+          usuario: novoPerfil,
+          lancamentos: lancamentosFinais,
+          cartoes: cartoesFinais,
+          categorias: categoriasFinais,
+          naturezas: naturezasFinais,
+          contas: isFabio ? CONTAS_PADRAO : [],
+          sincronizandoNuvem: false,
+          ultimoEventoTimestamp: Date.now()
+        });
+
+        // Sempre atualiza o perfil com email e uid no Firestore
+        await FirestoreSyncService.salvarPerfil(uidFinal, novoPerfil);
+        if (categoriasFinais.length > 0) await FirestoreSyncService.salvarCategorias(uidFinal, categoriasFinais);
+        if (naturezasFinais.length > 0) await FirestoreSyncService.salvarNaturezas(uidFinal, naturezasFinais);
+
+        get().mostrarToast(`Conectado como ${novoPerfil.nome}! Espaço financeiro pronto.`, 'sucesso');
+      } catch (e) {
+        console.error('Erro ao autenticar usuário:', e);
+        set({ sincronizandoNuvem: false });
+      }
+    },
+
+    desconectarUsuario: async () => {
+      if (typeof localStorage !== 'undefined') {
+        localStorage.removeItem(STORAGE_KEY_ACTIVE_UID);
+      }
+      FirestoreSyncService.pararSincronizacao();
+
+      const usuarioLimpo: UsuarioPerfil = {
+        nome: 'Novo Usuário',
+        titulo: 'Controle Financeiro Pessoal',
+        bancoPrincipal: 'Meu Banco',
+        avatarUrl: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80',
+        email: '',
+        uid: '',
+      };
+
+      set({
+        usuario: usuarioLimpo,
+        lancamentos: [],
+        cartoes: [],
+        categorias: CATEGORIAS_PADRAO,
+        naturezas: NATUREZAS_PADRAO,
+        contas: [],
+        usuarioSupervisionadoAtivo: null,
+        modoApenasLeitura: false,
+        ultimoEventoTimestamp: Date.now()
+      });
+
+      get().mostrarToast('Sessão desconectada. Você pode entrar com outra conta Google.', 'info');
+    },
+
+    // ==========================================
+    // 👥 GESTÃO DE USUÁRIOS AUTORIZADOS (WHITELIST - APENAS ADMIN)
+    // ==========================================
+    carregarUsuariosAutorizados: async () => {
+      const u = get().usuario;
+      if (!isUsuarioAdmin(u.email, u.uid, u.nome)) return;
+
+      try {
+        const nuvem = await FirestoreSyncService.baixarUsuariosAutorizados();
+        if (nuvem.length > 0) {
+          salvarNoStorage(STORAGE_KEY_USUARIOS_AUTORIZADOS, nuvem);
+          set({ usuariosAutorizados: nuvem });
+        }
+      } catch (err) {
+        console.error('Erro ao carregar usuários autorizados:', err);
+      }
+    },
+
+    adicionarUsuarioAutorizado: async (dados) => {
+      const u = get().usuario;
+      if (!isUsuarioAdmin(u.email, u.uid, u.nome)) {
+        return { sucesso: false, mensagem: 'Apenas o administrador pode autorizar usuários.' };
+      }
+
+      const email = dados.email.toLowerCase().trim();
+      if (!email.includes('@')) {
+        return { sucesso: false, mensagem: 'Por favor, informe um e-mail Google válido.' };
+      }
+
+      const lista = get().usuariosAutorizados;
+      if (lista.some(u => u.email.toLowerCase().trim() === email)) {
+        return { sucesso: false, mensagem: 'Este e-mail já está cadastrado na lista.' };
+      }
+
+      const novo: UsuarioAutorizado = {
+        id: `user-auth-${Date.now()}`,
+        nome: dados.nome.trim() || 'Usuário',
+        email,
+        status: 'ativo',
+        permitirSupervisao: dados.permitirSupervisao ?? false,
+        criadoEm: new Date().toISOString()
+      };
+
+      const novaLista = [...lista, novo];
+      salvarNoStorage(STORAGE_KEY_USUARIOS_AUTORIZADOS, novaLista);
+      set({ usuariosAutorizados: novaLista });
+      await FirestoreSyncService.salvarUsuariosAutorizados(novaLista);
+
+      get().mostrarToast(`Usuário "${novo.nome}" autorizado com sucesso!`, 'sucesso');
+      return { sucesso: true, mensagem: 'Usuário cadastrado com sucesso!' };
+    },
+
+    atualizarUsuarioAutorizado: async (id, dados) => {
+      const u = get().usuario;
+      if (!isUsuarioAdmin(u.email, u.uid, u.nome)) return;
+
+      const lista = get().usuariosAutorizados.map(u => u.id === id ? { ...u, ...dados } : u);
+      salvarNoStorage(STORAGE_KEY_USUARIOS_AUTORIZADOS, lista);
+      set({ usuariosAutorizados: lista });
+      await FirestoreSyncService.salvarUsuariosAutorizados(lista);
+      get().mostrarToast('Usuário atualizado com sucesso.', 'info');
+    },
+
+    excluirUsuarioAutorizado: async (id) => {
+      const u = get().usuario;
+      if (!isUsuarioAdmin(u.email, u.uid, u.nome)) return;
+
+      const lista = get().usuariosAutorizados.filter(u => u.id !== id);
+      salvarNoStorage(STORAGE_KEY_USUARIOS_AUTORIZADOS, lista);
+      set({ usuariosAutorizados: lista });
+      await FirestoreSyncService.salvarUsuariosAutorizados(lista);
+      get().mostrarToast('Autorização do usuário removida.', 'info');
+    },
+
+    alternarStatusUsuario: async (id) => {
+      const u = get().usuario;
+      if (!isUsuarioAdmin(u.email, u.uid, u.nome)) return;
+
+      const usuario = get().usuariosAutorizados.find(u => u.id === id);
+      if (!usuario) return;
+      const novoStatus = usuario.status === 'ativo' ? 'pausado' : 'ativo';
+      await get().atualizarUsuarioAutorizado(id, { status: novoStatus });
+      get().mostrarToast(`Acesso de ${usuario.nome} ${novoStatus === 'ativo' ? 'ativado' : 'pausado'}.`, 'info');
+    },
+
+    alternarSupervisaoUsuario: async (id) => {
+      const u = get().usuario;
+      if (!isUsuarioAdmin(u.email, u.uid, u.nome)) return;
+
+      const usuario = get().usuariosAutorizados.find(u => u.id === id);
+      if (!usuario) return;
+      const novoValor = !usuario.permitirSupervisao;
+      await get().atualizarUsuarioAutorizado(id, { permitirSupervisao: novoValor });
+      get().mostrarToast(
+        novoValor 
+          ? `Acompanhamento silencioso ATIVADO para ${usuario.nome}.` 
+          : `Acompanhamento silencioso DESATIVADO para ${usuario.nome}.`,
+        'sucesso'
+      );
+    },
+
+    // ==========================================
+    // 👁️ MODO SUPERVISÃO SILENCIOSA (APENAS ADMIN)
+    // ==========================================
+    ativarModoSupervisao: async (usuarioAlvo) => {
+      const uAdmin = get().usuario;
+      if (!isUsuarioAdmin(uAdmin.email, uAdmin.uid, uAdmin.nome)) return;
+
+      if (!usuarioAlvo.permitirSupervisao) {
+        get().mostrarToast('Este usuário não possui acompanhamento ativado.', 'info');
+        return;
+      }
+
+      set({ sincronizandoNuvem: true });
+
+      try {
+        let alvoUid = usuarioAlvo.uid;
+        if (!alvoUid) {
+          const autorizados = await FirestoreSyncService.baixarUsuariosAutorizados();
+          const achado = autorizados.find(u => u.email.toLowerCase().trim() === usuarioAlvo.email.toLowerCase().trim());
+          alvoUid = achado?.uid;
+        }
+
+        if (!alvoUid) {
+          get().mostrarToast(`${usuarioAlvo.nome} ainda não fez o primeiro login com esta conta Google.`, 'info');
+          set({ sincronizandoNuvem: false });
+          return;
+        }
+
+        const [lancamentosAlvo, cartoesAlvo, perfilAlvo, categoriasAlvo, naturezasAlvo] = await Promise.all([
+          FirestoreSyncService.baixarTodosLancamentos(alvoUid),
+          FirestoreSyncService.baixarCartoes(alvoUid),
+          FirestoreSyncService.baixarPerfil(alvoUid),
+          FirestoreSyncService.baixarCategorias(alvoUid),
+          FirestoreSyncService.baixarNaturezas(alvoUid),
+        ]);
+
+        set({
+          usuarioSupervisionadoAtivo: usuarioAlvo,
+          modoApenasLeitura: true, // Trava de segurança contra alterações acidentais!
+          lancamentos: lancamentosAlvo,
+          cartoes: cartoesAlvo,
+          categorias: categoriasAlvo.length > 0 ? categoriasAlvo : CATEGORIAS_PADRAO,
+          naturezas: naturezasAlvo.length > 0 ? naturezasAlvo : NATUREZAS_PADRAO,
+          usuario: perfilAlvo || {
+            nome: usuarioAlvo.nome,
+            titulo: 'Conta Supervisionada • Somente Leitura',
+            bancoPrincipal: cartoesAlvo[0]?.nome || 'Banco Principal',
+            avatarUrl: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80',
+            email: usuarioAlvo.email,
+            uid: alvoUid,
+          },
+          sincronizandoNuvem: false,
+          ultimoEventoTimestamp: Date.now()
+        });
+
+        get().mostrarToast(`👁️ Visualizando conta de ${usuarioAlvo.nome} (Apenas Leitura)`, 'info');
+      } catch (err) {
+        console.error('Erro no modo supervisão:', err);
+        set({ sincronizandoNuvem: false });
+        get().mostrarToast('Erro ao carregar dados do usuário supervisionado.', 'erro');
+      }
+    },
+
+    desativarModoSupervisao: async () => {
+      set({
+        usuarioSupervisionadoAtivo: null,
+        modoApenasLeitura: false,
+      });
+
+      // Recarrega os dados do Fábio (Master)
+      await get().autenticarUsuario({
+        uid: MASTER_UID,
+        nome: 'FABIO ALVES LUCENA',
+        email: ADMIN_EMAIL,
+      });
+
+      get().mostrarToast('Retornado para sua conta principal.', 'sucesso');
     },
   };
 });

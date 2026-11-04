@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
 import { useFinanceStore } from '../../stores/financeStore';
 import { formatarMoeda } from '../../lib/formatters';
-import { CreditCard, Calendar, Settings } from 'lucide-react';
+import { Settings } from 'lucide-react';
 import { ConfiguracoesBaseModal } from '../configuracoes/ConfiguracoesBaseModal';
+import { CartaoVisual } from './CartaoVisual';
 
 export const CartoesView: React.FC = () => {
-  const { obterResumoCartoes, competenciaAtiva } = useFinanceStore();
+  const { obterResumoCartoes, competenciaAtiva, usuario } = useFinanceStore();
   const [modalConfigAberto, setModalConfigAberto] = useState(false);
   const resumoCartoes = obterResumoCartoes();
 
@@ -66,28 +67,6 @@ export const CartoesView: React.FC = () => {
           const isBB = cartao.nome.includes('Banco do Brasil') || cartao.cor === '#F8D117';
           const isBradesco = cartao.nome.includes('Bradesco') || cartao.cor === '#CC092F';
 
-          // Definir gradiente de fundo autêntico de cada instituição financeira
-          let cardGradient = 'linear-gradient(135deg, #1A237E 0%, #0F2744 100%)';
-          let textColor = '#FFFFFF';
-          let subtitleColor = 'rgba(255, 255, 255, 0.85)';
-          let badgeBorder = '1px solid rgba(255, 255, 255, 0.2)';
-
-          if (isBB) {
-            // Estilo Ourocard Banco do Brasil (Amarelo vibrante com texto de contraste azul marinho)
-            cardGradient = 'linear-gradient(135deg, #F8D117 0%, #E2B802 45%, #0B2238 100%)';
-            textColor = '#0B1929';
-            subtitleColor = '#173F5F';
-            badgeBorder = '1px solid rgba(11, 25, 41, 0.3)';
-          } else if (isBradesco) {
-            // Estilo Bradesco Cartões (Vermelho institucional)
-            cardGradient = 'linear-gradient(135deg, #CC092F 0%, #8A051C 60%, #0F2744 100%)';
-            textColor = '#FFFFFF';
-            subtitleColor = 'rgba(255, 255, 255, 0.85)';
-            badgeBorder = '1px solid rgba(255, 255, 255, 0.2)';
-          } else if (cartao.cor) {
-            cardGradient = `linear-gradient(135deg, ${cartao.cor} 0%, #0F2744 100%)`;
-          }
-
           return (
             <div key={cartao.id} className="card" style={{
               display: 'flex',
@@ -96,69 +75,38 @@ export const CartoesView: React.FC = () => {
               gap: '1.25rem',
               position: 'relative',
               overflow: 'hidden',
-              borderColor: isBB ? '#F8D117' : isBradesco ? '#CC092F' : 'var(--border-subtle)'
+              padding: '16px',
+              backgroundColor: '#0F2744',
+              borderRadius: '20px',
+              border: isBB ? '1.5px solid #F8D117' : isBradesco ? '1.5px solid #CC092F' : '1px solid #1E3A5F'
             }}>
-              {/* Estilo do Topo do Cartão com Gradiente */}
-              <div style={{
-                background: cardGradient,
-                padding: '1.25rem',
-                borderRadius: 'var(--radius-lg)',
-                color: textColor,
-                boxShadow: 'var(--shadow-md)',
-                position: 'relative'
-              }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.5rem' }}>
-                  <div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                      <span style={{
-                        fontSize: '0.65rem',
-                        textTransform: 'uppercase',
-                        fontWeight: 800,
-                        letterSpacing: '0.08em',
-                        padding: '2px 6px',
-                        borderRadius: '4px',
-                        border: badgeBorder,
-                        backgroundColor: isBB ? 'rgba(11, 25, 41, 0.1)' : 'rgba(255, 255, 255, 0.15)',
-                        color: textColor
-                      }}>
-                        {cartao.bandeira}
-                      </span>
-                      {isBB && (
-                        <span style={{ fontSize: '0.65rem', fontWeight: 800, color: '#0B1929' }}>
-                          🟡 OUROCARD
-                        </span>
-                      )}
-                      {isBradesco && (
-                        <span style={{ fontSize: '0.65rem', fontWeight: 800, color: '#FFFFFF' }}>
-                          🔴 BRADESCO
-                        </span>
-                      )}
-                    </div>
-                    <h3 style={{ fontSize: '1.2rem', fontWeight: 900, margin: '6px 0 0 0', color: textColor }}>
-                      {cartao.nome}
-                    </h3>
-                  </div>
-                  <CreditCard size={28} color={textColor} opacity={0.9} />
-                </div>
+              {/* Cartão Visual Fiel às Imagens Oficiais dos Bancos */}
+              <div style={{ display: 'flex', justifyContent: 'center', width: '100%' }}>
+                <CartaoVisual 
+                  cartao={cartao}
+                  titularNome={usuario.nome}
+                  valorFatura={valorFatura}
+                  limiteDisponivel={limiteDisponivel}
+                  mostrarFatura={true}
+                />
+              </div>
 
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
-                  <div>
-                    <span style={{ fontSize: '0.7rem', color: subtitleColor, display: 'block', fontWeight: 700 }}>
-                      Fatura em Aberto
-                    </span>
-                    <span style={{ fontSize: '1.45rem', fontWeight: 900, color: textColor }}>
-                      {formatarMoeda(valorFatura)}
-                    </span>
-                  </div>
-                  <div style={{ textAlign: 'right' }}>
-                    <span style={{ fontSize: '0.68rem', color: subtitleColor, display: 'flex', alignItems: 'center', gap: '3px', justifyContent: 'flex-end' }}>
-                      <Calendar size={11} /> Fech. / Venc.
-                    </span>
-                    <span style={{ fontSize: '0.9rem', fontWeight: 800, color: textColor }}>
-                      Dia {cartao.diaFechamento} / Dia {cartao.diaVencimento}
-                    </span>
-                  </div>
-                </div>
+              {/* Informações de Fechamento e Vencimento */}
+              <div style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                padding: '8px 12px',
+                borderRadius: '10px',
+                backgroundColor: '#132F4C',
+                fontSize: '11.5px'
+              }}>
+                <span style={{ color: '#AAB4BE' }}>
+                  Fechamento: <strong style={{ color: '#FFFFFF' }}>Dia {cartao.diaFechamento}</strong>
+                </span>
+                <span style={{ color: '#AAB4BE' }}>
+                  Vencimento: <strong style={{ color: '#F8D117' }}>Dia {cartao.diaVencimento}</strong>
+                </span>
               </div>
 
               {/* Barra de Limite */}

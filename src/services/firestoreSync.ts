@@ -12,7 +12,7 @@ import {
   type Unsubscribe 
 } from 'firebase/firestore';
 import { db, isFirebaseConfigured } from './firebase';
-import type { Lancamento, Cartao, Categoria, Natureza } from '../types';
+import type { Lancamento, Cartao, Categoria, Natureza, UsuarioAutorizado } from '../types';
 import type { UsuarioPerfil } from '../stores/financeStore';
 
 export const MASTER_UID = 'fabio-master-uid';
@@ -439,6 +439,58 @@ export class FirestoreSyncService {
       this.unsubscribers.push(unsub);
     } catch (e) {
       console.warn('Erro ao registrar listener Firestore:', e);
+    }
+  }
+
+  /**
+   * Salva a lista de usuários autorizados no Firestore
+   */
+  public static async salvarUsuariosAutorizados(usuarios: UsuarioAutorizado[]): Promise<void> {
+    if (!db || !isFirebaseConfigured) return;
+    try {
+      const docRef = doc(db, 'config_sistema', 'usuarios_autorizados');
+      await setDoc(docRef, {
+        usuarios: usuarios.map(u => sanitizarParaFirestore(u)),
+        atualizadoEm: new Date().toISOString()
+      }, { merge: true });
+    } catch (e) {
+      console.error('Erro ao salvar usuários autorizados no Firestore:', e);
+    }
+  }
+
+  /**
+   * Baixa a lista de usuários autorizados
+   */
+  public static async baixarUsuariosAutorizados(): Promise<UsuarioAutorizado[]> {
+    if (!db || !isFirebaseConfigured) return [];
+    try {
+      const docRef = doc(db, 'config_sistema', 'usuarios_autorizados');
+      const snap = await getDoc(docRef);
+      if (snap.exists() && snap.data()?.usuarios) {
+        return snap.data().usuarios as UsuarioAutorizado[];
+      }
+      return [];
+    } catch (e) {
+      console.error('Erro ao baixar usuários autorizados do Firestore:', e);
+      return [];
+    }
+  }
+
+  /**
+   * Inicia escuta em tempo real dos usuários autorizados
+   */
+  public static iniciarEscutaUsuariosAutorizados(callback: (usuarios: UsuarioAutorizado[]) => void): () => void {
+    if (!db || !isFirebaseConfigured) return () => {};
+    try {
+      const docRef = doc(db, 'config_sistema', 'usuarios_autorizados');
+      return onSnapshot(docRef, (snap) => {
+        if (snap.exists() && snap.data()?.usuarios) {
+          callback(snap.data().usuarios as UsuarioAutorizado[]);
+        }
+      }, (err) => console.warn('Erro listener usuários autorizados:', err));
+    } catch (e) {
+      console.warn('Erro ao registrar listener de usuários autorizados:', e);
+      return () => {};
     }
   }
 

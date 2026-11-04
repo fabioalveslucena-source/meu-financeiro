@@ -9,23 +9,69 @@ import { CartoesView } from '../cartoes/CartoesView';
 import { AnalisesView } from '../analises/AnalisesView';
 import { VoiceModal } from '../voz/VoiceModal';
 import { PinLockScreen } from '../seguranca/PinLockScreen';
-import { useFinanceStore } from '../../stores/financeStore';
+import { MinimalistLoginScreen } from '../seguranca/MinimalistLoginScreen';
+import { SyncProgressOverlay } from '../comum/SyncProgressOverlay';
+import { OnboardingModal } from '../comum/OnboardingModal';
+import { ConfiguracoesBaseModal } from '../configuracoes/ConfiguracoesBaseModal';
+import { useFinanceStore, isUsuarioAdmin } from '../../stores/financeStore';
 import { FirestoreSyncService, MASTER_UID } from '../../services/firestoreSync';
 import type { VozInterpretada } from '../../features/voice/voiceInterpreter';
+import type { TipoLancamento } from '../../types';
+import { observarEstadoAuth } from '../../features/auth/googleAuth';
 
 export const AppShell: React.FC = () => {
   const [secaoAtiva, setSecaoAtiva] = useState<SecaoAtiva>('inicio');
   const [modalVozAberto, setModalVozAberto] = useState(false);
   const [dadosVozPreenchimento, setDadosVozPreenchimento] = useState<VozInterpretada | null>(null);
+  const [tipoLancamentoInicial, setTipoLancamentoInicial] = useState<TipoLancamento | undefined>(undefined);
+  const [modalOnboardingAberto, setModalOnboardingAberto] = useState(false);
+  const [modalConfigCartaoAberto, setModalConfigCartaoAberto] = useState(false);
+  const [continuarOffline, setContinuarOffline] = useState(false);
 
-  const { toast, limparToast, sincronizarComNuvem } = useFinanceStore();
+  const { 
+    toast, 
+    limparToast, 
+    sincronizarComNuvem, 
+    usuario, 
+    autenticarUsuario,
+    carregarUsuariosAutorizados,
+    cartoes
+  } = useFinanceStore();
+
+  // Verifica se o usuário precisa de Onboarding (quando está logado e não tem cartões)
+  useEffect(() => {
+    if (usuario.uid && usuario.nome !== 'Novo Usuário' && cartoes.length === 0) {
+      setModalOnboardingAberto(true);
+    }
+  }, [usuario.uid, usuario.nome, cartoes.length]);
+
+  // Carrega a lista de usuários autorizados (whitelist) apenas se for administrador
+  useEffect(() => {
+    if (isUsuarioAdmin(usuario.email, usuario.uid, usuario.nome)) {
+      carregarUsuariosAutorizados();
+    }
+  }, [usuario.email, usuario.uid, usuario.nome, carregarUsuariosAutorizados]);
+
+  // Escuta autenticação Google e sincroniza a partição do usuário
+  useEffect(() => {
+    const unsubAuth = observarEstadoAuth(async (perfilGoogle) => {
+      if (perfilGoogle && perfilGoogle.uid !== usuario.uid) {
+        await autenticarUsuario(perfilGoogle);
+      }
+    });
+
+    return () => unsubAuth();
+  }, [usuario.uid, autenticarUsuario]);
 
   useEffect(() => {
-    // Sincroniza dados com a nuvem Firestore automaticamente ao abrir o app
+    const uid = usuario.uid || (usuario.nome === 'Novo Usuário' ? '' : MASTER_UID);
+    if (!uid) return;
+
+    // Sincroniza dados com a nuvem Firestore automaticamente para o usuário ativo
     sincronizarComNuvem();
 
-    // Ativa a escuta contínua em tempo real entre todos os aparelhos
-    FirestoreSyncService.iniciarEscutaTempoReal(MASTER_UID, (lancamentosNuvem) => {
+    // Ativa a escuta contínua em tempo real para este UID
+    FirestoreSyncService.iniciarEscutaTempoReal(uid, (lancamentosNuvem) => {
       useFinanceStore.setState((state) => {
         const idsLocais = new Set(state.lancamentos.map((l) => l.id));
         const mapLocal = new Map(state.lancamentos.map((l) => [l.id, l]));
@@ -41,20 +87,16 @@ export const AppShell: React.FC = () => {
                       });
 
         if (mudou) {
-          // Detecta se vieram novas compras do Meu Mercado em tempo real
           const novosMercado = lancamentosNuvem.filter(
             (n) => (n.origem === 'meu-mercado' || n.detalhesMercado) && !idsLocais.has(n.id)
           );
-          if (novosMercado.length > 0) {
+          if (novosMercado.length > 0 && isUsuarioAdmin(usuario.email, usuario.uid, usuario.nome)) {
             useFinanceStore.getState().mostrarToast(
               `🛒 ${novosMercado.length} compra(s) do Meu Mercado recebida(s) em tempo real!`,
               'sucesso'
             );
           }
 
-          try {
-            localStorage.setItem('mf_lancamentos_v1', JSON.stringify(lancamentosNuvem));
-          } catch (_) {}
           return { lancamentos: lancamentosNuvem, ultimoEventoTimestamp: Date.now() };
         }
         return {};
@@ -64,12 +106,22 @@ export const AppShell: React.FC = () => {
     return () => {
       FirestoreSyncService.pararSincronizacao();
     };
-  }, [sincronizarComNuvem]);
+  }, [usuario.uid, sincronizarComNuvem]);
 
   const handleConfirmarVoz = (dados: VozInterpretada) => {
     setDadosVozPreenchimento(dados);
     setSecaoAtiva('lancar');
   };
+
+  // Se não estiver logado com Google e não tiver optado por testar offline, exibe tela de login minimalista
+  if ((!usuario.uid || usuario.nome === 'Novo Usuário') && !continuarOffline) {
+    return (
+      <>
+        <MinimalistLoginScreen onContinuarOffline={() => setContinuarOffline(true)} />
+        <SyncProgressOverlay />
+      </>
+    );
+  }
 
   return (
     <div style={{
@@ -81,6 +133,9 @@ export const AppShell: React.FC = () => {
       alignItems: 'center',
       transition: 'background-color 0.25s ease, color 0.25s ease'
     }}>
+      {/* Overlay de Progresso de Sincronização em Tempo Real */}
+      <SyncProgressOverlay />
+
       {/* Toast Notificação */}
       {toast && (
         <div 
@@ -120,10 +175,14 @@ export const AppShell: React.FC = () => {
         }}>
           {secaoAtiva === 'inicio' && (
             <InicioView 
-              onIrParaLancar={() => setSecaoAtiva('lancar')}
+              onIrParaLancar={(tipo) => {
+                setTipoLancamentoInicial(tipo);
+                setSecaoAtiva('lancar');
+              }}
               onAbrirVoz={() => setModalVozAberto(true)}
               onIrParaGerenciar={() => setSecaoAtiva('extrato')}
               onIrParaCartoes={() => setSecaoAtiva('cartoes')}
+              onCadastrarCartao={() => setModalConfigCartaoAberto(true)}
             />
           )}
 
@@ -131,6 +190,7 @@ export const AppShell: React.FC = () => {
             <FormLancamento 
               onAbrirVoz={() => setModalVozAberto(true)} 
               dadosPreenchidosVoz={dadosVozPreenchimento}
+              tipoInicial={tipoLancamentoInicial}
             />
           )}
 
@@ -151,6 +211,20 @@ export const AppShell: React.FC = () => {
           onSelecionarSecao={setSecaoAtiva} 
         />
       </div>
+
+      {/* Modal de Onboarding para Usuário Sem Cartão */}
+      <OnboardingModal
+        aberto={modalOnboardingAberto}
+        onFechar={() => setModalOnboardingAberto(false)}
+        onCadastrarCartao={() => setModalConfigCartaoAberto(true)}
+      />
+
+      {/* Modal de Configuração de Cartão Direto */}
+      <ConfiguracoesBaseModal
+        aberto={modalConfigCartaoAberto}
+        onFechar={() => setModalConfigCartaoAberto(false)}
+        abaInicial="cartoes"
+      />
 
       {/* Modal de Voz Flutuante */}
       <VoiceModal

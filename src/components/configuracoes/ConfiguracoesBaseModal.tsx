@@ -1,5 +1,5 @@
-import React, { useState, useRef } from 'react';
-import { useFinanceStore } from '../../stores/financeStore';
+import React, { useState, useRef, useEffect } from 'react';
+import { useFinanceStore, isUsuarioAdmin } from '../../stores/financeStore';
 import { formatarMoeda, parseMoedaBR } from '../../lib/formatters';
 import type { Cartao } from '../../types';
 import { 
@@ -11,24 +11,31 @@ import {
   Trash2, 
   Edit3, 
   Check, 
-  Save,
-  Lock,
-  Database,
-  DownloadCloud,
-  UploadCloud,
-  Shield,
-  Fingerprint,
-  Globe,
-  CloudLightning,
-  RotateCw
+  Save, 
+  Lock, 
+  Database, 
+  DownloadCloud, 
+  UploadCloud, 
+  Shield, 
+  Fingerprint, 
+  Globe, 
+  CloudLightning, 
+  RotateCw,
+  Users,
+  Eye,
+  EyeOff,
+  UserPlus,
+  CheckCircle,
+  User
 } from 'lucide-react';
-import { fazerLoginGoogle } from '../../features/auth/googleAuth';
+import { fazerLoginGoogle, fazerLogoutGoogle } from '../../features/auth/googleAuth';
 import { isFirebaseConfigured } from '../../services/firebase';
 
 interface ConfiguracoesBaseModalProps {
   aberto: boolean;
   onFechar: () => void;
-  abaInicial?: 'cartoes' | 'categorias' | 'banco' | 'seguranca' | 'backup' | 'nuvem';
+  abaInicial?: 'cartoes' | 'categorias' | 'banco' | 'seguranca' | 'backup' | 'nuvem' | 'usuarios' | 'conta';
+  onNavegar?: (destino: string) => void;
 }
 
 const CORES_PALETA = [
@@ -59,6 +66,7 @@ export const ConfiguracoesBaseModal: React.FC<ConfiguracoesBaseModalProps> = ({
   aberto,
   onFechar,
   abaInicial = 'cartoes',
+  onNavegar,
 }) => {
   const { 
     cartoes, 
@@ -80,10 +88,48 @@ export const ConfiguracoesBaseModal: React.FC<ConfiguracoesBaseModalProps> = ({
     sincronizarComNuvem,
     enviarTudoParaNuvem,
     baixarTudoDaNuvem,
-    sincronizandoNuvem
+    sincronizandoNuvem,
+    autenticarUsuario,
+    desconectarUsuario,
+    usuariosAutorizados,
+    adicionarUsuarioAutorizado,
+    excluirUsuarioAutorizado,
+    alternarStatusUsuario,
+    alternarSupervisaoUsuario,
+    ativarModoSupervisao,
+    carregarUsuariosAutorizados,
+    mostrarToast
   } = useFinanceStore();
 
-  const [abaAtiva, setAbaAtiva] = useState<'cartoes' | 'categorias' | 'banco' | 'seguranca' | 'backup' | 'nuvem'>(abaInicial);
+  const ehAdmin = isUsuarioAdmin(usuario.email, usuario.uid, usuario.nome);
+
+  const [abaAtiva, setAbaAtiva] = useState<'cartoes' | 'categorias' | 'banco' | 'seguranca' | 'backup' | 'nuvem' | 'usuarios' | 'conta'>(abaInicial);
+
+  // Sincroniza a aba ativa sempre que o modal for aberto com uma aba específica
+  useEffect(() => {
+    if (aberto && abaInicial) {
+      setAbaAtiva(abaInicial);
+    }
+  }, [aberto, abaInicial]);
+
+  // Se for usuário comum e tentar acessar aba administrativa, redireciona para 'cartoes'
+  useEffect(() => {
+    if (!ehAdmin && (abaAtiva === 'backup' || abaAtiva === 'nuvem' || abaAtiva === 'usuarios')) {
+      setAbaAtiva('cartoes');
+    }
+  }, [ehAdmin, abaAtiva]);
+
+  // Estados de Gestão de Usuários (Whitelist)
+  const [novoNomeUsuario, setNovoNomeUsuario] = useState('');
+  const [novoEmailUsuario, setNovoEmailUsuario] = useState('');
+  const [novoPermitirSupervisao, setNovoPermitirSupervisao] = useState(false);
+  const [salvandoUsuario, setSalvandoUsuario] = useState(false);
+
+  useEffect(() => {
+    if (ehAdmin) {
+      carregarUsuariosAutorizados();
+    }
+  }, [ehAdmin, carregarUsuariosAutorizados]);
 
   // Estados de Segurança
   const [pinForm, setPinForm] = useState(seguranca.pin || '');
@@ -253,10 +299,12 @@ export const ConfiguracoesBaseModal: React.FC<ConfiguracoesBaseModalProps> = ({
         }}>
           <div>
             <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 800, color: '#FFFFFF' }}>
-              ⚙️ Personalizar & Base de Dados
+              ⚙️ {ehAdmin ? 'Painel de Configurações & Base de Dados' : 'Minhas Preferências & Cartões'}
             </h3>
             <span style={{ fontSize: '11px', color: '#AAB4BE' }}>
-              Altere limites de cartões, bancos cadastrados, naturezas e categorias
+              {ehAdmin 
+                ? 'Gerencie cartões, categorias, bancos, nuvem e acessos familiares'
+                : 'Personalize seus cartões de crédito, categorias e banco preferido'}
             </span>
           </div>
 
@@ -276,25 +324,31 @@ export const ConfiguracoesBaseModal: React.FC<ConfiguracoesBaseModalProps> = ({
           </button>
         </div>
 
-        {/* Abas Superiores do Modal */}
+        {/* Abas Superiores do Modal com Rolagem Horizontal Suave */}
         <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(6, 1fr)',
+          display: 'flex',
+          overflowX: 'auto',
+          whiteSpace: 'nowrap',
           borderBottom: '1px solid #1E3A5F',
           backgroundColor: '#0B1929',
-          overflowX: 'auto',
+          padding: '0 8px',
+          scrollbarWidth: 'none',
+          WebkitOverflowScrolling: 'touch',
+          gap: '6px'
         }}>
+          {/* Aba Cartões (Todos) */}
           <button
             type="button"
             onClick={() => setAbaAtiva('cartoes')}
             style={{
-              padding: '12px 4px',
+              flex: '0 0 auto',
+              padding: '12px 12px',
               border: 'none',
               borderBottom: abaAtiva === 'cartoes' ? '3px solid #F8D117' : '3px solid transparent',
               backgroundColor: 'transparent',
               color: abaAtiva === 'cartoes' ? '#F8D117' : '#AAB4BE',
               fontWeight: abaAtiva === 'cartoes' ? 800 : 600,
-              fontSize: '11px',
+              fontSize: '11.5px',
               cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
@@ -303,20 +357,22 @@ export const ConfiguracoesBaseModal: React.FC<ConfiguracoesBaseModalProps> = ({
             }}
           >
             <CreditCard size={14} />
-            <span>Cartões</span>
+            <span>{ehAdmin ? 'Cartões' : 'Meus Cartões'}</span>
           </button>
 
+          {/* Aba Categorias (Todos) */}
           <button
             type="button"
             onClick={() => setAbaAtiva('categorias')}
             style={{
-              padding: '12px 4px',
+              flex: '0 0 auto',
+              padding: '12px 12px',
               border: 'none',
               borderBottom: abaAtiva === 'categorias' ? '3px solid #F8D117' : '3px solid transparent',
               backgroundColor: 'transparent',
               color: abaAtiva === 'categorias' ? '#F8D117' : '#AAB4BE',
               fontWeight: abaAtiva === 'categorias' ? 800 : 600,
-              fontSize: '11px',
+              fontSize: '11.5px',
               cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
@@ -328,17 +384,19 @@ export const ConfiguracoesBaseModal: React.FC<ConfiguracoesBaseModalProps> = ({
             <span>Categorias</span>
           </button>
 
+          {/* Aba Banco (Todos) */}
           <button
             type="button"
             onClick={() => setAbaAtiva('banco')}
             style={{
-              padding: '12px 4px',
+              flex: '0 0 auto',
+              padding: '12px 12px',
               border: 'none',
               borderBottom: abaAtiva === 'banco' ? '3px solid #F8D117' : '3px solid transparent',
               backgroundColor: 'transparent',
               color: abaAtiva === 'banco' ? '#F8D117' : '#AAB4BE',
               fontWeight: abaAtiva === 'banco' ? 800 : 600,
-              fontSize: '11px',
+              fontSize: '11.5px',
               cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
@@ -347,20 +405,22 @@ export const ConfiguracoesBaseModal: React.FC<ConfiguracoesBaseModalProps> = ({
             }}
           >
             <Building2 size={14} />
-            <span>Banco</span>
+            <span>{ehAdmin ? 'Banco' : 'Meu Banco'}</span>
           </button>
 
+          {/* Aba Segurança (Todos) */}
           <button
             type="button"
             onClick={() => setAbaAtiva('seguranca')}
             style={{
-              padding: '12px 4px',
+              flex: '0 0 auto',
+              padding: '12px 12px',
               border: 'none',
               borderBottom: abaAtiva === 'seguranca' ? '3px solid #F8D117' : '3px solid transparent',
               backgroundColor: 'transparent',
               color: abaAtiva === 'seguranca' ? '#F8D117' : '#AAB4BE',
               fontWeight: abaAtiva === 'seguranca' ? 800 : 600,
-              fontSize: '11px',
+              fontSize: '11.5px',
               cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
@@ -372,49 +432,111 @@ export const ConfiguracoesBaseModal: React.FC<ConfiguracoesBaseModalProps> = ({
             <span>Segurança</span>
           </button>
 
-          <button
-            type="button"
-            onClick={() => setAbaAtiva('backup')}
-            style={{
-              padding: '12px 4px',
-              border: 'none',
-              borderBottom: abaAtiva === 'backup' ? '3px solid #F8D117' : '3px solid transparent',
-              backgroundColor: 'transparent',
-              color: abaAtiva === 'backup' ? '#F8D117' : '#AAB4BE',
-              fontWeight: abaAtiva === 'backup' ? 800 : 600,
-              fontSize: '11px',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '4px',
-            }}
-          >
-            <Database size={14} />
-            <span>Backup</span>
-          </button>
+          {/* Aba Minha Conta (Apenas Usuários Comuns) */}
+          {!ehAdmin && (
+            <button
+              type="button"
+              onClick={() => setAbaAtiva('conta')}
+              style={{
+                flex: '0 0 auto',
+                padding: '12px 14px',
+                border: 'none',
+                borderBottom: abaAtiva === 'conta' ? '3px solid #F8D117' : '3px solid transparent',
+                backgroundColor: 'transparent',
+                color: abaAtiva === 'conta' ? '#F8D117' : '#AAB4BE',
+                fontWeight: abaAtiva === 'conta' ? 800 : 600,
+                fontSize: '11.5px',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '5px',
+              }}
+            >
+              <User size={14} />
+              <span>Minha Conta</span>
+            </button>
+          )}
 
-          <button
-            type="button"
-            onClick={() => setAbaAtiva('nuvem')}
-            style={{
-              padding: '12px 4px',
-              border: 'none',
-              borderBottom: abaAtiva === 'nuvem' ? '3px solid #F8D117' : '3px solid transparent',
-              backgroundColor: 'transparent',
-              color: abaAtiva === 'nuvem' ? '#F8D117' : '#AAB4BE',
-              fontWeight: abaAtiva === 'nuvem' ? 800 : 600,
-              fontSize: '11px',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '4px',
-            }}
-          >
-            <Globe size={14} />
-            <span>Google & Nuvem</span>
-          </button>
+          {/* Aba Backup (Apenas Administrador) */}
+          {ehAdmin && (
+            <button
+              type="button"
+              onClick={() => setAbaAtiva('backup')}
+              style={{
+                flex: '0 0 auto',
+                padding: '12px 12px',
+                border: 'none',
+                borderBottom: abaAtiva === 'backup' ? '3px solid #F8D117' : '3px solid transparent',
+                backgroundColor: 'transparent',
+                color: abaAtiva === 'backup' ? '#F8D117' : '#AAB4BE',
+                fontWeight: abaAtiva === 'backup' ? 800 : 600,
+                fontSize: '11.5px',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '4px',
+              }}
+            >
+              <Database size={14} />
+              <span>Backup</span>
+            </button>
+          )}
+
+          {/* Aba Google & Nuvem (Apenas Administrador) */}
+          {ehAdmin && (
+            <button
+              type="button"
+              onClick={() => setAbaAtiva('nuvem')}
+              style={{
+                flex: '0 0 auto',
+                padding: '12px 12px',
+                border: 'none',
+                borderBottom: abaAtiva === 'nuvem' ? '3px solid #F8D117' : '3px solid transparent',
+                backgroundColor: 'transparent',
+                color: abaAtiva === 'nuvem' ? '#F8D117' : '#AAB4BE',
+                fontWeight: abaAtiva === 'nuvem' ? 800 : 600,
+                fontSize: '11.5px',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '4px',
+              }}
+            >
+              <Globe size={14} />
+              <span>Google & Nuvem</span>
+            </button>
+          )}
+
+          {/* Aba Usuários (Apenas Administrador) */}
+          {ehAdmin && (
+            <button
+              type="button"
+              onClick={() => setAbaAtiva('usuarios')}
+              style={{
+                flex: '0 0 auto',
+                padding: '12px 14px',
+                border: 'none',
+                borderBottom: abaAtiva === 'usuarios' ? '3px solid #F8D117' : '3px solid transparent',
+                backgroundColor: abaAtiva === 'usuarios' ? 'rgba(248, 209, 23, 0.22)' : 'rgba(248, 209, 23, 0.1)',
+                color: '#F8D117',
+                fontWeight: 800,
+                fontSize: '11.5px',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '6px',
+                borderRadius: '8px 8px 0 0'
+              }}
+              title="Gerenciar lista de pessoas autorizadas e acompanhamento"
+            >
+              <Users size={15} color="#F8D117" />
+              <span>👥 Usuários (Família)</span>
+            </button>
+          )}
         </div>
 
         {/* Conteúdo da Aba */}
@@ -823,7 +945,12 @@ export const ConfiguracoesBaseModal: React.FC<ConfiguracoesBaseModalProps> = ({
                     return (
                       <div
                         key={b.nome}
-                        onClick={() => setUsuario({ bancoPrincipal: b.nome })}
+                        onClick={() => {
+                          setUsuario({ bancoPrincipal: b.nome });
+                          mostrarToast(`Banco principal definido como ${b.nome}!`, 'sucesso');
+                          onFechar();
+                          onNavegar?.('inicio');
+                        }}
                         style={{
                           backgroundColor: ativo ? 'rgba(248, 209, 23, 0.15)' : '#132F4C',
                           border: `1.5px solid ${ativo ? b.cor : '#1E3A5F'}`,
@@ -1011,9 +1138,9 @@ export const ConfiguracoesBaseModal: React.FC<ConfiguracoesBaseModalProps> = ({
           )}
 
           {/* ========================================================
-               ABA 5: BACKUP EM NUVEM & SINCRONIZAÇÃO JSON
+               ABA 5: BACKUP EM NUVEM & SINCRONIZAÇÃO JSON (ADMIN)
              ======================================================== */}
-          {abaAtiva === 'backup' && (
+          {ehAdmin && abaAtiva === 'backup' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
               <div style={{
                 padding: '14px',
@@ -1117,9 +1244,9 @@ export const ConfiguracoesBaseModal: React.FC<ConfiguracoesBaseModalProps> = ({
           )}
 
           {/* ========================================================
-              🌐 ABA 6: NUVEM & GOOGLE MAGIC LOGON
+              🌐 ABA 6: NUVEM & GOOGLE MAGIC LOGON (ADMIN)
              ======================================================== */}
-          {abaAtiva === 'nuvem' && (
+          {ehAdmin && abaAtiva === 'nuvem' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
               <div>
                 <h3 style={{ fontSize: '15px', fontWeight: 800, margin: 0, color: '#FFFFFF', display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -1128,6 +1255,48 @@ export const ConfiguracoesBaseModal: React.FC<ConfiguracoesBaseModalProps> = ({
                 <span style={{ fontSize: '12px', color: '#AAB4BE' }}>
                   Sincronização em tempo real entre PC, Mac, Xiaomi Poco X5 Pro e iPhone.
                 </span>
+              </div>
+
+              {/* Card de Destaque: Autorizar Familiares (Sem Pedir Senha) */}
+              <div
+                onClick={() => setAbaAtiva('usuarios')}
+                style={{
+                  padding: '14px 16px',
+                  borderRadius: '14px',
+                  backgroundColor: 'rgba(248, 209, 23, 0.14)',
+                  border: '1.5px solid #F8D117',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  gap: '12px',
+                  cursor: 'pointer',
+                  boxShadow: '0 4px 14px rgba(248, 209, 23, 0.15)'
+                }}
+              >
+                <div>
+                  <strong style={{ color: '#F8D117', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <Users size={16} />
+                    <span>Quer autorizar sua Esposa ou seu Filho?</span>
+                  </strong>
+                  <p style={{ margin: '4px 0 0 0', fontSize: '11.5px', color: '#E0E0E0', lineHeight: 1.4 }}>
+                    Clique aqui para abrir o cadastro de pessoas autorizadas (você <strong>NÃO</strong> precisa da senha deles!).
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  className="btn-primary"
+                  style={{
+                    padding: '8px 14px',
+                    fontSize: '12px',
+                    fontWeight: 800,
+                    whiteSpace: 'nowrap',
+                    pointerEvents: 'none',
+                    backgroundColor: '#F8D117',
+                    color: '#0F2744'
+                  }}
+                >
+                  Abrir Cadastro 👥
+                </button>
               </div>
 
               {/* Card de Perfil Conectado */}
@@ -1178,30 +1347,55 @@ export const ConfiguracoesBaseModal: React.FC<ConfiguracoesBaseModalProps> = ({
                   </div>
                 </div>
 
-                <button
-                  type="button"
-                  onClick={async () => {
-                    try {
-                      const res = await fazerLoginGoogle();
-                      if (res) {
-                        setUsuario({
-                          nome: res.nome,
-                          email: res.email,
-                          avatarUrl: res.fotoUrl,
-                          uid: res.uid
-                        });
-                        alert(`Bem-vindo, ${res.nome}! Sessão Google Magic Logon sincronizada.`);
+                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      try {
+                        const res = await fazerLoginGoogle();
+                        if (res) {
+                          await autenticarUsuario(res);
+                        }
+                      } catch (e) {
+                        alert('Não foi possível conectar ao Google no momento.');
                       }
-                    } catch (e) {
-                      alert('Não foi possível conectar ao Google no momento.');
-                    }
-                  }}
-                  className="btn-primary"
-                  style={{ gap: '6px', fontSize: '12px', padding: '8px 14px' }}
-                >
-                  <CloudLightning size={14} />
-                  <span>Google Magic Logon</span>
-                </button>
+                    }}
+                    className="btn-primary"
+                    style={{ gap: '6px', fontSize: '12px', padding: '8px 14px' }}
+                  >
+                    <CloudLightning size={14} />
+                    <span>{usuario.uid ? 'Trocar Conta Google' : 'Google Magic Logon'}</span>
+                  </button>
+
+                  {usuario.uid && (
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        if (confirm('Deseja realmente desconectar esta conta no dispositivo?')) {
+                          await fazerLogoutGoogle();
+                          await desconectarUsuario();
+                        }
+                      }}
+                      className="btn-secondary"
+                      style={{ gap: '6px', fontSize: '12px', padding: '8px 14px', color: '#F44336', borderColor: 'rgba(244, 67, 54, 0.4)' }}
+                    >
+                      <span>Desconectar</span>
+                    </button>
+                  )}
+                </div>
+
+                <div style={{
+                  fontSize: '11px',
+                  color: '#90CAF9',
+                  backgroundColor: 'rgba(25, 118, 210, 0.12)',
+                  padding: '8px 12px',
+                  borderRadius: '10px',
+                  border: '1px solid rgba(25, 118, 210, 0.3)',
+                  lineHeight: 1.4
+                }}>
+                  ℹ️ <strong>Atenção:</strong> O botão acima serve apenas para <strong>VOCÊ</strong> conectar a sua própria conta Google. 
+                  Você <strong>NÃO</strong> precisa saber a senha de ninguém! Para autorizar sua esposa ou seu filho, acesse a aba <strong>👥 Usuários</strong> logo acima — lá você só digita o e-mail deles, sem senha.
+                </div>
               </div>
 
               {/* Status da Conexão Firebase e Base de Dados */}
@@ -1317,6 +1511,439 @@ export const ConfiguracoesBaseModal: React.FC<ConfiguracoesBaseModalProps> = ({
                   ☁️ Como funciona a sincronização entre PC e Celular:
                 </strong>
                 Ao abrir o aplicativo em qualquer aparelho, ele conecta automaticamente ao Google Cloud Firestore. Se você realizou lançamentos no computador (como os meses de novembro/dezembro), basta clicar em <strong>"🔄 Sincronizar Tudo Agora"</strong> ou <strong>"Enviar para Nuvem"</strong> no computador uma vez para que o celular receba todos os dados instantaneamente!
+              </div>
+            </div>
+          )}
+
+          {/* ========================================================
+               ABA 7: 👥 USUÁRIOS AUTORIZADOS & WHITELIST (ADMIN)
+             ======================================================== */}
+          {ehAdmin && abaAtiva === 'usuarios' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <div>
+                <h4 style={{ margin: 0, fontSize: '14px', fontWeight: 800, color: '#FFFFFF', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <Users size={16} color="#F8D117" />
+                  <span>Controle de Acessos & Whitelist Familiar</span>
+                </h4>
+                <p style={{ margin: '4px 0 0 0', fontSize: '11.5px', color: '#AAB4BE', lineHeight: 1.4 }}>
+                  Apenas as pessoas cadastradas abaixo conseguirão fazer login no aplicativo. Se alguém repassar seu link, pessoas não autorizadas serão bloqueadas.
+                </p>
+              </div>
+
+              {/* Formulário: Adicionar Novo Usuário Autorizado */}
+              <div style={{
+                padding: '16px',
+                borderRadius: '16px',
+                backgroundColor: '#132F4C',
+                border: '1.5px solid rgba(80, 144, 211, 0.4)',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '12px'
+              }}>
+                <strong style={{ fontSize: '12.5px', color: '#FFFFFF', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <UserPlus size={15} color="#4CAF50" />
+                  <span>Autorizar Nova Pessoa</span>
+                </strong>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                  <div>
+                    <label style={{ fontSize: '11px', color: '#AAB4BE', display: 'block', marginBottom: '4px' }}>
+                      Nome da Pessoa:
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="Ex: Esposa, Filho..."
+                      value={novoNomeUsuario}
+                      onChange={(e) => setNovoNomeUsuario(e.target.value)}
+                      style={{
+                        width: '100%',
+                        padding: '8px 12px',
+                        borderRadius: '10px',
+                        backgroundColor: '#0B1929',
+                        border: '1px solid #1E3A5F',
+                        color: '#FFFFFF',
+                        fontSize: '12.5px'
+                      }}
+                    />
+                  </div>
+
+                  <div>
+                    <label style={{ fontSize: '11px', color: '#AAB4BE', display: 'block', marginBottom: '4px' }}>
+                      E-mail Google (Gmail):
+                    </label>
+                    <input
+                      type="email"
+                      placeholder="usuario@gmail.com"
+                      value={novoEmailUsuario}
+                      onChange={(e) => setNovoEmailUsuario(e.target.value)}
+                      style={{
+                        width: '100%',
+                        padding: '8px 12px',
+                        borderRadius: '10px',
+                        backgroundColor: '#0B1929',
+                        border: '1px solid #1E3A5F',
+                        color: '#FFFFFF',
+                        fontSize: '12.5px'
+                      }}
+                    />
+                  </div>
+                </div>
+
+                {/* Opção de Acompanhamento Silencioso */}
+                <label style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  cursor: 'pointer',
+                  backgroundColor: 'rgba(11, 25, 41, 0.6)',
+                  padding: '10px 12px',
+                  borderRadius: '10px',
+                  border: '1px solid rgba(80, 144, 211, 0.25)'
+                }}>
+                  <input
+                    type="checkbox"
+                    checked={novoPermitirSupervisao}
+                    onChange={(e) => setNovoPermitirSupervisao(e.target.checked)}
+                    style={{ width: '16px', height: '16px', accentColor: '#8A05BE', cursor: 'pointer' }}
+                  />
+                  <div style={{ flex: 1 }}>
+                    <span style={{ fontSize: '12px', fontWeight: 700, color: '#FFFFFF', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                      <Eye size={13} color="#C084FC" />
+                      Permitir Acompanhamento Silencioso pelo Administrador
+                    </span>
+                    <span style={{ fontSize: '10.5px', color: '#AAB4BE', display: 'block' }}>
+                      Você poderá visualizar os lançamentos dessa conta em modo somente leitura. A pessoa nunca saberá nem receberá aviso.
+                    </span>
+                  </div>
+                </label>
+
+                <button
+                  type="button"
+                  disabled={salvandoUsuario || !novoEmailUsuario.includes('@')}
+                  onClick={async () => {
+                    setSalvandoUsuario(true);
+                    const res = await adicionarUsuarioAutorizado({
+                      nome: novoNomeUsuario || 'Usuário',
+                      email: novoEmailUsuario,
+                      permitirSupervisao: novoPermitirSupervisao,
+                    });
+                    setSalvandoUsuario(false);
+                    if (res.sucesso) {
+                      setNovoNomeUsuario('');
+                      setNovoEmailUsuario('');
+                      setNovoPermitirSupervisao(false);
+                    }
+                  }}
+                  className="btn-primary"
+                  style={{
+                    padding: '9px 14px',
+                    fontSize: '12.5px',
+                    fontWeight: 700,
+                    borderRadius: '10px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '6px'
+                  }}
+                >
+                  <CheckCircle size={15} />
+                  <span>Cadastrar & Liberar Acesso</span>
+                </button>
+              </div>
+
+              {/* Lista de Usuários Autorizados */}
+              <div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                  <strong style={{ fontSize: '12.5px', color: '#FFFFFF' }}>
+                    Pessoas Autorizadas ({usuariosAutorizados.length}):
+                  </strong>
+                  <button
+                    type="button"
+                    onClick={() => carregarUsuariosAutorizados()}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      color: '#5090D3',
+                      fontSize: '11px',
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '4px'
+                    }}
+                  >
+                    <RotateCw size={12} />
+                    <span>Atualizar Lista</span>
+                  </button>
+                </div>
+
+                {usuariosAutorizados.length === 0 ? (
+                  <div style={{
+                    padding: '24px 16px',
+                    borderRadius: '14px',
+                    backgroundColor: '#132F4C',
+                    border: '1px dashed #1E3A5F',
+                    textAlign: 'center',
+                    color: '#AAB4BE',
+                    fontSize: '12px'
+                  }}>
+                    Nenhum usuário cadastrado ainda. Adicione o e-mail da sua esposa ou filho acima para liberar o acesso deles.
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    {usuariosAutorizados.map((u) => {
+                      const isAtivo = u.status === 'ativo';
+                      return (
+                        <div
+                          key={u.id}
+                          style={{
+                            padding: '12px 14px',
+                            borderRadius: '14px',
+                            backgroundColor: '#132F4C',
+                            border: `1px solid ${isAtivo ? '#1E3A5F' : 'rgba(244, 67, 54, 0.4)'}`,
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: '8px'
+                          }}
+                        >
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px' }}>
+                            <div>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                <strong style={{ fontSize: '13px', color: '#FFFFFF' }}>{u.nome}</strong>
+                                <span style={{
+                                  fontSize: '10px',
+                                  fontWeight: 800,
+                                  padding: '1px 6px',
+                                  borderRadius: '6px',
+                                  backgroundColor: isAtivo ? 'rgba(76, 175, 80, 0.2)' : 'rgba(244, 67, 54, 0.2)',
+                                  color: isAtivo ? '#4CAF50' : '#F44336',
+                                  border: `1px solid ${isAtivo ? 'rgba(76, 175, 80, 0.4)' : 'rgba(244, 67, 54, 0.4)'}`
+                                }}>
+                                  {isAtivo ? '🟢 Ativo' : '⏸️ Pausado'}
+                                </span>
+                              </div>
+                              <span style={{ fontSize: '11.5px', color: '#82B1FF', display: 'block' }}>{u.email}</span>
+                            </div>
+
+                            <button
+                              type="button"
+                              onClick={() => {
+                                if (confirm(`Deseja remover a permissão de ${u.nome} (${u.email})?`)) {
+                                  excluirUsuarioAutorizado(u.id);
+                                }
+                              }}
+                              style={{
+                                background: 'none',
+                                border: 'none',
+                                color: '#F44336',
+                                cursor: 'pointer',
+                                padding: '4px',
+                                opacity: 0.8
+                              }}
+                              title="Remover autorização"
+                            >
+                              <Trash2 size={15} />
+                            </button>
+                          </div>
+
+                          {/* Barra de Ações Rápidas por Usuário */}
+                          <div style={{
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center',
+                            flexWrap: 'wrap',
+                            gap: '6px',
+                            paddingTop: '8px',
+                            borderTop: '1px solid rgba(30, 58, 95, 0.5)'
+                          }}>
+                            {/* Chave de Acompanhamento Silencioso */}
+                            <button
+                              type="button"
+                              onClick={() => alternarSupervisaoUsuario(u.id)}
+                              style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '5px',
+                                padding: '5px 10px',
+                                borderRadius: '8px',
+                                fontSize: '11px',
+                                fontWeight: 700,
+                                cursor: 'pointer',
+                                backgroundColor: u.permitirSupervisao ? 'rgba(138, 5, 190, 0.2)' : 'rgba(255, 255, 255, 0.06)',
+                                border: `1px solid ${u.permitirSupervisao ? '#C084FC' : 'rgba(255, 255, 255, 0.2)'}`,
+                                color: u.permitirSupervisao ? '#C084FC' : '#AAB4BE'
+                              }}
+                              title="Clique para ativar/desativar o acompanhamento silencioso"
+                            >
+                              {u.permitirSupervisao ? <Eye size={13} /> : <EyeOff size={13} />}
+                              <span>{u.permitirSupervisao ? 'Supervisão Ativada' : 'Supervisão Desativada'}</span>
+                            </button>
+
+                            <div style={{ display: 'flex', gap: '6px' }}>
+                              {/* Botão Pausar / Ativar Acesso */}
+                              <button
+                                type="button"
+                                onClick={() => alternarStatusUsuario(u.id)}
+                                style={{
+                                  padding: '5px 10px',
+                                  borderRadius: '8px',
+                                  fontSize: '11px',
+                                  fontWeight: 700,
+                                  cursor: 'pointer',
+                                  backgroundColor: 'rgba(255, 255, 255, 0.06)',
+                                  border: '1px solid rgba(255, 255, 255, 0.2)',
+                                  color: isAtivo ? '#F8D117' : '#4CAF50'
+                                }}
+                              >
+                                {isAtivo ? 'Pausar Acesso' : 'Ativar Acesso'}
+                              </button>
+
+                              {/* Se supervisão estiver liberada, botão direto para visualizar */}
+                              {u.permitirSupervisao && isAtivo && (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    onFechar();
+                                    ativarModoSupervisao(u);
+                                  }}
+                                  className="btn-primary"
+                                  style={{
+                                    padding: '5px 10px',
+                                    borderRadius: '8px',
+                                    fontSize: '11px',
+                                    fontWeight: 700,
+                                    gap: '4px',
+                                    cursor: 'pointer'
+                                  }}
+                                >
+                                  <Eye size={13} />
+                                  <span>Visualizar Gastos</span>
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+
+              {/* Informação de Segurança e Privacidade */}
+              <div style={{
+                padding: '12px 14px',
+                borderRadius: '12px',
+                backgroundColor: 'rgba(23, 63, 95, 0.5)',
+                border: '1px solid rgba(80, 144, 211, 0.3)',
+                fontSize: '11px',
+                color: '#AAB4BE',
+                lineHeight: 1.45
+              }}>
+                <strong style={{ color: '#F8D117', display: 'block', marginBottom: '2px' }}>
+                  🔒 Como funciona a proteção:
+                </strong>
+                - Quem não estiver cadastrado nesta lista não consegue entrar no aplicativo.<br />
+                - Ao ativar a supervisão de alguém, você visualiza os dados em <strong>modo somente leitura</strong> para não alterar nada por engano.<br />
+                - O acompanhamento é <strong>100% invisível</strong> no aparelho da pessoa supervisionada.
+              </div>
+            </div>
+          )}
+
+          {/* ========================================================
+              👤 ABA: MINHA CONTA (USUÁRIOS COMUNS)
+             ======================================================== */}
+          {!ehAdmin && abaAtiva === 'conta' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <div>
+                <h3 style={{ fontSize: '15px', fontWeight: 800, margin: 0, color: '#FFFFFF', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <User size={18} color="#F8D117" />
+                  <span>Minha Conta</span>
+                </h3>
+                <span style={{ fontSize: '12px', color: '#AAB4BE' }}>
+                  Suas informações de acesso pessoal e sincronização automática.
+                </span>
+              </div>
+
+              {/* Card de Identificação do Usuário */}
+              <div style={{
+                padding: '18px',
+                borderRadius: '16px',
+                backgroundColor: '#132F4C',
+                border: '1.5px solid #1E3A5F',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '14px'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                  <img
+                    src={usuario.avatarUrl}
+                    alt={usuario.nome}
+                    style={{
+                      width: '52px',
+                      height: '52px',
+                      borderRadius: '50%',
+                      objectFit: 'cover',
+                      border: '2px solid #F8D117',
+                      flexShrink: 0
+                    }}
+                  />
+                  <div>
+                    <strong style={{ fontSize: '15px', color: '#FFFFFF', display: 'block' }}>{usuario.nome}</strong>
+                    <span style={{ fontSize: '12px', color: '#82B1FF', display: 'block', marginTop: '2px' }}>
+                      {usuario.email || 'Conta Conectada'}
+                    </span>
+                    <span style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                      marginTop: '6px',
+                      fontSize: '10.5px',
+                      fontWeight: 700,
+                      backgroundColor: 'rgba(76, 175, 80, 0.18)',
+                      color: '#4CAF50',
+                      padding: '2px 8px',
+                      borderRadius: '10px',
+                      border: '1px solid rgba(76, 175, 80, 0.35)'
+                    }}>
+                      <CheckCircle size={11} /> Conectado com o Google
+                    </span>
+                  </div>
+                </div>
+
+                <div style={{
+                  padding: '12px 14px',
+                  borderRadius: '12px',
+                  backgroundColor: 'rgba(23, 63, 95, 0.45)',
+                  border: '1px solid rgba(80, 144, 211, 0.25)',
+                  fontSize: '11.5px',
+                  color: '#B0BEC5',
+                  lineHeight: 1.5
+                }}>
+                  ✨ <strong>Privacidade e Segurança:</strong> Seus lançamentos, cartões e contas ficam salvos em nuvem de forma privada e segura. Todas as alterações são sincronizadas automaticamente em tempo real.
+                </div>
+
+                <button
+                  type="button"
+                  onClick={async () => {
+                    if (confirm('Deseja realmente desconectar esta conta no dispositivo?')) {
+                      await fazerLogoutGoogle();
+                      await desconectarUsuario();
+                      onFechar();
+                    }
+                  }}
+                  className="btn-secondary"
+                  style={{
+                    padding: '10px 16px',
+                    fontSize: '12.5px',
+                    fontWeight: 700,
+                    color: '#F44336',
+                    borderColor: 'rgba(244, 67, 54, 0.4)',
+                    justifyContent: 'center',
+                    gap: '6px'
+                  }}
+                >
+                  <span>Sair da Minha Conta</span>
+                </button>
               </div>
             </div>
           )}

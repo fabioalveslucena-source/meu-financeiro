@@ -85,12 +85,22 @@ export function observarEstadoAuth(callback: (perfil: PerfilGoogle | null) => vo
   });
 }
 
+/**
+ * Retorna o usuário autenticado atualmente, se houver
+ */
+export function obterUsuarioLogado(): PerfilGoogle | null {
+  if (auth?.currentUser) {
+    return extrairDadosUsuario(auth.currentUser);
+  }
+  return null;
+}
+
 function extrairDadosUsuario(user: User): PerfilGoogle {
   const isFabio = user.email?.toLowerCase() === 'alveslucenafabio@gmail.com';
   return {
-    uid: user.uid,
-    nome: isFabio ? 'FABIO ALVES LUCENA' : (user.displayName || 'FABIO ALVES LUCENA'),
-    email: user.email || 'alveslucenafabio@gmail.com',
-    fotoUrl: user.photoURL || 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80',
+    uid: isFabio ? 'fabio-master-uid' : user.uid,
+    nome: user.displayName || (isFabio ? 'FABIO ALVES LUCENA' : 'Usuário'),
+    email: user.email || '',
+    fotoUrl: user.photoURL || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80',
   };
 }

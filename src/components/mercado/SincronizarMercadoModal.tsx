@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useFinanceStore } from '../../stores/financeStore';
+import { useFinanceStore, isUsuarioAdmin } from '../../stores/financeStore';
 import { 
   X, 
   ShoppingCart, 
@@ -26,7 +26,8 @@ export const SincronizarMercadoModal: React.FC<SincronizarMercadoModalProps> = (
     lancamentos, 
     excluirLancamento, 
     sincronizarComNuvem,
-    mostrarToast
+    mostrarToast,
+    usuario
   } = useFinanceStore();
 
   const [carregandoNuvem, setCarregandoNuvem] = useState(false);
@@ -35,7 +36,7 @@ export const SincronizarMercadoModal: React.FC<SincronizarMercadoModalProps> = (
   const [novosLancamentosCount, setNovosLancamentosCount] = useState<number>(0);
   const [bloqueioCliqueRapido, setBloqueioCliqueRapido] = useState(false);
 
-  if (!aberto) return null;
+  if (!aberto || !isUsuarioAdmin(usuario.email, usuario.uid, usuario.nome)) return null;
 
   // Compras reais do Meu Mercado salvas no Meu Financeiro
   const comprasMercado = lancamentos.filter(l => l.origem === 'meu-mercado' || l.detalhesMercado);
