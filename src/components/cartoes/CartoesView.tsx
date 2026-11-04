@@ -85,6 +85,8 @@ export const CartoesView: React.FC = () => {
                 <CartaoVisual 
                   cartao={cartao}
                   titularNome={usuario.nome}
+                  agenciaUsuario={usuario.agencia}
+                  contaUsuario={usuario.numeroConta}
                   valorFatura={valorFatura}
                   limiteDisponivel={limiteDisponivel}
                   mostrarFatura={true}

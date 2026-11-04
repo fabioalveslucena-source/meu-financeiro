@@ -37,6 +37,9 @@ export interface UsuarioPerfil {
   nome: string;
   titulo: string;
   bancoPrincipal: string;
+  agencia?: string;
+  numeroConta?: string;
+  tipoConta?: 'Corrente' | 'Poupança' | 'Salário' | 'Investimento';
   avatarUrl: string;
   email?: string;
   uid?: string;
@@ -170,6 +173,7 @@ export const STORAGE_KEY_ACTIVE_UID = 'mf_active_uid';
 export const STORAGE_KEY_USUARIOS_AUTORIZADOS = 'mf_usuarios_autorizados_v1';
 export const STORAGE_KEY_LANCAMENTOS = 'mf_lancamentos_v3';
 export const STORAGE_KEY_CARTOES = 'mf_cartoes_v4';
+export const STORAGE_KEY_CONTAS = 'mf_contas_v1';
 export const STORAGE_KEY_USUARIO = 'mf_usuario_v2';
 export const STORAGE_KEY_CATEGORIAS = 'mf_categorias_v2';
 export const STORAGE_KEY_NATUREZAS = 'mf_naturezas_v2';
@@ -194,6 +198,9 @@ export const USUARIO_PADRAO: UsuarioPerfil = {
   nome: 'FABIO ALVES LUCENA',
   titulo: 'Titular Master • Conta Especial',
   bancoPrincipal: 'Banco do Brasil',
+  agencia: '1234-5',
+  numeroConta: '00012345-6',
+  tipoConta: 'Corrente',
   avatarUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80',
   email: 'alveslucenafabio@gmail.com',
   uid: 'fabio-master-uid',
@@ -524,7 +531,42 @@ export const useFinanceStore = create<FinanceState>((set, get) => {
         const uid = novoUsuario.uid || MASTER_UID;
         salvarNoStorage(getStorageKey(STORAGE_KEY_USUARIO, uid), novoUsuario);
         FirestoreSyncService.salvarPerfil(uid, novoUsuario);
-        return { usuario: novoUsuario };
+
+        let novasContas = [...state.contas];
+        if (dados.bancoPrincipal || dados.agencia || dados.numeroConta || dados.tipoConta) {
+          const bancoNome = novoUsuario.bancoPrincipal || 'Banco Principal';
+          const contaExistenteIdx = novasContas.findIndex(c => c.id === 'conta-principal-usuario' || c.banco.toLowerCase() === bancoNome.toLowerCase());
+          const detalheAg = novoUsuario.agencia ? ` Ag ${novoUsuario.agencia}` : '';
+          const detalheConta = novoUsuario.numeroConta ? ` C/C ${novoUsuario.numeroConta}` : '';
+          const nomeFormatado = `Conta ${bancoNome}${detalheAg}${detalheConta}`;
+
+          if (contaExistenteIdx >= 0) {
+            novasContas[contaExistenteIdx] = {
+              ...novasContas[contaExistenteIdx],
+              nome: nomeFormatado,
+              banco: bancoNome,
+              agencia: novoUsuario.agencia,
+              numeroConta: novoUsuario.numeroConta,
+              tipo: novoUsuario.tipoConta || 'Corrente',
+              ativa: true
+            };
+          } else {
+            novasContas.unshift({
+              id: 'conta-principal-usuario',
+              userId: uid,
+              nome: nomeFormatado,
+              banco: bancoNome,
+              agencia: novoUsuario.agencia,
+              numeroConta: novoUsuario.numeroConta,
+              tipo: novoUsuario.tipoConta || 'Corrente',
+              ativa: true,
+              icone: '🏦'
+            });
+          }
+          salvarNoStorage(getStorageKey(STORAGE_KEY_CONTAS, uid), novasContas);
+        }
+
+        return { usuario: novoUsuario, contas: novasContas };
       });
     },
 

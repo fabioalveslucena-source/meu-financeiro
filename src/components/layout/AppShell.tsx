@@ -26,6 +26,7 @@ export const AppShell: React.FC = () => {
   const [tipoLancamentoInicial, setTipoLancamentoInicial] = useState<TipoLancamento | undefined>(undefined);
   const [modalOnboardingAberto, setModalOnboardingAberto] = useState(false);
   const [modalConfigCartaoAberto, setModalConfigCartaoAberto] = useState(false);
+  const [abaModalConfig, setAbaModalConfig] = useState<'cartoes' | 'banco'>('cartoes');
   const [continuarOffline, setContinuarOffline] = useState(false);
 
   const { 
@@ -216,14 +217,17 @@ export const AppShell: React.FC = () => {
       <OnboardingModal
         aberto={modalOnboardingAberto}
         onFechar={() => setModalOnboardingAberto(false)}
-        onCadastrarCartao={() => setModalConfigCartaoAberto(true)}
+        onCadastrarCartao={() => {
+          setAbaModalConfig('banco');
+          setModalConfigCartaoAberto(true);
+        }}
       />
 
       {/* Modal de Configuração de Cartão Direto */}
       <ConfiguracoesBaseModal
         aberto={modalConfigCartaoAberto}
         onFechar={() => setModalConfigCartaoAberto(false)}
-        abaInicial="cartoes"
+        abaInicial={abaModalConfig}
       />
 
       {/* Modal de Voz Flutuante */}

@@ -158,6 +158,34 @@ export const ConfiguracoesBaseModal: React.FC<ConfiguracoesBaseModalProps> = ({
   const [novaNaturezaNome, setNovaNaturezaNome] = useState('');
   const [novaNaturezaEmoji, setNovaNaturezaEmoji] = useState('📁');
 
+  // Estados de Conta Bancária e Agência
+  const [bancoForm, setBancoForm] = useState(usuario.bancoPrincipal || 'Banco do Brasil');
+  const [agenciaForm, setAgenciaForm] = useState(usuario.agencia || '');
+  const [numeroContaForm, setNumeroContaForm] = useState(usuario.numeroConta || '');
+  const [tipoContaForm, setTipoContaForm] = useState<'Corrente' | 'Poupança' | 'Salário' | 'Investimento'>(usuario.tipoConta || 'Corrente');
+
+  useEffect(() => {
+    if (aberto) {
+      setBancoForm(usuario.bancoPrincipal || 'Banco do Brasil');
+      setAgenciaForm(usuario.agencia || '');
+      setNumeroContaForm(usuario.numeroConta || '');
+      setTipoContaForm(usuario.tipoConta || 'Corrente');
+    }
+  }, [aberto, usuario]);
+
+  const salvarContaBancaria = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    setUsuario({
+      bancoPrincipal: bancoForm,
+      agencia: agenciaForm,
+      numeroConta: numeroContaForm,
+      tipoConta: tipoContaForm
+    });
+    mostrarToast('Conta Bancária e Agência salvas com sucesso!', 'sucesso');
+    onFechar();
+    onNavegar?.('inicio');
+  };
+
   if (!aberto) return null;
 
   // Iniciar criação de cartão
@@ -931,26 +959,21 @@ export const ConfiguracoesBaseModal: React.FC<ConfiguracoesBaseModalProps> = ({
           )}
 
           {/* ========================================================
-               ABA 3: BANCO PRINCIPAL & PERFIL
+               ABA 3: BANCO PRINCIPAL & DADOS DA CONTA BANCÁRIA
              ======================================================== */}
           {abaAtiva === 'banco' && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+            <form onSubmit={salvarContaBancaria} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
               <div>
-                <label style={{ fontSize: '11px', fontWeight: 800, color: '#AAB4BE', textTransform: 'uppercase', display: 'block', marginBottom: '6px' }}>
-                  Instituição Financeira em Destaque no Cabeçalho
+                <label style={{ fontSize: '11px', fontWeight: 800, color: '#AAB4BE', textTransform: 'uppercase', display: 'block', marginBottom: '8px' }}>
+                  1. Escolha a Instituição Financeira / Banco
                 </label>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '8px' }}>
                   {BANCOS_DISPONIVEIS.map((b) => {
-                    const ativo = usuario.bancoPrincipal === b.nome;
+                    const ativo = bancoForm === b.nome;
                     return (
                       <div
                         key={b.nome}
-                        onClick={() => {
-                          setUsuario({ bancoPrincipal: b.nome });
-                          mostrarToast(`Banco principal definido como ${b.nome}!`, 'sucesso');
-                          onFechar();
-                          onNavegar?.('inicio');
-                        }}
+                        onClick={() => setBancoForm(b.nome)}
                         style={{
                           backgroundColor: ativo ? 'rgba(248, 209, 23, 0.15)' : '#132F4C',
                           border: `1.5px solid ${ativo ? b.cor : '#1E3A5F'}`,
@@ -982,15 +1005,99 @@ export const ConfiguracoesBaseModal: React.FC<ConfiguracoesBaseModalProps> = ({
                 </label>
                 <input
                   type="text"
-                  value={usuario.bancoPrincipal}
-                  onChange={(e) => setUsuario({ bancoPrincipal: e.target.value })}
+                  value={bancoForm}
+                  onChange={(e) => setBancoForm(e.target.value)}
                   placeholder="Nome do banco para exibir no cabeçalho..."
                   style={{ fontSize: '13px', fontWeight: 600 }}
+                  required
                 />
               </div>
 
+              {/* Seção de Agência e Número da Conta */}
               <div style={{
-                marginTop: '10px',
+                backgroundColor: '#132F4C',
+                border: '1.5px solid #1E3A5F',
+                borderRadius: '16px',
+                padding: '16px',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '12px'
+              }}>
+                <span style={{ fontSize: '12px', fontWeight: 800, color: '#F8D117', textTransform: 'uppercase' }}>
+                  2. Dados da Conta Bancária
+                </span>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                  <div>
+                    <label style={{ fontSize: '11px', fontWeight: 800, color: '#AAB4BE', textTransform: 'uppercase', display: 'block', marginBottom: '4px' }}>
+                      Agência Bancária
+                    </label>
+                    <input
+                      type="text"
+                      value={agenciaForm}
+                      onChange={(e) => setAgenciaForm(e.target.value)}
+                      placeholder="Ex.: 1234-5"
+                      style={{ fontSize: '13px', fontWeight: 600, backgroundColor: '#0B1929' }}
+                    />
+                  </div>
+
+                  <div>
+                    <label style={{ fontSize: '11px', fontWeight: 800, color: '#AAB4BE', textTransform: 'uppercase', display: 'block', marginBottom: '4px' }}>
+                      Número da Conta com Dígito
+                    </label>
+                    <input
+                      type="text"
+                      value={numeroContaForm}
+                      onChange={(e) => setNumeroContaForm(e.target.value)}
+                      placeholder="Ex.: 00012345-6"
+                      style={{ fontSize: '13px', fontWeight: 600, backgroundColor: '#0B1929' }}
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label style={{ fontSize: '11px', fontWeight: 800, color: '#AAB4BE', textTransform: 'uppercase', display: 'block', marginBottom: '4px' }}>
+                    Tipo de Conta
+                  </label>
+                  <select
+                    value={tipoContaForm}
+                    onChange={(e) => setTipoContaForm(e.target.value as any)}
+                    style={{ fontSize: '13px', fontWeight: 600, backgroundColor: '#0B1929', color: '#FFFFFF' }}
+                  >
+                    <option value="Corrente">Conta Corrente</option>
+                    <option value="Poupança">Conta Poupança</option>
+                    <option value="Salário">Conta Salário</option>
+                    <option value="Investimento">Conta Investimento</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Botão de Salvar Conta Bancária */}
+              <button
+                type="submit"
+                className="btn-primary"
+                style={{
+                  width: '100%',
+                  padding: '12px 18px',
+                  borderRadius: '14px',
+                  fontWeight: 800,
+                  fontSize: '14px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '8px',
+                  cursor: 'pointer',
+                  background: 'linear-gradient(135deg, #2E8B57 0%, #206E41 100%)',
+                  boxShadow: '0 4px 15px rgba(46, 139, 87, 0.35)',
+                  border: 'none',
+                  color: '#FFFFFF'
+                }}
+              >
+                <Save size={16} />
+                <span>Salvar Conta Bancária</span>
+              </button>
+
+              <div style={{
                 padding: '12px',
                 borderRadius: '12px',
                 backgroundColor: 'rgba(40, 126, 165, 0.15)',
@@ -999,9 +1106,9 @@ export const ConfiguracoesBaseModal: React.FC<ConfiguracoesBaseModalProps> = ({
                 color: '#B0BEC5',
                 lineHeight: 1.4,
               }}>
-                💡 <strong style={{ color: '#FFFFFF' }}>Dica de Compartilhamento:</strong> Quando você passar o aplicativo para a sua esposa, basta selecionar o banco dela aqui e cadastrar os cartões dela na aba <strong>Cartões & Limites</strong>. O sistema se adaptará automaticamente às cores e faturas dela!
+                💡 <strong style={{ color: '#FFFFFF' }}>Dica:</strong> Os dados da sua conta e agência serão vinculados ao seu perfil e utilizados para identificar seus lançamentos em débito, transferências e Pix com precisão.
               </div>
-            </div>
+            </form>
           )}
 
           {/* ========================================================

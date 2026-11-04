@@ -461,17 +461,15 @@ export const InicioView: React.FC<InicioViewProps> = ({
             alignItems: 'center',
             gap: '14px'
           }}>
-            {/* Cartão Visual Fiel com Logos Oficiais, Datas, Limites e Parcelamentos Integrados */}
+            {/* Cartão Visual Fiel com Logos Oficiais e Datas no Canto Inferior Direito */}
             <div style={{ width: '100%', display: 'flex', justifyContent: 'center' }}>
               <CartaoVisual 
                 cartao={c}
                 titularNome={usuario.nome}
+                agenciaUsuario={usuario.agencia}
+                contaUsuario={usuario.numeroConta}
                 valorFatura={cartaoPrincipalResumo.valorFatura}
-                limiteDisponivel={cartaoPrincipalResumo.limiteDisponivel}
-                percentualUsado={cartaoPrincipalResumo.percentualUsado}
-                parcelamentos={cartaoPrincipalResumo.parcelamentos}
                 mostrarFatura={true}
-                mostrarDetalhesCorpo={true}
                 onClick={onIrParaCartoes}
               />
             </div>
