@@ -237,21 +237,23 @@ export const FormLancamento: React.FC<FormLancamentoProps> = ({
                 type="button"
                 onClick={onAbrirVoz}
                 style={{
-                  padding: '4px 10px',
+                  padding: '4px 11px',
                   borderRadius: '14px',
-                  border: '1px solid rgba(40, 126, 165, 0.4)',
-                  background: 'rgba(40, 126, 165, 0.15)',
-                  color: '#5090D3',
-                  fontSize: '11px',
+                  border: '1px solid rgba(248, 209, 23, 0.45)',
+                  background: 'rgba(248, 209, 23, 0.12)',
+                  color: '#F8D117',
+                  fontSize: '11.5px',
                   fontWeight: 800,
                   cursor: 'pointer',
                   display: 'inline-flex',
                   alignItems: 'center',
-                  gap: '4px'
+                  gap: '5px',
+                  boxShadow: '0 2px 8px rgba(248, 209, 23, 0.12)',
+                  transition: 'all 0.2s ease'
                 }}
                 title="Lançar por comando de voz"
               >
-                <Mic size={13} />
+                <Mic size={13} color="#F8D117" />
                 <span>Falar</span>
               </button>
             </div>

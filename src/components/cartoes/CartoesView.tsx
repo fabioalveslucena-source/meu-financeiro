@@ -12,22 +12,22 @@ export const CartoesView: React.FC = () => {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-      {/* Cabeçalho Centralizado de Cartões & Faturas */}
+      {/* Cabeçalho Compacto de Cartões & Faturas */}
       <div style={{
         display: 'flex',
-        flexDirection: 'column',
         alignItems: 'center',
-        justifyContent: 'center',
-        textAlign: 'center',
-        gap: '8px',
-        width: '100%'
+        justifyContent: 'space-between',
+        flexWrap: 'wrap',
+        gap: '10px',
+        width: '100%',
+        paddingBottom: '2px'
       }}>
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
-          <h2 style={{ fontSize: '1.45rem', fontWeight: 800, margin: 0, textAlign: 'center' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+          <h2 style={{ fontSize: '1.35rem', fontWeight: 800, margin: 0, color: '#FFFFFF' }}>
             Cartões de Crédito & Faturas
           </h2>
-          <p style={{ fontSize: '0.88rem', color: 'var(--text-secondary)', margin: 0, textAlign: 'center' }}>
-            Acompanhamento de faturas, limites e compras parceladas ({competenciaAtiva})
+          <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', margin: 0 }}>
+            Faturas, limites e compras parceladas • <strong style={{ color: '#F8D117' }}>{competenciaAtiva}</strong>
           </p>
         </div>
 
@@ -39,19 +39,19 @@ export const CartoesView: React.FC = () => {
             alignItems: 'center',
             justifyContent: 'center',
             gap: '6px',
-            padding: '8px 16px',
+            padding: '7px 13px',
             borderRadius: '12px',
             backgroundColor: '#132F4C',
             border: '1px solid #1E3A5F',
             color: '#F8D117',
-            fontSize: '12.5px',
+            fontSize: '11.5px',
             fontWeight: 800,
             cursor: 'pointer',
-            transition: 'all 0.15s ease',
-            marginTop: '4px'
+            transition: 'all 0.15s ease'
           }}
+          title="Gerenciar Cartões, Bancos e Limites"
         >
-          <Settings size={15} />
+          <Settings size={14} />
           <span>Gerenciar Cartões & Limites</span>
         </button>
       </div>

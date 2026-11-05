@@ -15,13 +15,18 @@ import {
   List,
   Table,
   CalendarCheck,
-  ShoppingCart
+  ShoppingCart,
+  UploadCloud
 } from 'lucide-react';
 import type { Lancamento } from '../../types';
 import { ReciboMercadoModal } from '../mercado/ReciboMercadoModal';
 import { DetalhesLancamentoModal } from '../extrato/DetalhesLancamentoModal';
 
-export const LivroCaixaView: React.FC = () => {
+interface LivroCaixaViewProps {
+  onAbrirImportar?: () => void;
+}
+
+export const LivroCaixaView: React.FC<LivroCaixaViewProps> = ({ onAbrirImportar }) => {
   const { competenciaAtiva, obterResumoLivroCaixa, lancamentos, usuario } = useFinanceStore();
   const [gerandoPdf, setGerandoPdf] = useState(false);
   const [modoVisualizacao, setModoVisualizacao] = useState<'extrato' | 'tabela'>('extrato');
@@ -118,25 +123,26 @@ export const LivroCaixaView: React.FC = () => {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-      {/* Barra de Ações do Topo Centralizada */}
+      {/* Barra de Ações do Topo Centralizada e Otimizada */}
       <div style={{
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
         justifyContent: 'center',
         textAlign: 'center',
-        gap: '12px',
+        gap: '8px',
         width: '100%'
       }}>
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
-          <h2 style={{ fontSize: '1.45rem', fontWeight: 800, margin: 0, textAlign: 'center' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px' }}>
+          <h2 style={{ fontSize: '1.35rem', fontWeight: 800, margin: 0, textAlign: 'center' }}>
             Livro Caixa • {competenciaAtiva}
           </h2>
-          <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', margin: 0, textAlign: 'center' }}>
-            Titular: <strong style={{ color: '#FFFFFF' }}>{usuario.nome}</strong> • {lancamentosComSaldo.length} lançamentos
+          <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', margin: 0, textAlign: 'center' }}>
+            Titular: <strong style={{ color: '#FFFFFF' }}>{usuario.nome}</strong>
           </p>
         </div>
 
+        {/* Linha Única de Ações Compactas (Importar OFX, Exportar PDF e CSV) */}
         <div style={{
           display: 'flex',
           gap: '8px',
@@ -144,29 +150,61 @@ export const LivroCaixaView: React.FC = () => {
           justifyContent: 'center',
           flexWrap: 'wrap',
           width: '100%',
-          maxWidth: '480px'
+          maxWidth: '520px',
+          marginTop: '2px'
         }}>
+          {onAbrirImportar && (
+            <button
+              type="button"
+              onClick={onAbrirImportar}
+              style={{
+                padding: '6px 12px',
+                borderRadius: '10px',
+                backgroundColor: 'rgba(40, 126, 165, 0.15)',
+                border: '1px solid rgba(40, 126, 165, 0.45)',
+                color: '#82B1FF',
+                fontSize: '11.5px',
+                fontWeight: 700,
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '5px',
+                cursor: 'pointer'
+              }}
+              title="Importar extrato bancário OFX ou CSV"
+            >
+              <UploadCloud size={14} color="#5090D3" />
+              <span>Importar OFX</span>
+            </button>
+          )}
+
           <button
             onClick={handleExportarPdf}
             disabled={gerandoPdf}
-            className="btn-primary"
             style={{
-              padding: '0.7rem 1.25rem',
-              fontSize: '0.9rem',
-              gap: '0.5rem',
-              flex: '1 1 200px',
-              justifyContent: 'center'
+              padding: '6px 12px',
+              borderRadius: '10px',
+              backgroundColor: '#1E3A5F',
+              border: '1px solid #287EA5',
+              color: '#FFFFFF',
+              fontSize: '11.5px',
+              fontWeight: 700,
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '5px',
+              cursor: gerandoPdf ? 'not-allowed' : 'pointer',
+              opacity: gerandoPdf ? 0.7 : 1
             }}
+            title="Exportar Livro Caixa para PDF"
           >
             {gerandoPdf ? (
               <>
-                <Loader2 size={18} className="animate-spin" />
+                <Loader2 size={14} className="animate-spin" />
                 <span>Gerando PDF...</span>
               </>
             ) : (
               <>
-                <FileDown size={18} />
-                <span>Exportar PDF para Imprimir</span>
+                <FileDown size={14} />
+                <span>Exportar PDF</span>
               </>
             )}
           </button>
@@ -174,19 +212,22 @@ export const LivroCaixaView: React.FC = () => {
           <button
             type="button"
             onClick={() => exportarLancamentosCSV(lancamentosDoMes, `Extrato_${competenciaAtiva.replace('/', '_')}.csv`)}
-            className="btn-secondary"
             style={{
-              padding: '0.7rem 1rem',
-              fontSize: '0.85rem',
-              gap: '0.5rem',
-              borderColor: '#10B981',
+              padding: '6px 12px',
+              borderRadius: '10px',
+              backgroundColor: 'rgba(16, 185, 129, 0.12)',
+              border: '1px solid rgba(16, 185, 129, 0.4)',
               color: '#34D399',
-              flex: '1 1 140px',
-              justifyContent: 'center'
+              fontSize: '11.5px',
+              fontWeight: 700,
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '5px',
+              cursor: 'pointer'
             }}
-            title="Exportar para Excel / Google Planilhas (CSV)"
+            title="Exportar para Excel / Planilhas (CSV)"
           >
-            <Table size={16} color="#10B981" />
+            <Table size={14} color="#10B981" />
             <span>Exportar CSV</span>
           </button>
         </div>

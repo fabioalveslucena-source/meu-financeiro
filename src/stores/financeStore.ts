@@ -17,7 +17,6 @@ import { NATUREZAS_PADRAO } from '../types/categoria';
 import { DESPESAS_RECORRENTES_PADRAO } from '../types/recorrente';
 import type { TransacaoImportada } from '../features/import/ofxParser';
 import { 
-  LANCAMENTOS_INICIAIS, 
   CARTAO_PADRAO, 
   CATEGORIAS_PADRAO, 
   CONTAS_PADRAO 
@@ -100,6 +99,7 @@ interface FinanceState {
   adicionarLancamento: (input: LancamentoInput, emitirEvento?: boolean) => { sucesso: boolean; mensagem: string };
   editarLancamento: (id: string, dados: Partial<Lancamento>, emitirEvento?: boolean) => { sucesso: boolean; mensagem: string };
   excluirLancamento: (id: string, excluirTodasParcelas?: boolean, emitirEvento?: boolean) => { sucesso: boolean; mensagem: string };
+  limparLancamentosDoMes: (competencia: string) => { sucesso: boolean; count: number };
 
   // Ação de Demonstração em Tempo Real (Estilo Dev)
   simularMovimentoRealtime: () => void;
@@ -180,6 +180,19 @@ export const STORAGE_KEY_NATUREZAS = 'mf_naturezas_v2';
 export const STORAGE_KEY_RECORRENTES = 'mf_recorrentes_v2';
 export const STORAGE_KEY_SEGURANCA = 'mf_seguranca_v2';
 export const STORAGE_KEY_TEMA = 'mf_tema_v1';
+export const STORAGE_KEY_LANCAMENTOS_EXCLUIDOS = 'mf_lancamentos_excluidos_v1';
+
+export function registrarIdsExcluidos(ids: string[]): void {
+  try {
+    if (typeof localStorage === 'undefined' || ids.length === 0) return;
+    const salvo = localStorage.getItem(STORAGE_KEY_LANCAMENTOS_EXCLUIDOS);
+    const conjunto = salvo ? new Set<string>(JSON.parse(salvo)) : new Set<string>();
+    ids.forEach((id) => conjunto.add(id));
+    localStorage.setItem(STORAGE_KEY_LANCAMENTOS_EXCLUIDOS, JSON.stringify(Array.from(conjunto)));
+  } catch (e) {
+    console.error('Erro ao salvar IDs excluídos:', e);
+  }
+}
 
 export function getStorageKey(chave: string, uid?: string): string {
   if (!uid || uid === MASTER_UID || uid === 'fabio-master-uid') {
@@ -406,7 +419,7 @@ export const useFinanceStore = create<FinanceState>((set, get) => {
     ? []
     : carregarDoStorage<Lancamento[]>(
         getStorageKey(STORAGE_KEY_LANCAMENTOS, uidInicial),
-        isFabio ? LANCAMENTOS_INICIAIS : []
+        []
       );
 
   const cartoesIniciais = ehNovoDispositivo
@@ -953,13 +966,15 @@ export const useFinanceStore = create<FinanceState>((set, get) => {
       let novaLista: Lancamento[];
       let detalheLog = '';
       if (excluirTodasParcelas && item.compraId) {
+        const itensExcluidos = lancamentos.filter((l) => l.compraId === item.compraId);
+        const ids = itensExcluidos.map((l) => l.id);
+        registrarIdsExcluidos(ids);
         novaLista = lancamentos.filter((l) => l.compraId !== item.compraId);
-        lancamentos
-          .filter((l) => l.compraId === item.compraId)
-          .forEach((l) => FirestoreSyncService.excluirLancamento(uid, l.id));
+        ids.forEach((idDel) => FirestoreSyncService.excluirLancamento(uid, idDel));
         detalheLog = `Todas as parcelas da compra "${item.descricao}" foram removidas.`;
         get().mostrarToast('Todas as parcelas da compra foram removidas.', 'info');
       } else {
+        registrarIdsExcluidos([id]);
         novaLista = lancamentos.filter((l) => l.id !== id);
         FirestoreSyncService.excluirLancamento(uid, id);
         detalheLog = `Item "${item.descricao}" (R$ ${item.valor.toFixed(2)}) excluído.`;
@@ -980,6 +995,44 @@ export const useFinanceStore = create<FinanceState>((set, get) => {
       }
 
       return { sucesso: true, mensagem: 'Excluído com sucesso.' };
+    },
+
+    limparLancamentosDoMes: (competencia: string) => {
+      if (get().modoApenasLeitura) {
+        get().mostrarToast('👁️ Modo Supervisão: Apenas leitura ativado.', 'info');
+        return { sucesso: false, count: 0 };
+      }
+
+      const { lancamentos, usuario } = get();
+      const uid = usuario.uid || MASTER_UID;
+      const itensDoMes = lancamentos.filter((l) => l.competencia === competencia);
+      if (itensDoMes.length === 0) {
+        get().mostrarToast(`Nenhum lançamento encontrado em ${competencia}.`, 'info');
+        return { sucesso: true, count: 0 };
+      }
+
+      const idsParaExcluir = itensDoMes.map((l) => l.id);
+      registrarIdsExcluidos(idsParaExcluir);
+
+      idsParaExcluir.forEach((id) => FirestoreSyncService.excluirLancamento(uid, id));
+
+      const novaLista = lancamentos.filter((l) => l.competencia !== competencia);
+      set({ lancamentos: novaLista, ultimoEventoTimestamp: Date.now() });
+      salvarNoStorage(getStorageKey(STORAGE_KEY_LANCAMENTOS, uid), novaLista);
+
+      get().mostrarToast(`Todos os ${itensDoMes.length} lançamentos de ${competencia} foram removidos.`, 'sucesso');
+      get().adicionarLogRealtime(`[PURGE] Limpeza de ${competencia}`, `${itensDoMes.length} lançamentos excluídos.`, 'alerta');
+
+      if (realtimeChannel) {
+        realtimeChannel.postMessage({
+          tipo: 'SYNC_STATE',
+          acao: `[REALTIME PURGE] ${competencia}`,
+          detalhes: `${itensDoMes.length} lançamentos excluídos.`,
+          payload: { lancamentos: novaLista }
+        });
+      }
+
+      return { sucesso: true, count: itensDoMes.length };
     },
 
     simularMovimentoRealtime: () => {
@@ -1604,7 +1657,7 @@ export const useFinanceStore = create<FinanceState>((set, get) => {
         const keyNat  = getStorageKey(STORAGE_KEY_NATUREZAS, uidFinal);
 
         // Dados locais específicos para esse UID (para novo usuário, inicia limpo)
-        const lancLocal = carregarDoStorage<Lancamento[]>(keyLanc, isFabio ? LANCAMENTOS_INICIAIS : []);
+        const lancLocal = carregarDoStorage<Lancamento[]>(keyLanc, []);
         const cartLocal = carregarDoStorage<Cartao[]>(keyCart, isFabio ? CARTAO_PADRAO : []);
         const catLocal  = carregarDoStorage<Categoria[]>(keyCat, CATEGORIAS_PADRAO);
         const natLocal  = carregarDoStorage<Natureza[]>(keyNat, NATUREZAS_PADRAO);

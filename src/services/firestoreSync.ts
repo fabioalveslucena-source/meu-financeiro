@@ -309,21 +309,40 @@ export class FirestoreSyncService {
       const categoriasNuvem = await this.baixarCategorias(uid);
       const naturezasNuvem = await this.baixarNaturezas(uid);
 
-      // 2. Fazer Merge dos Lançamentos por ID
+      // 2. Fazer Merge dos Lançamentos por ID respeitando exclusões
+      const idsExcluidosStr = typeof localStorage !== 'undefined' ? localStorage.getItem('mf_lancamentos_excluidos_v1') : null;
+      const idsExcluidos = idsExcluidosStr ? new Set<string>(JSON.parse(idsExcluidosStr)) : new Set<string>();
+
       const mapaLancamentos = new Map<string, Lancamento>();
+      const lancamentosParaDeletarNuvem: string[] = [];
       
-      // Adiciona o que está na nuvem
-      lancamentosNuvem.forEach((l) => mapaLancamentos.set(l.id, l));
+      // Adiciona o que está na nuvem SOMENTE se não tiver sido excluído pelo usuário
+      lancamentosNuvem.forEach((l) => {
+        if (idsExcluidos.has(l.id)) {
+          lancamentosParaDeletarNuvem.push(l.id);
+        } else {
+          mapaLancamentos.set(l.id, l);
+        }
+      });
+
+      // Limpa no Firestore resquícios que foram excluídos pelo usuário
+      if (lancamentosParaDeletarNuvem.length > 0) {
+        lancamentosParaDeletarNuvem.forEach((idDel) => {
+          this.excluirLancamento(uid, idDel).catch(console.warn);
+        });
+      }
 
       let novosEnviados = 0;
       const paraEnviar: Lancamento[] = [];
 
       // Adiciona o que está local e identifica o que precisa subir para a nuvem
       estadoLocal.lancamentos.forEach((local) => {
-        if (!mapaLancamentos.has(local.id)) {
-          // Documento local que não existia na nuvem: deve ser enviado!
-          mapaLancamentos.set(local.id, local);
-          paraEnviar.push(local);
+        if (!idsExcluidos.has(local.id)) {
+          if (!mapaLancamentos.has(local.id)) {
+            // Documento local que não existia na nuvem: deve ser enviado!
+            mapaLancamentos.set(local.id, local);
+            paraEnviar.push(local);
+          }
         }
       });
 
@@ -421,15 +440,20 @@ export class FirestoreSyncService {
         // Evita loop de atualização se estivermos fazendo envio em lote
         if (this.isSyncing) return;
 
+        const idsExcluidosStr = typeof localStorage !== 'undefined' ? localStorage.getItem('mf_lancamentos_excluidos_v1') : null;
+        const idsExcluidos = idsExcluidosStr ? new Set<string>(JSON.parse(idsExcluidosStr)) : new Set<string>();
+
         const dados: Lancamento[] = [];
         snapshot.forEach((d) => {
           const item = d.data();
-          dados.push({
-            ...item,
-            data: new Date(item.data),
-            criadoEm: item.criadoEm ? new Date(item.criadoEm) : new Date(),
-            atualizadoEm: item.atualizadoEm ? new Date(item.atualizadoEm) : new Date(),
-          } as Lancamento);
+          if (!idsExcluidos.has(item.id)) {
+            dados.push({
+              ...item,
+              data: new Date(item.data),
+              criadoEm: item.criadoEm ? new Date(item.criadoEm) : new Date(),
+              atualizadoEm: item.atualizadoEm ? new Date(item.atualizadoEm) : new Date(),
+            } as Lancamento);
+          }
         });
 
         dados.sort((a, b) => new Date(b.data).getTime() - new Date(a.data).getTime());

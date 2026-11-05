@@ -9,7 +9,9 @@ import {
   ArrowUpRight, 
   ArrowDownRight, 
   TrendingUp,
-  Receipt
+  Receipt,
+  Eye,
+  EyeOff
 } from 'lucide-react';
 
 const CORES_NATUREZA: Record<string, string> = {
@@ -413,6 +415,7 @@ const BarraHorizontal3D: React.FC<BarraHorizontal3DProps> = ({
 export const AnalisesView: React.FC = () => {
   const { lancamentos, competenciaAtiva, obterResumoLivroCaixa } = useFinanceStore();
   const resumo = obterResumoLivroCaixa(competenciaAtiva);
+  const [saldoVisivel, setSaldoVisivel] = useState(false);
 
   // Formato do gráfico 3D: 'panoramico' (100% largura de tela sem scroll horizontal) ou 'colunas' (colunas verticais)
   const [formatoGrafico3D, setFormatoGrafico3D] = useState<'panoramico' | 'colunas'>('colunas');
@@ -537,21 +540,9 @@ export const AnalisesView: React.FC = () => {
             <Layers size={22} color="#5090D3" />
             Análise Financeira & Naturezas
           </h2>
-          <p style={{ fontSize: '0.88rem', color: '#AAB4BE', margin: 0, textAlign: 'center' }}>
-            Consumo setorial, gráficos tridimensionais e auditoria
+          <p style={{ fontSize: '0.85rem', color: '#AAB4BE', margin: 0, textAlign: 'center' }}>
+            Consumo setorial & auditoria • <strong style={{ color: '#F8D117' }}>{competenciaAtiva}</strong>
           </p>
-          <span style={{
-            fontSize: '12.5px',
-            fontWeight: 800,
-            color: '#F8D117',
-            backgroundColor: 'rgba(248, 209, 23, 0.12)',
-            border: '1px solid rgba(248, 209, 23, 0.35)',
-            padding: '2px 12px',
-            borderRadius: '10px',
-            marginTop: '3px'
-          }}>
-            {competenciaAtiva}
-          </span>
         </div>
 
         {/* Botões Expandir Todas e Recolher Todas Centralizados Lado a Lado */}
@@ -685,18 +676,38 @@ export const AnalisesView: React.FC = () => {
             <span style={{ fontSize: '11px', fontWeight: 800, color: '#5090D3', textTransform: 'uppercase' }}>
               Saldo do Mês
             </span>
-            <TrendingUp size={15} color="#5090D3" />
+            <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+              <button
+                type="button"
+                onClick={() => setSaldoVisivel(!saldoVisivel)}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  padding: '2px',
+                  cursor: 'pointer',
+                  color: '#5090D3',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  opacity: 0.85
+                }}
+                title={saldoVisivel ? "Ocultar saldo" : "Mostrar saldo"}
+              >
+                {saldoVisivel ? <EyeOff size={14} /> : <Eye size={14} />}
+              </button>
+              <TrendingUp size={15} color="#5090D3" />
+            </div>
           </div>
           <div style={{
             marginTop: '4px',
             fontSize: 'clamp(14px, 4vw, 19px)',
             fontWeight: 900,
-            color: resumo.saldoFinal >= 0 ? '#F8D117' : '#F44336',
+            color: saldoVisivel ? (resumo.saldoFinal >= 0 ? '#F8D117' : '#F44336') : '#AAB4BE',
             whiteSpace: 'nowrap',
             overflow: 'hidden',
             textOverflow: 'ellipsis'
           }}>
-            {formatarMoeda(resumo.saldoFinal)}
+            {saldoVisivel ? formatarMoeda(resumo.saldoFinal) : 'R$ ••••••'}
           </div>
           <span style={{ fontSize: '9.5px', color: '#B0BEC5', display: 'block', marginTop: '2px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
             Balanço do período

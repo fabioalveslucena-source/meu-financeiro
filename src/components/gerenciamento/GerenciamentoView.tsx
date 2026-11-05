@@ -26,7 +26,8 @@ export const GerenciamentoView: React.FC = () => {
     setFiltroNatureza,
     naturezas,
     excluirLancamento,
-    editarLancamento
+    editarLancamento,
+    limparLancamentosDoMes
   } = useFinanceStore();
 
   const [itemParaExcluir, setItemParaExcluir] = useState<Lancamento | null>(null);
@@ -37,6 +38,12 @@ export const GerenciamentoView: React.FC = () => {
   const [lancamentoMercado, setLancamentoMercado] = useState<Lancamento | null>(null);
 
   const listaFiltrada = obterLancamentosFiltrados();
+
+  const handleLimparMes = () => {
+    if (window.confirm(`Tem certeza que deseja excluir todos os lançamentos da competência ${competenciaAtiva}? Esta ação é definitiva e não pode ser desfeita.`)) {
+      limparLancamentosDoMes(competenciaAtiva);
+    }
+  };
 
   const iniciarEdicao = (item: Lancamento) => {
     setItemParaEditar(item);
@@ -71,13 +78,38 @@ export const GerenciamentoView: React.FC = () => {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-      <div>
-        <h2 style={{ fontSize: '1.4rem', fontWeight: 800, margin: 0 }}>
-          Gerenciador de Lançamentos
-        </h2>
-        <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', margin: 0 }}>
-          Pesquise, filtre, edite e remova movimentações ({competenciaAtiva})
-        </p>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
+        <div>
+          <h2 style={{ fontSize: '1.4rem', fontWeight: 800, margin: 0 }}>
+            Gerenciador de Lançamentos
+          </h2>
+          <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', margin: 0 }}>
+            Pesquise, filtre, edite e remova movimentações ({competenciaAtiva})
+          </p>
+        </div>
+        {listaFiltrada.length > 0 && (
+          <button
+            type="button"
+            onClick={handleLimparMes}
+            style={{
+              padding: '6px 12px',
+              borderRadius: '10px',
+              border: '1px solid rgba(244, 67, 54, 0.4)',
+              background: 'rgba(244, 67, 54, 0.12)',
+              color: '#EF5350',
+              fontSize: '11.5px',
+              fontWeight: 700,
+              cursor: 'pointer',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px'
+            }}
+            title={`Excluir todos os lançamentos da competência ${competenciaAtiva}`}
+          >
+            <Trash2 size={13} />
+            <span>Limpar mês {competenciaAtiva}</span>
+          </button>
+        )}
       </div>
 
       {/* Barra de Filtros e Busca Responsiva */}

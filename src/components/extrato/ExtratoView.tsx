@@ -3,7 +3,7 @@ import { LivroCaixaView } from '../livro-caixa/LivroCaixaView';
 import { GerenciamentoView } from '../gerenciamento/GerenciamentoView';
 import { RecorrentesView } from '../recorrentes/RecorrentesView';
 import { ImportarExtratoModal } from './ImportarExtratoModal';
-import { BookOpen, Search, Repeat, UploadCloud } from 'lucide-react';
+import { BookOpen, Search, Repeat } from 'lucide-react';
 
 interface ExtratoViewProps {
   subAbaInicial?: 'livro-caixa' | 'gerenciar' | 'recorrentes';
@@ -107,35 +107,10 @@ export const ExtratoView: React.FC<ExtratoViewProps> = ({ subAbaInicial = 'livro
             <span>Contas Fixas</span>
           </button>
         </div>
-
-        {/* Ação Rápida: Importar OFX/CSV Centralizado */}
-        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', width: '100%' }}>
-          <button
-            type="button"
-            onClick={() => setModalImportarAberto(true)}
-            className="btn-secondary"
-            style={{
-              padding: '7px 16px',
-              fontSize: '12px',
-              fontWeight: 700,
-              gap: '6px',
-              borderRadius: '10px',
-              borderColor: '#287EA5',
-              color: '#82B1FF',
-              display: 'inline-flex',
-              alignItems: 'center',
-              justifyContent: 'center'
-            }}
-            title="Importar extrato baixado do internet banking (.OFX ou .CSV)"
-          >
-            <UploadCloud size={15} color="#5090D3" />
-            <span>Importar Extrato OFX / CSV</span>
-          </button>
-        </div>
       </div>
 
       {/* Conteúdo da Sub-Aba Ativa */}
-      {subAba === 'livro-caixa' && <LivroCaixaView />}
+      {subAba === 'livro-caixa' && <LivroCaixaView onAbrirImportar={() => setModalImportarAberto(true)} />}
       {subAba === 'gerenciar' && <GerenciamentoView />}
       {subAba === 'recorrentes' && <RecorrentesView />}
 
