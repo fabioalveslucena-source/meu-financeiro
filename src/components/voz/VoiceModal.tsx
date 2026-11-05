@@ -20,7 +20,7 @@ export const VoiceModal: React.FC<VoiceModalProps> = ({
   const handleConfirmar = useCallback((resParaConfirmar?: VozInterpretada) => {
     const dados = resParaConfirmar || resultadoRef.current;
     if (dados && dados.sucesso) {
-      onConfirmarDados(dados);
+      onConfirmarDados({ ...dados, autoSalvar: true });
       onFechar();
     }
   }, [onConfirmarDados, onFechar]);

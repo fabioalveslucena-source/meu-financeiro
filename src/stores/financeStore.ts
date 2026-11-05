@@ -1533,7 +1533,8 @@ export const useFinanceStore = create<FinanceState>((set, get) => {
           ? `Nuvem sincronizada! (${res.novosImportados} recebidos, ${res.novosEnviados} enviados)`
           : `Nuvem 100% atualizada! (${res.lancamentosSincronizados.length} lançamentos)`;
 
-        get().mostrarToast(msg, 'sucesso');
+        // Log do realtime para auditoria (sem poluir a tela com toast no topo, pois o overlay já conclui em 100%)
+        get().adicionarLogRealtime('[SYNC] Nuvem Sincronizada', msg, 'sucesso');
         return { sucesso: true, mensagem: msg };
       } catch (err: any) {
         console.error('Erro na sincronização Firestore:', err);

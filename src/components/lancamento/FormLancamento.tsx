@@ -44,9 +44,15 @@ export const FormLancamento: React.FC<FormLancamentoProps> = ({
   const valorInputRef = useRef<HTMLInputElement>(null);
   const formaPagamentoRef = useRef<HTMLDivElement>(null);
   const cartaoSelectRef = useRef<HTMLSelectElement>(null);
+  const contaSelectRef = useRef<HTMLSelectElement>(null);
   const categoriaSelectRef = useRef<HTMLSelectElement>(null);
   const descricaoInputRef = useRef<HTMLInputElement>(null);
   const submitButtonRef = useRef<HTMLButtonElement>(null);
+
+  // Etapa ativa para guiar visualmente o usuário
+  const [etapaAtiva, setEtapaAtiva] = useState<'tipo' | 'valor' | 'pagamento' | 'cartao_ou_conta' | 'natureza_categoria' | 'descricao' | 'salvar'>('valor');
+  const [ouvindoVozComando, setOuvindoVozComando] = useState(false);
+  const recognitionRef = useRef<any>(null);
 
   // Modal discreto para criar Nova Categoria ou Natureza
   const [modalCriarAberto, setModalCriarAberto] = useState(false);
@@ -113,27 +119,6 @@ export const FormLancamento: React.FC<FormLancamentoProps> = ({
     }
   }, [cartoes, contas]);
 
-  // Preenchimento vindo do comando de voz
-  useEffect(() => {
-    if (dadosPreenchidosVoz) {
-      if (dadosPreenchidosVoz.tipo) setTipo(dadosPreenchidosVoz.tipo);
-      if (dadosPreenchidosVoz.valor !== undefined && dadosPreenchidosVoz.valor !== null) {
-        setValorTexto(dadosPreenchidosVoz.valor.toFixed(2).replace('.', ','));
-      }
-      if (dadosPreenchidosVoz.pagamento) setPagamento(dadosPreenchidosVoz.pagamento);
-      if (dadosPreenchidosVoz.natureza) setNatureza(dadosPreenchidosVoz.natureza);
-      if (dadosPreenchidosVoz.categoria) setCategoria(dadosPreenchidosVoz.categoria);
-      if (dadosPreenchidosVoz.descricao) setDescricao(dadosPreenchidosVoz.descricao);
-      if (dadosPreenchidosVoz.parcelas) setParcelas(dadosPreenchidosVoz.parcelas);
-
-      // Se for crédito e cartão não estiver selecionado, prioriza Banco do Brasil
-      if (dadosPreenchidosVoz.pagamento === '💳 Crédito' && cartoes.length > 0) {
-        const bb = cartoes.find(c => c.nome.includes('Banco do Brasil'));
-        setCartao(bb ? bb.nome : cartoes[0].nome);
-      }
-    }
-  }, [dadosPreenchidosVoz]);
-
   const submeterLancamento = useCallback(() => {
     setErros([]);
 
@@ -178,10 +163,115 @@ export const FormLancamento: React.FC<FormLancamentoProps> = ({
       setValorTexto('');
       setDescricao('');
       setParcelas(1);
+      setEtapaAtiva('valor');
       return true;
     }
     return false;
   }, [valorTexto, descricao, categoria, pagamento, cartao, conta, data, tipo, natureza, parcelas, adicionarLancamento]);
+
+  // Preenchimento vindo do comando de voz
+  useEffect(() => {
+    if (dadosPreenchidosVoz) {
+      if (dadosPreenchidosVoz.tipo) setTipo(dadosPreenchidosVoz.tipo);
+      if (dadosPreenchidosVoz.valor !== undefined && dadosPreenchidosVoz.valor !== null) {
+        setValorTexto(dadosPreenchidosVoz.valor.toFixed(2).replace('.', ','));
+      }
+      if (dadosPreenchidosVoz.pagamento) setPagamento(dadosPreenchidosVoz.pagamento);
+      if (dadosPreenchidosVoz.natureza) setNatureza(dadosPreenchidosVoz.natureza);
+      if (dadosPreenchidosVoz.categoria) setCategoria(dadosPreenchidosVoz.categoria);
+      if (dadosPreenchidosVoz.descricao) setDescricao(dadosPreenchidosVoz.descricao);
+      if (dadosPreenchidosVoz.parcelas) setParcelas(dadosPreenchidosVoz.parcelas);
+
+      if (dadosPreenchidosVoz.pagamento === '💳 Crédito' && cartoes.length > 0) {
+        const bb = cartoes.find(c => c.nome.includes('Banco do Brasil'));
+        setCartao(bb ? bb.nome : cartoes[0].nome);
+      }
+
+      if (dadosPreenchidosVoz.autoSalvar) {
+        setTimeout(() => {
+          submeterLancamento();
+        }, 350);
+      }
+    }
+  }, [dadosPreenchidosVoz, cartoes, submeterLancamento]);
+
+  // Escuta rápida de confirmação por voz ("Salvar", "OK", "Confirmar")
+  const pararEscutaComando = useCallback(() => {
+    if (recognitionRef.current) {
+      try {
+        recognitionRef.current.abort();
+      } catch {}
+      recognitionRef.current = null;
+    }
+    setOuvindoVozComando(false);
+  }, []);
+
+  const iniciarEscutaComando = useCallback(() => {
+    const SpeechRec = typeof window !== 'undefined'
+      ? (window.SpeechRecognition || (window as any).webkitSpeechRecognition)
+      : null;
+
+    if (!SpeechRec) {
+      onAbrirVoz();
+      return;
+    }
+
+    pararEscutaComando();
+
+    try {
+      const recognition = new SpeechRec();
+      recognition.lang = 'pt-BR';
+      recognition.continuous = false;
+      recognition.interimResults = true;
+
+      recognition.onstart = () => {
+        setOuvindoVozComando(true);
+      };
+
+      recognition.onresult = (event: any) => {
+        let texto = '';
+        for (let i = 0; i < event.results.length; i++) {
+          texto += event.results[i][0].transcript + ' ';
+        }
+        const norm = texto.toLowerCase().trim();
+        if (/\b(salvar|salva|ok|sim|confirmar|confirma|concluir|conclui|gravar|grava|efetuar|lancar)\b/i.test(norm)) {
+          pararEscutaComando();
+          submeterLancamento();
+        }
+      };
+
+      recognition.onerror = () => {
+        pararEscutaComando();
+      };
+
+      recognition.onend = () => {
+        setOuvindoVozComando(false);
+      };
+
+      recognitionRef.current = recognition;
+      recognition.start();
+    } catch {
+      setOuvindoVozComando(false);
+      onAbrirVoz();
+    }
+  }, [onAbrirVoz, pararEscutaComando, submeterLancamento]);
+
+  useEffect(() => {
+    return () => pararEscutaComando();
+  }, [pararEscutaComando]);
+
+  const handleCliqueVoz = () => {
+    if (ouvindoVozComando) {
+      pararEscutaComando();
+      return;
+    }
+    // Se o valor já estiver preenchido, ativa a escuta de voz para confirmação rápida "Salvar" ou "OK"
+    if (valorTexto && valorTexto.trim() !== '' && valorTexto !== '0,00') {
+      iniciarEscutaComando();
+    } else {
+      onAbrirVoz();
+    }
+  };
 
   const handleSubmit = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
@@ -235,26 +325,26 @@ export const FormLancamento: React.FC<FormLancamentoProps> = ({
               </label>
               <button
                 type="button"
-                onClick={onAbrirVoz}
+                onClick={handleCliqueVoz}
                 style={{
                   padding: '4px 11px',
                   borderRadius: '14px',
-                  border: '1px solid rgba(248, 209, 23, 0.45)',
-                  background: 'rgba(248, 209, 23, 0.12)',
-                  color: '#F8D117',
+                  border: `1.5px solid ${ouvindoVozComando ? '#4CAF50' : 'rgba(248, 209, 23, 0.45)'}`,
+                  background: ouvindoVozComando ? 'rgba(76, 175, 80, 0.25)' : 'rgba(248, 209, 23, 0.12)',
+                  color: ouvindoVozComando ? '#81C784' : '#F8D117',
                   fontSize: '11.5px',
                   fontWeight: 800,
                   cursor: 'pointer',
                   display: 'inline-flex',
                   alignItems: 'center',
                   gap: '5px',
-                  boxShadow: '0 2px 8px rgba(248, 209, 23, 0.12)',
+                  boxShadow: ouvindoVozComando ? '0 0 12px rgba(76, 175, 80, 0.5)' : '0 2px 8px rgba(248, 209, 23, 0.12)',
                   transition: 'all 0.2s ease'
                 }}
-                title="Lançar por comando de voz"
+                title={ouvindoVozComando ? "Ouvindo... Diga 'Salvar' ou 'OK'" : "Lançar por comando de voz"}
               >
-                <Mic size={13} color="#F8D117" />
-                <span>Falar</span>
+                <Mic size={13} color={ouvindoVozComando ? '#81C784' : '#F8D117'} />
+                <span>{ouvindoVozComando ? 'Ouvindo... Diga "Salvar" ou "OK"' : 'Falar'}</span>
               </button>
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px' }}>
@@ -286,6 +376,7 @@ export const FormLancamento: React.FC<FormLancamentoProps> = ({
                     type="button"
                     onClick={() => {
                       setTipo(t);
+                      setEtapaAtiva('valor');
                       setTimeout(() => {
                         valorInputRef.current?.focus();
                         valorInputRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -315,13 +406,15 @@ export const FormLancamento: React.FC<FormLancamentoProps> = ({
             </div>
           </div>
 
-          {/* Campo de Valor em Destaque Original */}
+          {/* Campo de Valor em Destaque com Realce Inteligente */}
           <div style={{
             backgroundColor: '#132F4C',
-            border: '2px solid #1E3A5F',
+            border: etapaAtiva === 'valor' ? '2px solid #5090D3' : '2px solid #1E3A5F',
             borderRadius: '16px',
             padding: '12px',
-            textAlign: 'center'
+            textAlign: 'center',
+            boxShadow: etapaAtiva === 'valor' ? '0 0 14px rgba(80, 144, 211, 0.45)' : 'none',
+            transition: 'all 0.2s ease'
           }}>
             <label style={{ fontSize: '11px', fontWeight: 800, color: '#5090D3', textTransform: 'uppercase', display: 'block', marginBottom: '4px' }}>
               VALOR DO LANÇAMENTO
@@ -333,6 +426,7 @@ export const FormLancamento: React.FC<FormLancamentoProps> = ({
                 type="text"
                 inputMode="numeric"
                 value={valorTexto}
+                onFocus={() => setEtapaAtiva('valor')}
                 onChange={(e) => {
                   const formatado = formatarMoedaAoDigitar(e.target.value);
                   setValorTexto(formatado);
@@ -340,6 +434,7 @@ export const FormLancamento: React.FC<FormLancamentoProps> = ({
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') {
                     e.preventDefault();
+                    setEtapaAtiva('pagamento');
                     formaPagamentoRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
                   }
                 }}
@@ -359,8 +454,17 @@ export const FormLancamento: React.FC<FormLancamentoProps> = ({
             </div>
           </div>
 
-          {/* Forma de Pagamento (Grid Clássica de 5 Opções) */}
-          <div ref={formaPagamentoRef}>
+          {/* Forma de Pagamento (Grid Clássica de 5 Opções com Realce Inteligente) */}
+          <div 
+            ref={formaPagamentoRef}
+            style={{
+              borderRadius: '16px',
+              padding: '4px',
+              border: etapaAtiva === 'pagamento' ? '1.5px solid #287EA5' : '1.5px solid transparent',
+              boxShadow: etapaAtiva === 'pagamento' ? '0 0 14px rgba(40, 126, 165, 0.45)' : 'none',
+              transition: 'all 0.2s ease'
+            }}
+          >
             <label style={{ fontSize: '11px', fontWeight: 800, color: '#607789', textTransform: 'uppercase', display: 'block', marginBottom: '6px' }}>
               Forma de Pagamento
             </label>
@@ -373,15 +477,25 @@ export const FormLancamento: React.FC<FormLancamentoProps> = ({
                     type="button"
                     onClick={() => {
                       setPagamento(p);
-                      setTimeout(() => {
-                        if (p === '💳 Crédito') {
+                      if (p === '💳 Crédito') {
+                        setEtapaAtiva('cartao_ou_conta');
+                        setTimeout(() => {
                           cartaoSelectRef.current?.focus();
                           cartaoSelectRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                        } else {
+                        }, 100);
+                      } else if (p === '💵 Dinheiro') {
+                        setEtapaAtiva('natureza_categoria');
+                        setTimeout(() => {
                           categoriaSelectRef.current?.focus();
                           categoriaSelectRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                        }
-                      }, 100);
+                        }, 100);
+                      } else {
+                        setEtapaAtiva('cartao_ou_conta');
+                        setTimeout(() => {
+                          contaSelectRef.current?.focus();
+                          contaSelectRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        }, 100);
+                      }
                     }}
                     style={{
                       padding: '10px 4px',
@@ -403,16 +517,18 @@ export const FormLancamento: React.FC<FormLancamentoProps> = ({
             </div>
           </div>
 
-          {/* Seletor Cartão de Crédito ou Parcelas */}
+          {/* Seletor Cartão de Crédito ou Parcelas com Realce Inteligente */}
           {pagamento === '💳 Crédito' && (
             <div style={{
               backgroundColor: '#132F4C',
-              border: '1px solid #1E3A5F',
+              border: etapaAtiva === 'cartao_ou_conta' ? '1.5px solid #287EA5' : '1px solid #1E3A5F',
+              boxShadow: etapaAtiva === 'cartao_ou_conta' ? '0 0 14px rgba(40, 126, 165, 0.45)' : 'none',
               borderRadius: '14px',
               padding: '12px',
               display: 'flex',
               flexDirection: 'column',
-              gap: '10px'
+              gap: '10px',
+              transition: 'all 0.2s ease'
             }}>
               <div>
                 <label style={{ fontSize: '11px', fontWeight: 800, color: '#F8D117', textTransform: 'uppercase', display: 'block', marginBottom: '4px' }}>
@@ -421,8 +537,10 @@ export const FormLancamento: React.FC<FormLancamentoProps> = ({
                 <select 
                   ref={cartaoSelectRef}
                   value={cartao} 
+                  onFocus={() => setEtapaAtiva('cartao_ou_conta')}
                   onChange={(e) => {
                     setCartao(e.target.value);
+                    setEtapaAtiva('natureza_categoria');
                     setTimeout(() => {
                       categoriaSelectRef.current?.focus();
                       categoriaSelectRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -444,7 +562,15 @@ export const FormLancamento: React.FC<FormLancamentoProps> = ({
                 </label>
                 <select 
                   value={parcelas} 
-                  onChange={(e) => setParcelas(Number(e.target.value))}
+                  onFocus={() => setEtapaAtiva('cartao_ou_conta')}
+                  onChange={(e) => {
+                    setParcelas(Number(e.target.value));
+                    setEtapaAtiva('natureza_categoria');
+                    setTimeout(() => {
+                      categoriaSelectRef.current?.focus();
+                      categoriaSelectRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    }, 100);
+                  }}
                   style={{ backgroundColor: '#0B1929', color: '#FFFFFF', fontSize: '13px', fontWeight: 600 }}
                 >
                   <option value={1}>À vista (1x)</option>
@@ -458,16 +584,25 @@ export const FormLancamento: React.FC<FormLancamentoProps> = ({
             </div>
           )}
 
-          {/* Seletor de Conta Bancária */}
+          {/* Seletor de Conta Bancária com Realce Inteligente */}
           {pagamento !== '💳 Crédito' && pagamento !== '💵 Dinheiro' && (
-            <div>
+            <div style={{
+              borderRadius: '14px',
+              padding: '4px',
+              border: etapaAtiva === 'cartao_ou_conta' ? '1.5px solid #287EA5' : '1.5px solid transparent',
+              boxShadow: etapaAtiva === 'cartao_ou_conta' ? '0 0 14px rgba(40, 126, 165, 0.45)' : 'none',
+              transition: 'all 0.2s ease'
+            }}>
               <label style={{ fontSize: '11px', fontWeight: 800, color: '#607789', textTransform: 'uppercase', display: 'block', marginBottom: '4px' }}>
                 Conta Bancária Utilizada
               </label>
               <select 
+                ref={contaSelectRef}
                 value={conta} 
+                onFocus={() => setEtapaAtiva('cartao_ou_conta')}
                 onChange={(e) => {
                   setConta(e.target.value);
+                  setEtapaAtiva('natureza_categoria');
                   setTimeout(() => {
                     categoriaSelectRef.current?.focus();
                     categoriaSelectRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -484,8 +619,14 @@ export const FormLancamento: React.FC<FormLancamentoProps> = ({
             </div>
           )}
 
-          {/* Natureza e Categoria com Botões Discretos de Criação */}
-          <div>
+          {/* Natureza e Categoria com Realce Inteligente */}
+          <div style={{
+            borderRadius: '14px',
+            padding: '4px',
+            border: etapaAtiva === 'natureza_categoria' ? '1.5px solid #287EA5' : '1.5px solid transparent',
+            boxShadow: etapaAtiva === 'natureza_categoria' ? '0 0 14px rgba(40, 126, 165, 0.45)' : 'none',
+            transition: 'all 0.2s ease'
+          }}>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
               <div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
@@ -522,6 +663,7 @@ export const FormLancamento: React.FC<FormLancamentoProps> = ({
                 </div>
                 <select 
                   value={natureza} 
+                  onFocus={() => setEtapaAtiva('natureza_categoria')}
                   onChange={(e) => {
                     const novaNat = e.target.value;
                     if (novaNat === '__NOVA_NATUREZA__') {
@@ -595,6 +737,7 @@ export const FormLancamento: React.FC<FormLancamentoProps> = ({
                 <select 
                   ref={categoriaSelectRef}
                   value={categoria} 
+                  onFocus={() => setEtapaAtiva('natureza_categoria')}
                   onChange={(e) => {
                     const novaCat = e.target.value;
                     if (novaCat === '__NOVA_CATEGORIA__') {
@@ -605,6 +748,7 @@ export const FormLancamento: React.FC<FormLancamentoProps> = ({
                       return;
                     }
                     setCategoria(novaCat);
+                    setEtapaAtiva('descricao');
                     setTimeout(() => {
                       descricaoInputRef.current?.focus();
                       descricaoInputRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -623,8 +767,14 @@ export const FormLancamento: React.FC<FormLancamentoProps> = ({
             </div>
           </div>
 
-          {/* Descrição */}
-          <div>
+          {/* Descrição com Realce Inteligente */}
+          <div style={{
+            borderRadius: '14px',
+            padding: '4px',
+            border: etapaAtiva === 'descricao' ? '1.5px solid #287EA5' : '1.5px solid transparent',
+            boxShadow: etapaAtiva === 'descricao' ? '0 0 14px rgba(40, 126, 165, 0.45)' : 'none',
+            transition: 'all 0.2s ease'
+          }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
               <label style={{ fontSize: '11px', fontWeight: 800, color: '#AAB4BE', textTransform: 'uppercase' }}>
                 Descrição
@@ -637,10 +787,12 @@ export const FormLancamento: React.FC<FormLancamentoProps> = ({
               ref={descricaoInputRef}
               type="text"
               value={descricao}
+              onFocus={() => setEtapaAtiva('descricao')}
               onChange={(e) => setDescricao(e.target.value)}
               onKeyDown={(e) => {
                 if (e.key === 'Enter') {
                   e.preventDefault();
+                  setEtapaAtiva('salvar');
                   submitButtonRef.current?.focus();
                   submitButtonRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
                 }
@@ -663,11 +815,12 @@ export const FormLancamento: React.FC<FormLancamentoProps> = ({
             />
           </div>
 
-          {/* Botão de Salvar Lançamento Otimizado */}
+          {/* Botão de Salvar Lançamento Otimizado com Realce Ativo */}
           <button
             ref={submitButtonRef}
             type="submit"
             disabled={modoApenasLeitura}
+            onFocus={() => setEtapaAtiva('salvar')}
             style={{
               width: '100%',
               border: 'none',
@@ -677,7 +830,7 @@ export const FormLancamento: React.FC<FormLancamentoProps> = ({
               color: '#FFFFFF',
               fontSize: '15px',
               fontWeight: 800,
-              boxShadow: modoApenasLeitura ? 'none' : '0 4px 14px rgba(46, 139, 87, 0.35)',
+              boxShadow: modoApenasLeitura ? 'none' : (etapaAtiva === 'salvar' ? '0 0 20px rgba(76, 175, 80, 0.7), 0 4px 14px rgba(46, 139, 87, 0.45)' : '0 4px 14px rgba(46, 139, 87, 0.35)'),
               cursor: modoApenasLeitura ? 'not-allowed' : 'pointer',
               opacity: modoApenasLeitura ? 0.7 : 1,
               display: 'flex',
@@ -685,7 +838,8 @@ export const FormLancamento: React.FC<FormLancamentoProps> = ({
               justifyContent: 'center',
               gap: '8px',
               marginTop: '4px',
-              transition: 'transform 0.15s ease'
+              transition: 'all 0.2s ease',
+              outline: etapaAtiva === 'salvar' ? '2px solid #81C784' : 'none'
             }}
           >
             <span>{modoApenasLeitura ? 'Modo Supervisão (Apenas Leitura)' : 'Salvar Lançamento'}</span>

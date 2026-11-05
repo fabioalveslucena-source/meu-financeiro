@@ -10,6 +10,7 @@ export interface VozInterpretada {
   descricao?: string;
   parcelas?: number;
   textoOriginal: string;
+  autoSalvar?: boolean;
 }
 
 const TABELA_NUMEROS: Record<string, number> = {

@@ -45,14 +45,14 @@ export const SyncProgressOverlay: React.FC<SyncProgressOverlayProps> = ({
         }
       }, 50);
     } else if (visivel) {
-      // Quando termina a sincronização real, avança para 100% e fecha suavemente
+      // Quando termina a sincronização real, exibe o selo 100% e fecha suavemente
       setProgresso(100);
-      setStatusTexto('Sincronização concluída com sucesso! ✨');
+      setStatusTexto('100% Atualizado • Base Sincronizada ✨');
       const timer = setTimeout(() => {
         setVisivel(false);
         setProgresso(0);
         onConcluido?.();
-      }, 500);
+      }, 700);
       return () => clearTimeout(timer);
     }
 

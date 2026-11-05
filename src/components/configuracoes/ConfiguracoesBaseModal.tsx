@@ -186,6 +186,19 @@ export const ConfiguracoesBaseModal: React.FC<ConfiguracoesBaseModalProps> = ({
     onNavegar?.('inicio');
   };
 
+  const handleSelecionarBancoRapido = (nomeBanco: string) => {
+    setBancoForm(nomeBanco);
+    setUsuario({
+      bancoPrincipal: nomeBanco,
+      agencia: agenciaForm || usuario.agencia || '',
+      numeroConta: numeroContaForm || usuario.numeroConta || '',
+      tipoConta: tipoContaForm || usuario.tipoConta || 'Corrente'
+    });
+    mostrarToast(`Banco ${nomeBanco} selecionado!`, 'sucesso');
+    onFechar();
+    onNavegar?.('inicio');
+  };
+
   if (!aberto) return null;
 
   // Iniciar criação de cartão
@@ -964,16 +977,21 @@ export const ConfiguracoesBaseModal: React.FC<ConfiguracoesBaseModalProps> = ({
           {abaAtiva === 'banco' && (
             <form onSubmit={salvarContaBancaria} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
               <div>
-                <label style={{ fontSize: '11px', fontWeight: 800, color: '#AAB4BE', textTransform: 'uppercase', display: 'block', marginBottom: '8px' }}>
-                  1. Escolha a Instituição Financeira / Banco
-                </label>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                  <label style={{ fontSize: '11px', fontWeight: 800, color: '#AAB4BE', textTransform: 'uppercase' }}>
+                    1. Escolha a Instituição Financeira / Banco
+                  </label>
+                  <span style={{ fontSize: '10.5px', color: '#5090D3', fontWeight: 700 }}>
+                    1 toque seleciona e volta ao início
+                  </span>
+                </div>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '8px' }}>
                   {BANCOS_DISPONIVEIS.map((b) => {
                     const ativo = bancoForm === b.nome;
                     return (
                       <div
                         key={b.nome}
-                        onClick={() => setBancoForm(b.nome)}
+                        onClick={() => handleSelecionarBancoRapido(b.nome)}
                         style={{
                           backgroundColor: ativo ? 'rgba(248, 209, 23, 0.15)' : '#132F4C',
                           border: `1.5px solid ${ativo ? b.cor : '#1E3A5F'}`,
@@ -985,6 +1003,7 @@ export const ConfiguracoesBaseModal: React.FC<ConfiguracoesBaseModalProps> = ({
                           justifyContent: 'space-between',
                           transition: 'all 0.15s ease',
                         }}
+                        title={`Clique para selecionar ${b.nome} e voltar ao Início`}
                       >
                         <div>
                           <strong style={{ fontSize: '12.5px', color: ativo ? b.cor : '#FFFFFF', display: 'block' }}>

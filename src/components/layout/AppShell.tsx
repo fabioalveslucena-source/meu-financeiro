@@ -153,18 +153,77 @@ export const AppShell: React.FC = () => {
       {/* Overlay de Progresso de Sincronização em Tempo Real */}
       <SyncProgressOverlay />
 
-      {/* Toast Notificação */}
+      {/* Pop-up de Notificação e Finalização Centralizado */}
       {toast && (
         <div 
-          className={`toast ${
-            toast.tipo === 'sucesso' ? 'toast-success' : 
-            toast.tipo === 'erro' ? 'toast-error' : 'toast-info'
-          }`}
           onClick={limparToast}
-          style={{ cursor: 'pointer', zIndex: 9999 }}
+          style={{
+            position: 'fixed',
+            inset: 0,
+            backgroundColor: 'rgba(5, 13, 24, 0.65)',
+            backdropFilter: 'blur(4px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 100000,
+            padding: '20px',
+            cursor: 'pointer'
+          }}
         >
-          <span>{toast.tipo === 'sucesso' ? '✅' : toast.tipo === 'erro' ? '❌' : 'ℹ️'}</span>
-          <span>{toast.mensagem}</span>
+          <div 
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              maxWidth: '380px',
+              width: '100%',
+              backgroundColor: '#0F2744',
+              border: `1.5px solid ${toast.tipo === 'sucesso' ? '#4CAF50' : toast.tipo === 'erro' ? '#F44336' : '#287EA5'}`,
+              borderRadius: '20px',
+              padding: '22px 20px',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              textAlign: 'center',
+              gap: '12px',
+              boxShadow: '0 16px 40px rgba(0, 0, 0, 0.6), 0 0 20px rgba(40, 126, 165, 0.25)',
+              cursor: 'default'
+            }}
+          >
+            <div style={{
+              width: '48px',
+              height: '48px',
+              borderRadius: '50%',
+              backgroundColor: toast.tipo === 'sucesso' ? 'rgba(76, 175, 80, 0.18)' : toast.tipo === 'erro' ? 'rgba(244, 67, 54, 0.18)' : 'rgba(40, 126, 165, 0.18)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: '24px'
+            }}>
+              {toast.tipo === 'sucesso' ? '✅' : toast.tipo === 'erro' ? '❌' : 'ℹ️'}
+            </div>
+
+            <div style={{ fontSize: '14px', fontWeight: 700, color: '#FFFFFF', lineHeight: 1.45 }}>
+              {toast.mensagem}
+            </div>
+
+            <button
+              type="button"
+              onClick={limparToast}
+              style={{
+                marginTop: '4px',
+                padding: '8px 24px',
+                borderRadius: '12px',
+                border: 'none',
+                backgroundColor: toast.tipo === 'sucesso' ? '#2E8B57' : '#1E3A5F',
+                color: '#FFFFFF',
+                fontSize: '13px',
+                fontWeight: 800,
+                cursor: 'pointer',
+                boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)'
+              }}
+            >
+              OK
+            </button>
+          </div>
         </div>
       )}
 
