@@ -8,6 +8,7 @@ import { Mic, Plus, X, Check } from 'lucide-react';
 interface FormLancamentoProps {
   onAbrirVoz: () => void;
   dadosPreenchidosVoz?: any;
+  onLimparDadosVoz?: () => void;
   onNavegarCartoes?: () => void;
   tipoInicial?: TipoLancamento;
 }
@@ -15,6 +16,7 @@ interface FormLancamentoProps {
 export const FormLancamento: React.FC<FormLancamentoProps> = ({ 
   onAbrirVoz,
   dadosPreenchidosVoz,
+  onLimparDadosVoz,
   tipoInicial
 }) => {
   const { 
@@ -53,6 +55,7 @@ export const FormLancamento: React.FC<FormLancamentoProps> = ({
   const [etapaAtiva, setEtapaAtiva] = useState<'tipo' | 'valor' | 'pagamento' | 'cartao_ou_conta' | 'natureza_categoria' | 'descricao' | 'salvar'>('valor');
   const [ouvindoVozComando, setOuvindoVozComando] = useState(false);
   const recognitionRef = useRef<any>(null);
+  const jaProcessouVozRef = useRef<any>(null);
 
   // Modal discreto para criar Nova Categoria ou Natureza
   const [modalCriarAberto, setModalCriarAberto] = useState(false);
@@ -171,29 +174,65 @@ export const FormLancamento: React.FC<FormLancamentoProps> = ({
 
   // Preenchimento vindo do comando de voz
   useEffect(() => {
-    if (dadosPreenchidosVoz) {
-      if (dadosPreenchidosVoz.tipo) setTipo(dadosPreenchidosVoz.tipo);
-      if (dadosPreenchidosVoz.valor !== undefined && dadosPreenchidosVoz.valor !== null) {
-        setValorTexto(dadosPreenchidosVoz.valor.toFixed(2).replace('.', ','));
-      }
-      if (dadosPreenchidosVoz.pagamento) setPagamento(dadosPreenchidosVoz.pagamento);
-      if (dadosPreenchidosVoz.natureza) setNatureza(dadosPreenchidosVoz.natureza);
-      if (dadosPreenchidosVoz.categoria) setCategoria(dadosPreenchidosVoz.categoria);
-      if (dadosPreenchidosVoz.descricao) setDescricao(dadosPreenchidosVoz.descricao);
-      if (dadosPreenchidosVoz.parcelas) setParcelas(dadosPreenchidosVoz.parcelas);
+    if (!dadosPreenchidosVoz) return;
+    if (jaProcessouVozRef.current === dadosPreenchidosVoz) return;
+    jaProcessouVozRef.current = dadosPreenchidosVoz;
 
-      if (dadosPreenchidosVoz.pagamento === '💳 Crédito' && cartoes.length > 0) {
-        const bb = cartoes.find(c => c.nome.includes('Banco do Brasil'));
-        setCartao(bb ? bb.nome : cartoes[0].nome);
-      }
+    const tipoFinal = dadosPreenchidosVoz.tipo || tipo;
+    const valorFinal = dadosPreenchidosVoz.valor !== undefined && dadosPreenchidosVoz.valor !== null 
+      ? dadosPreenchidosVoz.valor 
+      : (parseMoedaBR(valorTexto) || 0);
+    const pagtoFinal = (dadosPreenchidosVoz.pagamento || pagamento) as FormaPagamento;
+    const natFinal = dadosPreenchidosVoz.natureza || natureza;
+    const catFinal = dadosPreenchidosVoz.categoria || categoria;
+    const descFinal = dadosPreenchidosVoz.descricao || catFinal;
+    const parcFinal = dadosPreenchidosVoz.parcelas || 1;
 
-      if (dadosPreenchidosVoz.autoSalvar) {
-        setTimeout(() => {
-          submeterLancamento();
-        }, 350);
-      }
+    let cartaoFinal = cartao;
+    if (pagtoFinal === '💳 Crédito') {
+      const bb = cartoes.find(c => c.nome.includes('Banco do Brasil'));
+      cartaoFinal = bb ? bb.nome : (cartoes[0]?.nome || '');
     }
-  }, [dadosPreenchidosVoz, cartoes, submeterLancamento]);
+    let contaFinal = conta;
+    if (pagtoFinal !== '💳 Crédito' && pagtoFinal !== '💵 Dinheiro') {
+      const bbConta = contas.find(c => c.nome.includes('Banco do Brasil'));
+      contaFinal = bbConta ? bbConta.nome : (contas[0]?.nome || '');
+    }
+
+    if (dadosPreenchidosVoz.tipo) setTipo(dadosPreenchidosVoz.tipo);
+    if (dadosPreenchidosVoz.valor !== undefined && dadosPreenchidosVoz.valor !== null) {
+      setValorTexto(dadosPreenchidosVoz.valor.toFixed(2).replace('.', ','));
+    }
+    if (dadosPreenchidosVoz.pagamento) setPagamento(dadosPreenchidosVoz.pagamento);
+    if (dadosPreenchidosVoz.natureza) setNatureza(dadosPreenchidosVoz.natureza);
+    if (dadosPreenchidosVoz.categoria) setCategoria(dadosPreenchidosVoz.categoria);
+    if (dadosPreenchidosVoz.descricao) setDescricao(dadosPreenchidosVoz.descricao);
+    if (dadosPreenchidosVoz.parcelas) setParcelas(dadosPreenchidosVoz.parcelas);
+    if (pagtoFinal === '💳 Crédito' && cartaoFinal) setCartao(cartaoFinal);
+    if (pagtoFinal !== '💳 Crédito' && pagtoFinal !== '💵 Dinheiro' && contaFinal) setConta(contaFinal);
+
+    if (dadosPreenchidosVoz.autoSalvar) {
+      if (valorFinal > 0) {
+        adicionarLancamento({
+          data,
+          tipo: tipoFinal,
+          valor: valorFinal,
+          pagamento: pagtoFinal,
+          natureza: natFinal,
+          categoria: catFinal,
+          descricao: descFinal,
+          cartao: pagtoFinal === '💳 Crédito' ? cartaoFinal : undefined,
+          conta: pagtoFinal !== '💳 Crédito' && pagtoFinal !== '💵 Dinheiro' ? contaFinal : undefined,
+          parcelas: pagtoFinal === '💳 Crédito' ? parcFinal : undefined,
+        });
+        setValorTexto('');
+        setDescricao('');
+        setParcelas(1);
+        setEtapaAtiva('valor');
+      }
+      onLimparDadosVoz?.();
+    }
+  }, [dadosPreenchidosVoz, cartoes, contas, data, tipo, pagamento, natureza, categoria, cartao, conta, valorTexto, adicionarLancamento, onLimparDadosVoz]);
 
   // Escuta rápida de confirmação por voz ("Salvar", "OK", "Confirmar")
   const pararEscutaComando = useCallback(() => {

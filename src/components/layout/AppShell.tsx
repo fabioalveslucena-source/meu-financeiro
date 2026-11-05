@@ -266,6 +266,7 @@ export const AppShell: React.FC = () => {
             <FormLancamento 
               onAbrirVoz={() => setModalVozAberto(true)} 
               dadosPreenchidosVoz={dadosVozPreenchimento}
+              onLimparDadosVoz={() => setDadosVozPreenchimento(null)}
               tipoInicial={tipoLancamentoInicial}
             />
           )}

@@ -16,10 +16,14 @@ export const VoiceModal: React.FC<VoiceModalProps> = ({
   onConfirmarDados,
 }) => {
   const resultadoRef = useRef<VozInterpretada | null>(null);
+  const pararGravacaoRef = useRef<() => void>(() => {});
 
   const handleConfirmar = useCallback((resParaConfirmar?: VozInterpretada) => {
     const dados = resParaConfirmar || resultadoRef.current;
     if (dados && dados.sucesso) {
+      try {
+        pararGravacaoRef.current();
+      } catch (_) {}
       onConfirmarDados({ ...dados, autoSalvar: true });
       onFechar();
     }
@@ -39,6 +43,10 @@ export const VoiceModal: React.FC<VoiceModalProps> = ({
       handleConfirmar();
     }
   });
+
+  useEffect(() => {
+    pararGravacaoRef.current = pararGravacao;
+  }, [pararGravacao]);
 
   useEffect(() => {
     resultadoRef.current = resultado;

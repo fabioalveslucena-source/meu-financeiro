@@ -123,21 +123,25 @@ export const LivroCaixaView: React.FC<LivroCaixaViewProps> = ({ onAbrirImportar 
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-      {/* Barra de Ações do Topo Centralizada e Otimizada */}
+      {/* Cabeçalho do Extrato em Linha Única Otimizada */}
       <div style={{
         display: 'flex',
         flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        textAlign: 'center',
         gap: '8px',
         width: '100%'
       }}>
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px' }}>
-          <h2 style={{ fontSize: '1.35rem', fontWeight: 800, margin: 0, textAlign: 'center' }}>
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          flexWrap: 'wrap',
+          gap: '8px',
+          width: '100%'
+        }}>
+          <h2 style={{ fontSize: '1.3rem', fontWeight: 800, margin: 0, color: '#FFFFFF' }}>
             Livro Caixa • {competenciaAtiva}
           </h2>
-          <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', margin: 0, textAlign: 'center' }}>
+          <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', margin: 0 }}>
             Titular: <strong style={{ color: '#FFFFFF' }}>{usuario.nome}</strong>
           </p>
         </div>
@@ -147,11 +151,9 @@ export const LivroCaixaView: React.FC<LivroCaixaViewProps> = ({ onAbrirImportar 
           display: 'flex',
           gap: '8px',
           alignItems: 'center',
-          justifyContent: 'center',
+          justifyContent: 'flex-start',
           flexWrap: 'wrap',
-          width: '100%',
-          maxWidth: '520px',
-          marginTop: '2px'
+          width: '100%'
         }}>
           {onAbrirImportar && (
             <button
