@@ -77,13 +77,13 @@ export const GerenciamentoView: React.FC = () => {
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
         <div>
-          <h2 style={{ fontSize: '1.4rem', fontWeight: 800, margin: 0 }}>
+          <h2 style={{ fontSize: '1.25rem', fontWeight: 800, margin: 0 }}>
             Gerenciador de Lançamentos
           </h2>
-          <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', margin: 0 }}>
+          <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', margin: 0 }}>
             Pesquise, filtre, edite e remova movimentações ({competenciaAtiva})
           </p>
         </div>
@@ -92,44 +92,44 @@ export const GerenciamentoView: React.FC = () => {
             type="button"
             onClick={handleLimparMes}
             style={{
-              padding: '6px 12px',
-              borderRadius: '10px',
+              padding: '5px 10px',
+              borderRadius: '8px',
               border: '1px solid rgba(244, 67, 54, 0.4)',
               background: 'rgba(244, 67, 54, 0.12)',
               color: '#EF5350',
-              fontSize: '11.5px',
+              fontSize: '11px',
               fontWeight: 700,
               cursor: 'pointer',
               display: 'inline-flex',
               alignItems: 'center',
-              gap: '6px'
+              gap: '5px'
             }}
             title={`Excluir todos os lançamentos da competência ${competenciaAtiva}`}
           >
-            <Trash2 size={13} />
+            <Trash2 size={12} />
             <span>Limpar mês {competenciaAtiva}</span>
           </button>
         )}
       </div>
 
       {/* Barra de Filtros e Busca Responsiva */}
-      <div className="card" style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
+      <div className="card" style={{ padding: '0.75rem 0.85rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
         {/* Linha 1: Campo de Busca com largura total */}
         <div style={{ position: 'relative', width: '100%' }}>
-          <Search size={18} color="var(--text-tertiary)" style={{ position: 'absolute', left: '0.85rem', top: '50%', transform: 'translateY(-50%)' }} />
+          <Search size={16} color="var(--text-tertiary)" style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)' }} />
           <input
             type="text"
-            placeholder="Buscar por descrição, categoria, cartão..."
+            placeholder="Buscar descrição, categoria, cartão..."
             value={termoBusca}
             onChange={(e) => setTermoBusca(e.target.value)}
-            style={{ paddingLeft: '2.5rem', paddingRight: termoBusca ? '2.5rem' : '1rem', width: '100%', height: '44px', fontSize: '0.9rem' }}
+            style={{ paddingLeft: '2.2rem', paddingRight: termoBusca ? '2.2rem' : '0.8rem', width: '100%', height: '38px', fontSize: '0.85rem' }}
           />
           {termoBusca && (
             <button
               onClick={() => setTermoBusca('')}
               style={{
                 position: 'absolute',
-                right: '0.75rem',
+                right: '0.65rem',
                 top: '50%',
                 transform: 'translateY(-50%)',
                 color: 'var(--text-tertiary)',
@@ -140,49 +140,45 @@ export const GerenciamentoView: React.FC = () => {
               }}
               title="Limpar busca"
             >
-              <X size={16} />
+              <X size={15} />
             </button>
           )}
         </div>
 
-        {/* Linha 2: Grade 2 Colunas para os Selects (sem truncamento) */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '0.65rem' }}>
+        {/* Linha 2: Grade 2 Colunas para os Selects */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
           {/* Filtro Tipo */}
-          <div style={{ width: '100%' }}>
-            <select 
-              value={filtroTipo} 
-              onChange={(e) => setFiltroTipo(e.target.value)}
-              style={{ width: '100%', height: '42px', fontSize: '0.84rem', paddingLeft: '0.65rem', paddingRight: '1.4rem' }}
-            >
-              <option value="Todos">Todos os Tipos</option>
-              <option value="Despesa">Despesa</option>
-              <option value="Receita">Receita</option>
-              <option value="Investimento">Investimento</option>
-            </select>
-          </div>
+          <select 
+            value={filtroTipo} 
+            onChange={(e) => setFiltroTipo(e.target.value)}
+            style={{ width: '100%', height: '36px', fontSize: '0.8rem', paddingLeft: '0.5rem', paddingRight: '1rem' }}
+          >
+            <option value="Todos">Todos os Tipos</option>
+            <option value="Despesa">Despesa</option>
+            <option value="Receita">Receita</option>
+            <option value="Investimento">Investimento</option>
+          </select>
 
           {/* Filtro Natureza */}
-          <div style={{ width: '100%' }}>
-            <select 
-              value={filtroNatureza} 
-              onChange={(e) => setFiltroNatureza(e.target.value)}
-              style={{ width: '100%', height: '42px', fontSize: '0.84rem', paddingLeft: '0.65rem', paddingRight: '1.4rem' }}
-            >
-              <option value="Todas">Todas as Naturezas</option>
-              {naturezas.map((n) => (
-                <option key={n.id} value={n.label}>{n.label}</option>
-              ))}
-            </select>
-          </div>
+          <select 
+            value={filtroNatureza} 
+            onChange={(e) => setFiltroNatureza(e.target.value)}
+            style={{ width: '100%', height: '36px', fontSize: '0.8rem', paddingLeft: '0.5rem', paddingRight: '1rem' }}
+          >
+            <option value="Todas">Todas Naturezas</option>
+            {naturezas.map((n) => (
+              <option key={n.id} value={n.label}>{n.label}</option>
+            ))}
+          </select>
         </div>
       </div>
 
-      {/* Lista de Lançamentos */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+      {/* Lista de Lançamentos Responsiva e Compacta */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.45rem' }}>
         {listaFiltrada.length === 0 ? (
-          <div className="card" style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-secondary)' }}>
-            <Filter size={32} color="var(--text-tertiary)" style={{ margin: '0 auto 0.75rem auto' }} />
-            <p style={{ margin: 0, fontWeight: 600 }}>Nenhum lançamento corresponde aos filtros atuais.</p>
+          <div className="card" style={{ padding: '2.5rem 1rem', textAlign: 'center', color: 'var(--text-secondary)' }}>
+            <Filter size={28} color="var(--text-tertiary)" style={{ margin: '0 auto 0.5rem auto' }} />
+            <p style={{ margin: 0, fontWeight: 600, fontSize: '0.88rem' }}>Nenhum lançamento corresponde aos filtros atuais.</p>
           </div>
         ) : (
           listaFiltrada.map((item) => {
@@ -191,139 +187,190 @@ export const GerenciamentoView: React.FC = () => {
             const corValor = isReceita ? 'var(--color-receita)' : item.tipo === 'Investimento' ? 'var(--color-investimento)' : 'var(--color-despesa)';
 
             return (
-              <div key={item.id} className="card" style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                padding: '1rem 1.25rem',
-                gap: '1rem',
-                flexWrap: 'wrap'
-              }}>
+              <div 
+                key={item.id} 
+                className="card" 
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  padding: '9px 11px',
+                  gap: '8px',
+                  backgroundColor: '#0F2744',
+                  borderRadius: '13px',
+                  border: '1px solid #1E3A5F',
+                  transition: 'background-color 0.15s ease'
+                }}
+              >
+                {/* Lado Esquerdo Clicável para Detalhes (Ícone + Título + Subtítulo) */}
                 <div 
                   onClick={() => setLancamentoDetalhes(item)}
-                  style={{ display: 'flex', alignItems: 'center', gap: '1rem', cursor: 'pointer', flex: 1, minWidth: 0 }}
+                  style={{ 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    gap: '9px', 
+                    cursor: 'pointer', 
+                    flex: 1, 
+                    minWidth: 0 
+                  }}
                   title="Toque para ver os detalhes completos deste lançamento"
                 >
                   <div style={{
-                    width: '42px',
-                    height: '42px',
-                    borderRadius: '10px',
+                    width: '32px',
+                    height: '32px',
+                    borderRadius: '8px',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    fontSize: '1.25rem',
-                    backgroundColor: isReceita ? 'var(--color-receita-bg)' : isDespesa ? 'var(--color-despesa-bg)' : 'var(--color-investimento-bg)',
+                    fontSize: '0.95rem',
+                    backgroundColor: isReceita ? 'rgba(76, 175, 80, 0.16)' : isDespesa ? 'rgba(244, 67, 54, 0.16)' : 'rgba(33, 150, 243, 0.16)',
+                    border: `1px solid ${isReceita ? 'rgba(76, 175, 80, 0.3)' : isDespesa ? 'rgba(244, 67, 54, 0.3)' : 'rgba(33, 150, 243, 0.3)'}`,
                     flexShrink: 0
                   }}>
                     {isReceita ? '🟢' : isDespesa ? '🔴' : '🔵'}
                   </div>
 
-                  <div style={{ minWidth: 0, flex: 1 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
-                      <h4 style={{ margin: 0, fontSize: '1rem', fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  <div style={{ minWidth: 0, flex: 1, display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                    {/* Linha 1: Descrição + Badges */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '5px', minWidth: 0 }}>
+                      <span style={{ 
+                        fontSize: '13px', 
+                        fontWeight: 700, 
+                        color: '#FFFFFF',
+                        overflow: 'hidden', 
+                        textOverflow: 'ellipsis', 
+                        whiteSpace: 'nowrap' 
+                      }}>
                         {item.descricao}
-                      </h4>
+                      </span>
+
                       {item.parcela && item.totalParcelas && item.totalParcelas > 1 ? (
                         <span style={{
-                          fontSize: '0.78rem',
+                          fontSize: '9.5px',
                           fontWeight: 800,
-                          padding: '2.5px 8px',
-                          borderRadius: '6px',
-                          backgroundColor: 'rgba(138, 5, 190, 0.2)',
+                          padding: '1px 5px',
+                          borderRadius: '4px',
+                          backgroundColor: 'rgba(138, 5, 190, 0.22)',
                           border: '1px solid rgba(192, 132, 252, 0.4)',
-                          color: '#C084FC'
+                          color: '#C084FC',
+                          whiteSpace: 'nowrap',
+                          flexShrink: 0
                         }}>
-                          📦 Parcela {item.parcela}/{item.totalParcelas}
+                          📦 {item.parcela}/{item.totalParcelas}
                         </span>
-                      ) : (
-                        <span style={{
-                          fontSize: '0.78rem',
-                          fontWeight: 800,
-                          padding: '2.5px 8px',
-                          borderRadius: '6px',
-                          backgroundColor: 'rgba(40, 126, 165, 0.18)',
-                          border: '1px solid rgba(80, 144, 211, 0.35)',
-                          color: '#5090D3'
-                        }}>
-                          ⚡ À vista
-                        </span>
-                      )}
+                      ) : null}
 
                       {item.detalhesMercado && (
                         <button
                           type="button"
-                          onClick={() => setLancamentoMercado(item)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setLancamentoMercado(item);
+                          }}
                           style={{
-                            fontSize: '0.78rem',
+                            fontSize: '9.5px',
                             fontWeight: 800,
-                            padding: '2.5px 8px',
-                            borderRadius: '6px',
+                            padding: '1px 5px',
+                            borderRadius: '4px',
                             backgroundColor: 'rgba(76, 175, 80, 0.22)',
                             color: '#66BB6A',
                             border: '1px solid rgba(76, 175, 80, 0.45)',
                             cursor: 'pointer',
                             display: 'inline-flex',
                             alignItems: 'center',
-                            gap: '4px'
+                            gap: '3px',
+                            whiteSpace: 'nowrap',
+                            flexShrink: 0
                           }}
-                          title="Ver cupom detalhado de compras do Meu Mercado"
+                          title="Ver cupom de compras do Meu Mercado"
                         >
-                          <ShoppingCart size={12} />
-                          <span>Cupom ({item.detalhesMercado.itens.length} itens)</span>
+                          <ShoppingCart size={10} />
+                          <span>Cupom</span>
                         </button>
                       )}
                     </div>
 
-                    <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', margin: '4px 0 0 0', display: 'flex', flexWrap: 'wrap', gap: '6px', alignItems: 'center' }}>
-                      <span>📅 {formatarData(item.data)}</span>
+                    {/* Linha 2: Data • Categoria • Pagamento/Cartão (Enxuto em linha única sem quebras) */}
+                    <div style={{ 
+                      fontSize: '11px', 
+                      color: '#8A99AD', 
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      gap: '4px',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap'
+                    }}>
+                      <span>{formatarData(item.data)}</span>
                       <span>•</span>
-                      <span>{item.natureza}</span>
+                      <strong style={{ color: '#E2E8F0', fontWeight: 600 }}>{item.categoria}</strong>
                       <span>•</span>
-                      <strong style={{ color: 'var(--text-primary)' }}>{item.categoria}</strong>
-                      <span>•</span>
-                      <span style={{ color: '#82B1FF', fontWeight: 600 }}>{item.pagamento}</span>
-                      <span>•</span>
-                      <span style={{ fontWeight: 600 }}>
-                        {item.parcela && item.totalParcelas && item.totalParcelas > 1 
-                          ? `(Parcela ${item.parcela}/${item.totalParcelas})` 
-                          : '(À vista)'}
+                      <span style={{ color: '#64B5F6' }}>
+                        {item.cartao ? item.cartao : item.pagamento}
                       </span>
-                      {item.cartao && <span>• 💳 {item.cartao}</span>}
-                      {item.conta && <span>• 🏦 {item.conta}</span>}
-                    </p>
+                    </div>
                   </div>
                 </div>
 
-                <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem' }}>
-                  <span style={{ fontSize: '1.15rem', fontWeight: 800, color: corValor }}>
+                {/* Lado Direito: Valor e Botões de Ação */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '7px', flexShrink: 0 }}>
+                  <span style={{ 
+                    fontSize: '13px', 
+                    fontWeight: 800, 
+                    color: corValor, 
+                    whiteSpace: 'nowrap',
+                    textAlign: 'right'
+                  }}>
                     {isDespesa ? '- ' : '+ '}
                     {formatarMoeda(item.valor)}
                   </span>
 
-                  <div style={{ display: 'flex', gap: '0.4rem' }}>
+                  <div style={{ display: 'flex', gap: '3px', alignItems: 'center' }}>
                     <button
-                      onClick={() => iniciarEdicao(item)}
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        iniciarEdicao(item);
+                      }}
                       style={{
-                        padding: '0.45rem',
-                        borderRadius: 'var(--radius-md)',
-                        backgroundColor: 'var(--bg-tertiary)',
-                        color: 'var(--brand-secondary)'
+                        width: '27px',
+                        height: '27px',
+                        borderRadius: '7px',
+                        backgroundColor: '#132F4C',
+                        border: '1px solid #1E3A5F',
+                        color: '#64B5F6',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        cursor: 'pointer',
+                        padding: 0
                       }}
                       title="Editar lançamento"
                     >
-                      <Edit3 size={16} />
+                      <Edit3 size={13} />
                     </button>
                     <button
-                      onClick={() => setItemParaExcluir(item)}
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setItemParaExcluir(item);
+                      }}
                       style={{
-                        padding: '0.45rem',
-                        borderRadius: 'var(--radius-md)',
-                        backgroundColor: 'var(--color-despesa-bg)',
-                        color: 'var(--color-despesa)'
+                        width: '27px',
+                        height: '27px',
+                        borderRadius: '7px',
+                        backgroundColor: 'rgba(244, 67, 54, 0.12)',
+                        border: '1px solid rgba(244, 67, 54, 0.35)',
+                        color: '#EF5350',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        cursor: 'pointer',
+                        padding: 0
                       }}
                       title="Excluir lançamento"
                     >
-                      <Trash2 size={16} />
+                      <Trash2 size={13} />
                     </button>
                   </div>
                 </div>
