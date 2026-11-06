@@ -39,8 +39,19 @@ export const CartaoVisual: React.FC<CartaoVisualProps> = ({
   const nomeLower = (cartao.nome || '').toLowerCase();
   const corLower = (cartao.cor || '').toLowerCase();
 
-  // Detecção dos 5 bancos do usuário
-  const isBB = nomeLower.includes('brasil') || nomeLower.includes('ourocard') || corLower === '#f8d117' || corLower === '#ffd700';
+  // Detecção dos bancos do usuário
+  const isMercadoLivre = nomeLower.includes('mercado livre') || 
+                        nomeLower.includes('mercado pago') || 
+                        nomeLower.includes('mercadolivre') || 
+                        nomeLower.includes('mercadopago') || 
+                        corLower === '#ffe600' || 
+                        corLower === '#fff159';
+  const isBB = !isMercadoLivre && (
+    nomeLower.includes('brasil') || 
+    nomeLower.includes('ourocard') || 
+    (corLower === '#f8d117' && !nomeLower.includes('mercado')) || 
+    (corLower === '#ffd700' && !nomeLower.includes('mercado'))
+  );
   const isCaixa = nomeLower.includes('caixa') || corLower === '#0066b3' || corLower === '#004797';
   const isBradesco = nomeLower.includes('bradesco') || corLower === '#cc092f';
   const isItau = nomeLower.includes('itau') || nomeLower.includes('itaú') || nomeLower.includes('personnalite') || corLower === '#ec7000' || corLower === '#040b1a';
@@ -210,6 +221,153 @@ export const CartaoVisual: React.FC<CartaoVisualProps> = ({
       )}
     </div>
   );
+
+  // Logo Mercado Livre / Mercado Pago (Aperto de Mãos Autêntico + Tipografia)
+  const LogoMercadoLivre = () => (
+    <div style={{ display: 'flex', alignItems: 'center', gap: '9px' }}>
+      <div style={{
+        width: '36px',
+        height: '36px',
+        borderRadius: '50%',
+        backgroundColor: '#FFE600',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
+        flexShrink: 0
+      }}>
+        {/* Aperto de Mãos Autêntico do Mercado Livre */}
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+          <path d="M4 14.5L7.5 11C8.3 10.2 9.7 10.2 10.5 11L11.5 12L12.5 11C13.3 10.2 14.7 10.2 15.5 11L19 14.5" stroke="#2D3277" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round" />
+          <path d="M7 12.5L10 15.5C10.6 16.1 11.4 16.5 12 16.5C12.6 16.5 13.4 16.1 14 15.5L17 12.5" stroke="#2D3277" strokeWidth="2.1" strokeLinecap="round" />
+          <path d="M9.5 14.5L11 16" stroke="#2D3277" strokeWidth="2" strokeLinecap="round" />
+          <path d="M14.5 14.5L13 16" stroke="#2D3277" strokeWidth="2" strokeLinecap="round" />
+        </svg>
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 1.1 }}>
+        <span style={{
+          fontSize: '15px',
+          fontWeight: 900,
+          letterSpacing: '-0.3px',
+          color: '#FFFFFF'
+        }}>
+          mercado<span style={{ color: '#FFE600' }}>livre</span>
+        </span>
+        <span style={{
+          fontSize: '8.5px',
+          fontWeight: 800,
+          letterSpacing: '1px',
+          textTransform: 'uppercase',
+          color: '#009EE3',
+          marginTop: '2px'
+        }}>
+          mercado pago
+        </span>
+      </div>
+    </div>
+  );
+
+  // ========================================================
+  // RENDERIZAÇÃO OFICIAL MERCADO LIVRE / MERCADO PAGO
+  // ========================================================
+  if (isMercadoLivre) {
+    return (
+      <div 
+        onClick={onClick}
+        style={{
+          width: '100%',
+          maxWidth: '480px',
+          minHeight: estiloCompacto ? '195px' : '220px',
+          background: 'linear-gradient(135deg, #0A1C38 0%, #061326 50%, #030A14 100%)',
+          borderRadius: '22px',
+          padding: estiloCompacto ? '14px 18px' : '18px 20px',
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'space-between',
+          color: '#FFFFFF',
+          boxShadow: '0 12px 32px rgba(0,0,0,0.45), 0 2px 10px rgba(0, 158, 227, 0.25)',
+          position: 'relative',
+          overflow: 'hidden',
+          border: '1.5px solid rgba(255, 230, 0, 0.45)',
+          cursor: onClick ? 'pointer' : 'default',
+          transition: 'transform 0.2s ease, box-shadow 0.2s ease'
+        }}
+      >
+        {/* Arco Luminoso Superior Estilizado em Amarelo e Azul Mercado Pago */}
+        <div style={{
+          position: 'absolute',
+          top: '-60px',
+          right: '-40px',
+          width: '240px',
+          height: '240px',
+          borderRadius: '50%',
+          background: 'radial-gradient(circle, rgba(255, 230, 0, 0.18) 0%, rgba(0, 158, 227, 0.15) 50%, transparent 70%)',
+          pointerEvents: 'none'
+        }} />
+        <div style={{
+          position: 'absolute',
+          bottom: '-50px',
+          left: '-30px',
+          width: '180px',
+          height: '180px',
+          borderRadius: '50%',
+          background: 'radial-gradient(circle, rgba(0, 158, 227, 0.12) 0%, transparent 70%)',
+          pointerEvents: 'none'
+        }} />
+
+        {/* Topo: Logo Oficial Mercado Livre & Contactless */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', zIndex: 1 }}>
+          <LogoMercadoLivre />
+          <ContactlessSvg cor="#FFE600" />
+        </div>
+
+        {/* Meio: Chip EMV Ouro Metálico */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', zIndex: 1, margin: '6px 0' }}>
+          <ChipSvg dourado={true} />
+        </div>
+
+        {/* Base: Fatura e Titular (Esquerda) + Fechamento/Vencimento e Bandeira (Direita Inferior) */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', zIndex: 1 }}>
+          <div>
+            {mostrarFatura && valorFatura !== undefined && (
+              <div style={{ marginBottom: '4px' }}>
+                <span style={{ fontSize: '9px', fontWeight: 800, textTransform: 'uppercase', color: '#FFE600', display: 'block', letterSpacing: '0.5px' }}>
+                  Fatura Aberta
+                </span>
+                <span style={{ fontSize: estiloCompacto ? '16px' : '22px', fontWeight: 900, color: '#FFFFFF' }}>
+                  {formatarMoeda(valorFatura)}
+                </span>
+              </div>
+            )}
+            <span style={{
+              fontSize: '11px',
+              fontWeight: 800,
+              letterSpacing: '1px',
+              textTransform: 'uppercase',
+              color: '#F1F5F9',
+              display: 'block'
+            }}>
+              {titularNome}
+            </span>
+          </div>
+
+          {/* Fechamento e Vencimento em Linha Única na Parte Inferior Direita */}
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>
+            <span style={{
+              fontSize: '9.5px',
+              fontWeight: 700,
+              color: '#CBD5E1',
+              letterSpacing: '0.2px',
+              whiteSpace: 'nowrap'
+            }}>
+              Fech. dia <strong style={{ color: '#FFE600' }}>{cartao.diaFechamento}</strong> • Venc. dia <strong style={{ color: '#FFE600' }}>{cartao.diaVencimento}</strong>
+            </span>
+            {cartao.bandeira?.toLowerCase().includes('master') ? <LogoMastercard /> : <LogoVisa />}
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   // ========================================================
   // RENDERIZAÇÃO ESPECÍFICA DO BANCO DO BRASIL (Ourocard Fácil)

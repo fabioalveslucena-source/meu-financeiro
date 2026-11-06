@@ -39,6 +39,8 @@ interface ConfiguracoesBaseModalProps {
 }
 
 const CORES_PALETA = [
+  { nome: 'Amarelo Mercado Livre', hex: '#FFE600' },
+  { nome: 'Azul Mercado Pago', hex: '#009EE3' },
   { nome: 'Amarelo Banco do Brasil', hex: '#F8D117' },
   { nome: 'Vermelho Bradesco', hex: '#CC092F' },
   { nome: 'Roxo Nubank', hex: '#8A05BE' },
@@ -53,6 +55,7 @@ const CORES_PALETA = [
 
 const BANCOS_DISPONIVEIS = [
   { nome: 'Banco do Brasil', subtitulo: 'Ourocard Visa', cor: '#F8D117' },
+  { nome: 'Mercado Livre', subtitulo: 'Mercado Pago Visa', cor: '#FFE600' },
   { nome: 'Bradesco', subtitulo: 'Cartões & Prime', cor: '#CC092F' },
   { nome: 'Nubank', subtitulo: 'Conta & Cartão', cor: '#8A05BE' },
   { nome: 'Itaú Unibanco', subtitulo: 'Personalité', cor: '#EC7000' },

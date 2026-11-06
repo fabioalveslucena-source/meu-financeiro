@@ -64,7 +64,9 @@ export const CartoesView: React.FC = () => {
       }}>
         {resumoCartoes.map((item) => {
           const { cartao, valorFatura, limiteDisponivel, percentualUsado, parcelamentos } = item;
-          const isBB = cartao.nome.includes('Banco do Brasil') || cartao.cor === '#F8D117';
+          const nomeLower = (cartao.nome || '').toLowerCase();
+          const isMercadoLivre = nomeLower.includes('mercado') || cartao.cor === '#FFE600';
+          const isBB = !isMercadoLivre && (cartao.nome.includes('Banco do Brasil') || cartao.cor === '#F8D117');
           const isBradesco = cartao.nome.includes('Bradesco') || cartao.cor === '#CC092F';
 
           return (
@@ -78,7 +80,13 @@ export const CartoesView: React.FC = () => {
               padding: '16px',
               backgroundColor: '#0F2744',
               borderRadius: '20px',
-              border: isBB ? '1.5px solid #F8D117' : isBradesco ? '1.5px solid #CC092F' : '1px solid #1E3A5F'
+              border: isBB 
+                ? '1.5px solid #F8D117' 
+                : isBradesco 
+                ? '1.5px solid #CC092F' 
+                : isMercadoLivre 
+                ? '1.5px solid #FFE600' 
+                : '1px solid #1E3A5F'
             }}>
               {/* Cartão Visual Fiel às Imagens Oficiais dos Bancos */}
               <div style={{ display: 'flex', justifyContent: 'center', width: '100%' }}>
@@ -115,7 +123,7 @@ export const CartoesView: React.FC = () => {
               <div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', marginBottom: '0.4rem' }}>
                   <span style={{ color: 'var(--text-secondary)' }}>Limite Utilizado:</span>
-                  <span style={{ fontWeight: 700, color: percentualUsado > 80 ? 'var(--color-despesa)' : isBB ? '#F8D117' : 'var(--text-primary)' }}>
+                  <span style={{ fontWeight: 700, color: percentualUsado > 80 ? 'var(--color-despesa)' : isBB ? '#F8D117' : isMercadoLivre ? '#FFE600' : 'var(--text-primary)' }}>
                     {percentualUsado}%
                   </span>
                 </div>
@@ -128,7 +136,7 @@ export const CartoesView: React.FC = () => {
                   <div style={{
                     width: `${percentualUsado}%`,
                     height: '100%',
-                    backgroundColor: percentualUsado > 80 ? 'var(--color-despesa)' : isBB ? '#F8D117' : isBradesco ? '#CC092F' : 'var(--brand-secondary)',
+                    backgroundColor: percentualUsado > 80 ? 'var(--color-despesa)' : isBB ? '#F8D117' : isBradesco ? '#CC092F' : isMercadoLivre ? '#FFE600' : 'var(--brand-secondary)',
                     transition: 'width var(--transition-normal)'
                   }} />
                 </div>

@@ -241,6 +241,13 @@ function migrarCartoes(cartoes: Cartao[]): Cartao[] {
   if (!cartoes || cartoes.length === 0) return [];
 
   return cartoes.map((c) => {
+    if (c.nome.toLowerCase().includes('mercado')) {
+      return {
+        ...c,
+        cor: '#FFE600',
+        icone: '💳',
+      };
+    }
     if (c.nome.toLowerCase().includes('nubank') || c.nome.includes('Banco do Brasil')) {
       return {
         ...c,
@@ -267,8 +274,13 @@ function migrarCartoes(cartoes: Cartao[]): Cartao[] {
 
 function migrarLancamentos(lancamentos: Lancamento[]): Lancamento[] {
   if (!lancamentos || lancamentos.length === 0) return [];
+  const poluicaoNomes = ['torneira da cozinha', 'caixa d água', 'caixa d\'água', 'cimento'];
   let lista = lancamentos
     .filter((l) => l.id !== 'lanc-mercado-1') // Remove qualquer compra teste de 650 resquicial
+    .filter((l) => {
+      const descNorm = (l.descricao || '').toLowerCase();
+      return !poluicaoNomes.some(p => descNorm.includes(p));
+    })
     .map((l) => {
       if (l.cartao && l.cartao.toLowerCase().includes('nubank')) {
         return { ...l, cartao: 'Banco do Brasil Ourocard' };
