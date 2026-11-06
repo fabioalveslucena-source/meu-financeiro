@@ -184,11 +184,15 @@ export const STORAGE_KEY_LANCAMENTOS_EXCLUIDOS = 'mf_lancamentos_excluidos_v1';
 
 export function registrarIdsExcluidos(ids: string[]): void {
   try {
-    if (typeof localStorage === 'undefined' || ids.length === 0) return;
-    const salvo = localStorage.getItem(STORAGE_KEY_LANCAMENTOS_EXCLUIDOS);
-    const conjunto = salvo ? new Set<string>(JSON.parse(salvo)) : new Set<string>();
-    ids.forEach((id) => conjunto.add(id));
-    localStorage.setItem(STORAGE_KEY_LANCAMENTOS_EXCLUIDOS, JSON.stringify(Array.from(conjunto)));
+    if (ids.length === 0) return;
+    if (typeof localStorage !== 'undefined') {
+      const salvo = localStorage.getItem(STORAGE_KEY_LANCAMENTOS_EXCLUIDOS);
+      const conjunto = salvo ? new Set<string>(JSON.parse(salvo)) : new Set<string>();
+      ids.forEach((id) => conjunto.add(id));
+      localStorage.setItem(STORAGE_KEY_LANCAMENTOS_EXCLUIDOS, JSON.stringify(Array.from(conjunto)));
+    }
+    // Propaga automaticamente para a nuvem Firestore para proteger todos os outros dispositivos
+    FirestoreSyncService.salvarIdsExcluidos(MASTER_UID, ids).catch(console.warn);
   } catch (e) {
     console.error('Erro ao salvar IDs excluídos:', e);
   }
@@ -970,13 +974,13 @@ export const useFinanceStore = create<FinanceState>((set, get) => {
         const ids = itensExcluidos.map((l) => l.id);
         registrarIdsExcluidos(ids);
         novaLista = lancamentos.filter((l) => l.compraId !== item.compraId);
-        ids.forEach((idDel) => FirestoreSyncService.excluirLancamento(uid, idDel));
+        FirestoreSyncService.excluirLoteLancamentos(uid, ids).catch(console.warn);
         detalheLog = `Todas as parcelas da compra "${item.descricao}" foram removidas.`;
         get().mostrarToast('Todas as parcelas da compra foram removidas.', 'info');
       } else {
         registrarIdsExcluidos([id]);
         novaLista = lancamentos.filter((l) => l.id !== id);
-        FirestoreSyncService.excluirLancamento(uid, id);
+        FirestoreSyncService.excluirLancamento(uid, id).catch(console.warn);
         detalheLog = `Item "${item.descricao}" (R$ ${item.valor.toFixed(2)}) excluído.`;
         get().mostrarToast('Lançamento excluído com sucesso.', 'info');
       }
@@ -1014,7 +1018,7 @@ export const useFinanceStore = create<FinanceState>((set, get) => {
       const idsParaExcluir = itensDoMes.map((l) => l.id);
       registrarIdsExcluidos(idsParaExcluir);
 
-      idsParaExcluir.forEach((id) => FirestoreSyncService.excluirLancamento(uid, id));
+      FirestoreSyncService.excluirLoteLancamentos(uid, idsParaExcluir).catch(console.warn);
 
       const novaLista = lancamentos.filter((l) => l.competencia !== competencia);
       set({ lancamentos: novaLista, ultimoEventoTimestamp: Date.now() });
@@ -1567,11 +1571,17 @@ export const useFinanceStore = create<FinanceState>((set, get) => {
         const lancamentosNuvem = await FirestoreSyncService.baixarTodosLancamentos(uid);
         const cartoesNuvem = await FirestoreSyncService.baixarCartoes(uid);
         const perfilNuvem = await FirestoreSyncService.baixarPerfil(uid);
+        const idsExcluidosNuvem = await FirestoreSyncService.baixarIdsExcluidos(uid);
 
-        if (lancamentosNuvem.length > 0) {
-          salvarNoStorage(getStorageKey(STORAGE_KEY_LANCAMENTOS, uid), lancamentosNuvem);
-          set({ lancamentos: lancamentosNuvem });
+        if (typeof localStorage !== 'undefined') {
+          localStorage.setItem(STORAGE_KEY_LANCAMENTOS_EXCLUIDOS, JSON.stringify(idsExcluidosNuvem));
         }
+        const setExcluidos = new Set(idsExcluidosNuvem);
+        const lancamentosFiltrados = lancamentosNuvem.filter(l => !setExcluidos.has(l.id));
+
+        salvarNoStorage(getStorageKey(STORAGE_KEY_LANCAMENTOS, uid), lancamentosFiltrados);
+        set({ lancamentos: lancamentosFiltrados });
+
         if (cartoesNuvem.length > 0) {
           salvarNoStorage(getStorageKey(STORAGE_KEY_CARTOES, uid), cartoesNuvem);
           set({ cartoes: cartoesNuvem });
@@ -1587,7 +1597,7 @@ export const useFinanceStore = create<FinanceState>((set, get) => {
           set({ usuario: perfilFinal });
         }
         set({ sincronizandoNuvem: false, ultimoEventoTimestamp: Date.now() });
-        get().mostrarToast(`✓ ${lancamentosNuvem.length} lançamentos baixados da nuvem!`, 'sucesso');
+        get().mostrarToast(`✓ ${lancamentosFiltrados.length} lançamentos sincronizados da nuvem!`, 'sucesso');
       } catch (err) {
         set({ sincronizandoNuvem: false });
         get().mostrarToast('Erro ao baixar dados da nuvem.', 'erro');

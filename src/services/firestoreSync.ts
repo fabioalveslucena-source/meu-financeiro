@@ -60,15 +60,73 @@ export class FirestoreSyncService {
   }
 
   /**
-   * Remove um lançamento na nuvem
+   * Baixa os IDs de lançamentos que foram excluídos na nuvem
+   */
+  public static async baixarIdsExcluidos(uid: string = MASTER_UID): Promise<string[]> {
+    if (!db || !isFirebaseConfigured || !uid) return [];
+    try {
+      const docRef = doc(db, 'usuarios', uid, 'sistema', 'exclusoes');
+      const snap = await getDoc(docRef);
+      if (snap.exists() && Array.isArray(snap.data()?.ids)) {
+        return snap.data().ids as string[];
+      }
+      return [];
+    } catch (e) {
+      console.error('Erro ao baixar IDs excluídos do Firestore:', e);
+      return [];
+    }
+  }
+
+  /**
+   * Salva IDs de lançamentos excluídos no Firestore para que todos os aparelhos saibam da exclusão
+   */
+  public static async salvarIdsExcluidos(uid: string = MASTER_UID, novosIds: string[]): Promise<void> {
+    if (!db || !isFirebaseConfigured || !uid || novosIds.length === 0) return;
+    try {
+      const docRef = doc(db, 'usuarios', uid, 'sistema', 'exclusoes');
+      const snap = await getDoc(docRef);
+      const existentes = snap.exists() && Array.isArray(snap.data()?.ids) ? (snap.data().ids as string[]) : [];
+      const conjunto = new Set([...existentes, ...novosIds]);
+      const listaFinal = Array.from(conjunto).slice(-5000);
+      await setDoc(docRef, { ids: listaFinal, atualizadoEm: new Date().toISOString() }, { merge: true });
+    } catch (e) {
+      console.error('Erro ao salvar IDs excluídos no Firestore:', e);
+    }
+  }
+
+  /**
+   * Remove um lançamento na nuvem e registra nos excluídos de forma segura
    */
   public static async excluirLancamento(uid: string = MASTER_UID, lancamentoId: string): Promise<void> {
     if (!db || !isFirebaseConfigured || !uid) return;
     try {
+      await this.salvarIdsExcluidos(uid, [lancamentoId]);
       const docRef = doc(db, 'usuarios', uid, 'lancamentos', lancamentoId);
       await deleteDoc(docRef);
     } catch (e) {
       console.error('Erro ao excluir no Firestore:', e);
+    }
+  }
+
+  /**
+   * Remove múltiplos lançamentos na nuvem de forma atômica (Batch Write)
+   */
+  public static async excluirLoteLancamentos(uid: string = MASTER_UID, ids: string[]): Promise<void> {
+    if (!db || !isFirebaseConfigured || !uid || ids.length === 0) return;
+    try {
+      await this.salvarIdsExcluidos(uid, ids);
+      const tamLote = 400;
+      for (let i = 0; i < ids.length; i += tamLote) {
+        const pedaco = ids.slice(i, i + tamLote);
+        const batch = writeBatch(db);
+        for (const id of pedaco) {
+          const docRef = doc(db, 'usuarios', uid, 'lancamentos', id);
+          batch.delete(docRef);
+        }
+        await batch.commit();
+      }
+    } catch (e) {
+      console.error('Erro ao excluir lote de lançamentos no Firestore:', e);
     }
   }
 
@@ -302,34 +360,43 @@ export class FirestoreSyncService {
     this.isSyncing = true;
 
     try {
-      // 1. Baixar dados da nuvem
+      // 1. Baixar dados da nuvem e a lista de exclusões da nuvem
       const lancamentosNuvem = await this.baixarTodosLancamentos(uid);
       const cartoesNuvem = await this.baixarCartoes(uid);
       const perfilNuvem = await this.baixarPerfil(uid);
       const categoriasNuvem = await this.baixarCategorias(uid);
       const naturezasNuvem = await this.baixarNaturezas(uid);
+      const idsExcluidosNuvem = await this.baixarIdsExcluidos(uid);
 
-      // 2. Fazer Merge dos Lançamentos por ID respeitando exclusões
+      // 2. Fazer Merge dos Lançamentos por ID respeitando exclusões multi-dispositivo
       const idsExcluidosStr = typeof localStorage !== 'undefined' ? localStorage.getItem('mf_lancamentos_excluidos_v1') : null;
-      const idsExcluidos = idsExcluidosStr ? new Set<string>(JSON.parse(idsExcluidosStr)) : new Set<string>();
+      const idsExcluidosLocal = idsExcluidosStr ? (JSON.parse(idsExcluidosStr) as string[]) : [];
+      const todosExcluidos = new Set<string>([...idsExcluidosLocal, ...idsExcluidosNuvem]);
+
+      // Salva a lista consolidada no localStorage do aparelho atual
+      if (typeof localStorage !== 'undefined') {
+        localStorage.setItem('mf_lancamentos_excluidos_v1', JSON.stringify(Array.from(todosExcluidos)));
+      }
+      // Se este aparelho tinha exclusões que a nuvem ainda não conhecia, sincroniza com a nuvem
+      if (idsExcluidosLocal.length > idsExcluidosNuvem.length) {
+        await this.salvarIdsExcluidos(uid, idsExcluidosLocal);
+      }
 
       const mapaLancamentos = new Map<string, Lancamento>();
       const lancamentosParaDeletarNuvem: string[] = [];
       
-      // Adiciona o que está na nuvem SOMENTE se não tiver sido excluído pelo usuário
+      // Adiciona o que está na nuvem SOMENTE se não tiver sido excluído
       lancamentosNuvem.forEach((l) => {
-        if (idsExcluidos.has(l.id)) {
+        if (todosExcluidos.has(l.id)) {
           lancamentosParaDeletarNuvem.push(l.id);
         } else {
           mapaLancamentos.set(l.id, l);
         }
       });
 
-      // Limpa no Firestore resquícios que foram excluídos pelo usuário
+      // Limpa no Firestore resquícios que foram excluídos pelo usuário em lote atômico
       if (lancamentosParaDeletarNuvem.length > 0) {
-        lancamentosParaDeletarNuvem.forEach((idDel) => {
-          this.excluirLancamento(uid, idDel).catch(console.warn);
-        });
+        await this.excluirLoteLancamentos(uid, lancamentosParaDeletarNuvem);
       }
 
       let novosEnviados = 0;
@@ -337,9 +404,9 @@ export class FirestoreSyncService {
 
       // Adiciona o que está local e identifica o que precisa subir para a nuvem
       estadoLocal.lancamentos.forEach((local) => {
-        if (!idsExcluidos.has(local.id)) {
+        if (!todosExcluidos.has(local.id)) {
           if (!mapaLancamentos.has(local.id)) {
-            // Documento local que não existia na nuvem: deve ser enviado!
+            // Documento local legítimo que não existia na nuvem: deve ser enviado!
             mapaLancamentos.set(local.id, local);
             paraEnviar.push(local);
           }
