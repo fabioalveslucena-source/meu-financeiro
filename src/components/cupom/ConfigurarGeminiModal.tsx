@@ -6,8 +6,11 @@ import {
   ExternalLink, 
   CheckCircle, 
   Sparkles, 
-  ShieldCheck 
+  ShieldCheck,
+  Loader2,
+  AlertCircle
 } from 'lucide-react';
+import { limparChaveGemini, obterModeloGeminiValido } from '../../services/geminiVisionService';
 
 interface ConfigurarGeminiModalProps {
   aberto: boolean;
@@ -22,29 +25,36 @@ export const ConfigurarGeminiModal: React.FC<ConfigurarGeminiModalProps> = ({
 }) => {
   const { usuario, setUsuario, mostrarToast } = useFinanceStore();
   const [chaveInput, setChaveInput] = useState(usuario.geminiApiKey || '');
-  const [salvando, setSalvando] = useState(false);
+  const [validando, setValidando] = useState(false);
+  const [mensagemErro, setMensagemErro] = useState<string | null>(null);
 
   if (!aberto) return null;
 
-  const handleSalvar = () => {
-    const limpa = chaveInput.trim();
+  const handleSalvar = async () => {
+    setMensagemErro(null);
+    const limpa = limparChaveGemini(chaveInput);
+    
     if (!limpa) {
-      alert('Por favor, cole sua chave da API do Google Gemini.');
+      setMensagemErro('Por favor, cole sua chave da API do Google Gemini.');
       return;
     }
 
-    if (!limpa.startsWith('AIzaSy')) {
-      if (!window.confirm('A chave não parece começar com o padrão "AIzaSy...". Deseja salvar mesmo assim?')) {
-        return;
-      }
-    }
+    try {
+      setValidando(true);
+      // Valida a chave em tempo real com a API oficial do Google
+      const modelo = await obterModeloGeminiValido(limpa);
 
-    setSalvando(true);
-    setUsuario({ geminiApiKey: limpa });
-    mostrarToast('Chave da IA salva com sucesso!', 'sucesso');
-    setSalvando(false);
-    onSalvoComSucesso?.();
-    onFechar();
+      setUsuario({ geminiApiKey: limpa });
+      mostrarToast(`✓ Chave conectada ao Google Gemini (${modelo})!`, 'sucesso');
+      onSalvoComSucesso?.();
+      onFechar();
+    } catch (err: any) {
+      console.error('Erro de validação da chave Gemini:', err);
+      const msg = err.message || 'Chave não reconhecida pelo Google.';
+      setMensagemErro(`Atenção: ${msg}\n\nCertifique-se de copiar a chave completa gerada no Google AI Studio (geralmente começa com "AIzaSy...").`);
+    } finally {
+      setValidando(false);
+    }
   };
 
   const abrirGoogleAiStudio = () => {
@@ -174,7 +184,10 @@ export const ConfigurarGeminiModal: React.FC<ConfigurarGeminiModalProps> = ({
             <input
               type="text"
               value={chaveInput}
-              onChange={(e) => setChaveInput(e.target.value)}
+              onChange={(e) => {
+                setChaveInput(e.target.value);
+                if (mensagemErro) setMensagemErro(null);
+              }}
               placeholder="Ex: AIzaSyD..."
               style={{
                 width: '100%',
@@ -182,7 +195,7 @@ export const ConfigurarGeminiModal: React.FC<ConfigurarGeminiModalProps> = ({
                 padding: '0 12px',
                 borderRadius: '12px',
                 backgroundColor: '#0A1B30',
-                border: '1.5px solid #265D97',
+                border: mensagemErro ? '1.5px solid #F44336' : '1.5px solid #265D97',
                 color: '#FFFFFF',
                 fontSize: '13px',
                 fontFamily: 'monospace'
@@ -190,6 +203,25 @@ export const ConfigurarGeminiModal: React.FC<ConfigurarGeminiModalProps> = ({
             />
           </div>
         </div>
+
+        {/* Mensagem de Erro se houver */}
+        {mensagemErro && (
+          <div style={{
+            display: 'flex',
+            alignItems: 'flex-start',
+            gap: '8px',
+            padding: '10px 12px',
+            borderRadius: '10px',
+            backgroundColor: 'rgba(244, 67, 54, 0.15)',
+            border: '1px solid rgba(244, 67, 54, 0.4)',
+            fontSize: '11px',
+            color: '#FF8A80',
+            whiteSpace: 'pre-line'
+          }}>
+            <AlertCircle size={16} style={{ flexShrink: 0, marginTop: '2px' }} />
+            <span>{mensagemErro}</span>
+          </div>
+        )}
 
         {/* Aviso de Segurança */}
         <div style={{
@@ -212,6 +244,7 @@ export const ConfigurarGeminiModal: React.FC<ConfigurarGeminiModalProps> = ({
           <button
             type="button"
             onClick={onFechar}
+            disabled={validando}
             style={{
               flex: 1,
               padding: '11px',
@@ -221,7 +254,7 @@ export const ConfigurarGeminiModal: React.FC<ConfigurarGeminiModalProps> = ({
               color: '#CBD5E1',
               fontWeight: 700,
               fontSize: '12.5px',
-              cursor: 'pointer'
+              cursor: validando ? 'not-allowed' : 'pointer'
             }}
           >
             Cancelar
@@ -229,17 +262,17 @@ export const ConfigurarGeminiModal: React.FC<ConfigurarGeminiModalProps> = ({
           <button
             type="button"
             onClick={handleSalvar}
-            disabled={salvando}
+            disabled={validando}
             style={{
               flex: 1.5,
               padding: '11px',
               borderRadius: '12px',
-              backgroundColor: '#4CAF50',
+              backgroundColor: validando ? '#2E7D32' : '#4CAF50',
               border: 'none',
               color: '#FFFFFF',
               fontWeight: 800,
               fontSize: '12.5px',
-              cursor: 'pointer',
+              cursor: validando ? 'wait' : 'pointer',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
@@ -247,8 +280,17 @@ export const ConfigurarGeminiModal: React.FC<ConfigurarGeminiModalProps> = ({
               boxShadow: '0 3px 12px rgba(76, 175, 80, 0.35)'
             }}
           >
-            <CheckCircle size={15} />
-            <span>Salvar Chave</span>
+            {validando ? (
+              <>
+                <Loader2 size={15} className="animate-spin" />
+                <span>Validando no Google...</span>
+              </>
+            ) : (
+              <>
+                <CheckCircle size={15} />
+                <span>Salvar Chave</span>
+              </>
+            )}
           </button>
         </div>
       </div>

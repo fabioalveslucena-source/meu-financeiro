@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useFinanceStore } from '../../stores/financeStore';
 import { formatarMoeda } from '../../lib/formatters';
 import type { ResultadoCupomFiscal, ItemCupomFiscal } from '../../services/geminiVisionService';
@@ -65,6 +65,24 @@ export const ConferenciaCupomModal: React.FC<ConferenciaCupomModalProps> = ({
   const [categoriaSelecionada, setCategoriaSelecionada] = useState<string>(
     resultado.categoriaSugerida || categoriasDaNatureza[0]?.nome || 'Supermercado'
   );
+
+  // Sincronizar estados caso um novo resultado chegue
+  useEffect(() => {
+    if (resultado) {
+      setEstabelecimento(resultado.estabelecimento);
+      setDataCompra(resultado.data);
+      setItens(resultado.itens);
+      if (resultado.formaPagamentoSugerida) {
+        setFormaPagamento(resultado.formaPagamentoSugerida as FormaPagamento);
+      }
+      if (resultado.naturezaSugerida) {
+        setNaturezaSelecionada(resultado.naturezaSugerida);
+      }
+      if (resultado.categoriaSugerida) {
+        setCategoriaSelecionada(resultado.categoriaSugerida);
+      }
+    }
+  }, [resultado]);
 
   // Itens selecionados e valor total recalculado dinamicamente
   const itensMarcados = itens.filter(i => i.selecionado);

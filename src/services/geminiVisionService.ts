@@ -27,6 +27,69 @@ export interface ResultadoCupomFiscal {
 }
 
 /**
+ * Limpa e padroniza a chave da API do Gemini
+ */
+export function limparChaveGemini(key: string): string {
+  if (!key) return '';
+  return key.trim().replace(/^['"\s;:]+|['"\s;:]+$/g, '');
+}
+
+/**
+ * Consulta a API do Google para descobrir quais modelos estão disponíveis para a chave do usuário
+ */
+export async function obterModeloGeminiValido(apiKey: string): Promise<string> {
+  const chaveLimpa = limparChaveGemini(apiKey);
+  if (!chaveLimpa) {
+    throw new Error('Chave da API do Google Gemini não informada.');
+  }
+
+  try {
+    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${chaveLimpa}`);
+    if (res.ok) {
+      const data = await res.json();
+      const modelosDisponiveis: string[] = (data.models || [])
+        .filter((m: any) => m.supportedGenerationMethods?.includes('generateContent'))
+        .map((m: any) => m.name.replace(/^models\//, ''));
+
+      // Ordem de preferência de modelos multimodais de alta velocidade e precisão
+      const preferencias = [
+        'gemini-2.0-flash',
+        'gemini-2.5-flash',
+        'gemini-1.5-flash-latest',
+        'gemini-1.5-flash',
+        'gemini-2.0-flash-exp',
+        'gemini-1.5-pro'
+      ];
+
+      for (const pref of preferencias) {
+        if (modelosDisponiveis.includes(pref)) {
+          return pref;
+        }
+      }
+
+      const algumFlash = modelosDisponiveis.find(m => m.includes('flash'));
+      if (algumFlash) return algumFlash;
+
+      const algumGemini = modelosDisponiveis.find(m => m.includes('gemini'));
+      if (algumGemini) return algumGemini;
+    } else {
+      const errData = await res.json().catch(() => null);
+      const msg = errData?.error?.message || res.statusText;
+      if (res.status === 400 || res.status === 403) {
+        throw new Error(`Chave rejeitada pelo Google (${res.status}): ${msg}`);
+      }
+    }
+  } catch (err: any) {
+    if (err.message?.includes('rejeitada') || err.message?.includes('API key') || err.message?.includes('403') || err.message?.includes('400')) {
+      throw err;
+    }
+  }
+
+  // Fallback padrão seguro
+  return 'gemini-2.0-flash';
+}
+
+/**
  * Redimensiona e comprime uma imagem para envio rápido à API do Gemini
  */
 export async function comprimirImagemParaGemini(file: File): Promise<string> {
@@ -78,7 +141,8 @@ export async function processarCupomComGemini(
   imagemBase64: string,
   apiKey: string
 ): Promise<ResultadoCupomFiscal> {
-  if (!apiKey || apiKey.trim() === '') {
+  const chaveLimpa = limparChaveGemini(apiKey);
+  if (!chaveLimpa) {
     throw new Error('Chave da API do Google Gemini não configurada. Configure sua chave gratuita para continuar.');
   }
 
@@ -127,14 +191,33 @@ Responda APENAS o JSON puro com esta estrutura:
 }
 `;
 
-  // Modelos do Google Gemini (tenta 2.0-flash ou 1.5-flash com fallback transparente)
-  const modelos = ['gemini-2.0-flash', 'gemini-1.5-flash'];
+  // Descobre dinamicamente o modelo suportado pela conta do usuário
+  let modeloDescoberto = 'gemini-2.0-flash';
+  try {
+    modeloDescoberto = await obterModeloGeminiValido(chaveLimpa);
+  } catch (err: any) {
+    if (err.message?.includes('rejeitada') || err.message?.includes('API key') || err.message?.includes('403') || err.message?.includes('400')) {
+      throw new Error(`Chave do Gemini inválida ou não autorizada. Verifique sua chave no Google AI Studio. Detalhes: ${err.message}`);
+    }
+  }
+
+  // Lista de tentativas (modelo descoberto em primeiro lugar, seguido por endpoints v1beta e v1 estável)
+  const rotasDeTentativa = [
+    `https://generativelanguage.googleapis.com/v1beta/models/${modeloDescoberto}:generateContent?key=${chaveLimpa}`,
+    `https://generativelanguage.googleapis.com/v1/models/${modeloDescoberto}:generateContent?key=${chaveLimpa}`,
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${chaveLimpa}`,
+    `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${chaveLimpa}`,
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${chaveLimpa}`,
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${chaveLimpa}`
+  ];
+
+  // Remove URLs duplicadas
+  const rotasUnicas = Array.from(new Set(rotasDeTentativa));
+
   let ultimoErro: any = null;
 
-  for (const modelo of modelos) {
+  for (const url of rotasUnicas) {
     try {
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelo}:generateContent?key=${apiKey.trim()}`;
-      
       const response = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -167,7 +250,7 @@ Responda APENAS o JSON puro com esta estrutura:
           throw new Error(`Erro na API Gemini (${response.status}): ${msg}`);
         }
         ultimoErro = new Error(msg);
-        continue;
+        continue; // Tenta a próxima rota
       }
 
       const json = await response.json();
@@ -178,7 +261,7 @@ Responda APENAS o JSON puro com esta estrutura:
 
       // Limpar marcadores de markdown caso o modelo retorne ```json ... ```
       const jsonLimpo = textoResposta
-        .replace(/```json/g, '')
+        .replace(/```json/gi, '')
         .replace(/```/g, '')
         .trim();
 
@@ -202,7 +285,7 @@ Responda APENAS o JSON puro com esta estrutura:
       const valorTotalFinal = Number(dadosExtraidos.valorTotal) || totalItens;
 
       return {
-        estabelecimento: dadosExtraidos.estabelecimento || 'Compra no Supermercado',
+        estabelecimento: dadosExtraidos.estabelecimento || 'Compra com Cupom Fiscal',
         data: dadosExtraidos.data || new Date().toISOString().slice(0, 10),
         hora: dadosExtraidos.hora,
         valorTotal: valorTotalFinal,
@@ -215,8 +298,8 @@ Responda APENAS o JSON puro com esta estrutura:
       };
     } catch (err: any) {
       ultimoErro = err;
-      // Se o erro for de autenticação da chave, não adianta tentar outro modelo
-      if (err.message?.includes('API key') || err.message?.includes('403') || err.message?.includes('400')) {
+      // Se for erro definitivo de chave inválida, não adianta tentar outros endpoints
+      if (err.message?.includes('API key') || err.message?.includes('rejeitada') || err.message?.includes('403') || err.message?.includes('400')) {
         throw err;
       }
     }

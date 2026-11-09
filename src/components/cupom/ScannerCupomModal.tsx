@@ -9,7 +9,10 @@ import {
   Key, 
   Loader2, 
   ExternalLink,
-  CheckCircle2
+  CheckCircle2,
+  Store,
+  ArrowRight,
+  RotateCcw
 } from 'lucide-react';
 import { 
   comprimirImagemParaGemini, 
@@ -17,6 +20,10 @@ import {
   tocarBipSucesso,
   type ResultadoCupomFiscal 
 } from '../../services/geminiVisionService';
+import { 
+  decodificarQrCodeNfce, 
+  type DadosNfceQrCode 
+} from '../../services/nfceService';
 import { Html5Qrcode } from 'html5-qrcode';
 import { ConfigurarGeminiModal } from './ConfigurarGeminiModal';
 import { ConferenciaCupomModal } from './ConferenciaCupomModal';
@@ -38,7 +45,9 @@ export const ScannerCupomModal: React.FC<ScannerCupomModalProps> = ({
   const [modalChaveAberto, setModalChaveAberto] = useState(false);
   
   // Resultado da leitura por QR Code da NFC-e
-  const [qrResultado, setQrResultado] = useState<{ url: string; chaveAcesso?: string } | null>(null);
+  const [qrDados, setQrDados] = useState<DadosNfceQrCode | null>(null);
+  const [valorManual, setValorManual] = useState<string>('');
+  const [estabelecimentoManual, setEstabelecimentoManual] = useState<string>('');
 
   // Resultado da IA para conferência
   const [resultadoIA, setResultadoIA] = useState<ResultadoCupomFiscal | null>(null);
@@ -55,7 +64,7 @@ export const ScannerCupomModal: React.FC<ScannerCupomModalProps> = ({
         html5QrCodeRef.current.stop().catch(() => {});
       } catch {}
       setModoCameraAoVivo(false);
-      setQrResultado(null);
+      setQrDados(null);
     }
   }, [aberto]);
 
@@ -64,7 +73,7 @@ export const ScannerCupomModal: React.FC<ScannerCupomModalProps> = ({
   // Iniciar leitor de QR Code ao vivo com câmera
   const iniciarScannerAoVivo = async () => {
     setModoCameraAoVivo(true);
-    setQrResultado(null);
+    setQrDados(null);
 
     // Aguarda o elemento renderizar no DOM
     setTimeout(async () => {
@@ -87,14 +96,10 @@ export const ScannerCupomModal: React.FC<ScannerCupomModalProps> = ({
             qrScanner.stop().catch(() => {});
             setModoCameraAoVivo(false);
 
-            // Extrair chave de acesso de 44 dígitos se presente na URL
-            const chaveMatch = decodedText.match(/(?:chNFe=|p=)?([0-9]{44})/i);
-            const chaveAcesso = chaveMatch ? chaveMatch[1] : undefined;
-
-            setQrResultado({
-              url: decodedText,
-              chaveAcesso
-            });
+            const decodificado = decodificarQrCodeNfce(decodedText);
+            setQrDados(decodificado);
+            setValorManual(decodificado.valorTotal ? decodificado.valorTotal.toFixed(2) : '');
+            setEstabelecimentoManual(decodificado.estabelecimentoSugerido);
 
             mostrarToast('✓ QR Code da NFC-e lido com sucesso!', 'sucesso');
           },
@@ -115,6 +120,42 @@ export const ScannerCupomModal: React.FC<ScannerCupomModalProps> = ({
       html5QrCodeRef.current.stop().catch(() => {});
     }
     setModoCameraAoVivo(false);
+  };
+
+  // Prosseguir para conferência e lançamento a partir do QR Code lido
+  const handleAvancarLancamentoQr = () => {
+    if (!qrDados) return;
+
+    const valorNumerico = parseFloat(valorManual.replace(',', '.')) || 0;
+    if (valorNumerico <= 0) {
+      alert('Por favor, informe o valor total da nota para realizar o lançamento.');
+      return;
+    }
+
+    const resultadoMontado: ResultadoCupomFiscal = {
+      estabelecimento: estabelecimentoManual.trim() || qrDados.estabelecimentoSugerido,
+      data: qrDados.dataEmissao || new Date().toISOString().slice(0, 10),
+      valorTotal: valorNumerico,
+      desconto: 0,
+      formaPagamentoSugerida: '💳 Crédito',
+      naturezaSugerida: '🛒 Alimentação',
+      categoriaSugerida: 'Supermercado',
+      chaveAcesso: qrDados.chaveAcesso,
+      itens: [
+        {
+          id: `item-qr-${Date.now()}`,
+          nome: `${estabelecimentoManual.trim() || 'Compra NFC-e'}${qrDados.uf ? ` (${qrDados.uf})` : ''}`,
+          quantidade: 1,
+          precoUnitario: valorNumerico,
+          precoTotal: valorNumerico,
+          categoria: 'Supermercado',
+          selecionado: true
+        }
+      ]
+    };
+
+    setResultadoIA(resultadoMontado);
+    setModalConferenciaAberto(true);
   };
 
   // Processar arquivo de foto selecionado (câmera ou galeria) com IA
@@ -144,8 +185,8 @@ export const ScannerCupomModal: React.FC<ScannerCupomModalProps> = ({
     } catch (err: any) {
       console.error('Erro na leitura com IA:', err);
       const msg = err.message || 'Falha ao analisar a foto da nota.';
-      if (msg.includes('API key') || msg.includes('403')) {
-        alert('Chave da API do Google Gemini inválida ou não configurada. Por favor, verifique sua chave.');
+      if (msg.includes('API key') || msg.includes('403') || msg.includes('rejeitada')) {
+        alert('A chave do Google Gemini foi rejeitada pelo Google. Abra a configuração da chave para inserir sua chave oficial.');
         setModalChaveAberto(true);
       } else {
         alert(`Não foi possível ler o cupom: ${msg}\n\nDica: Procure tirar uma foto com boa iluminação e o cupom bem plano.`);
@@ -172,8 +213,10 @@ export const ScannerCupomModal: React.FC<ScannerCupomModalProps> = ({
         padding: '16px'
       }}>
         <div style={{
-          maxWidth: '460px',
+          maxWidth: '480px',
           width: '100%',
+          maxHeight: '92vh',
+          overflowY: 'auto',
           backgroundColor: '#0F2744',
           border: '1.5px solid #1E3A5F',
           borderRadius: '22px',
@@ -206,7 +249,7 @@ export const ScannerCupomModal: React.FC<ScannerCupomModalProps> = ({
                   Escanear Cupom Fiscal
                 </h3>
                 <p style={{ margin: '2px 0 0 0', fontSize: '11.5px', color: '#8A99AD' }}>
-                  Extração automática com IA do Google Gemini
+                  Lançamento por IA ou Leitura Direta de QR Code
                 </p>
               </div>
             </div>
@@ -240,7 +283,7 @@ export const ScannerCupomModal: React.FC<ScannerCupomModalProps> = ({
           }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
               <Sparkles size={14} color="#F8D117" />
-              <span style={{ color: '#CBD5E1' }}>Motor de Visão:</span>
+              <span style={{ color: '#CBD5E1' }}>Motor Gemini:</span>
               <strong style={{ color: usuario.geminiApiKey ? '#4CAF50' : '#F8D117' }}>
                 {usuario.geminiApiKey ? 'Ativo ✓' : 'Configurar Chave'}
               </strong>
@@ -329,65 +372,188 @@ export const ScannerCupomModal: React.FC<ScannerCupomModalProps> = ({
                 </button>
               </div>
             </div>
-          ) : qrResultado ? (
-            /* Card de Resultado do QR Code da NFC-e */
+          ) : qrDados ? (
+            /* Card Completo de Resultado e Lançamento do QR Code da NFC-e */
             <div style={{
-              padding: '14px',
-              borderRadius: '16px',
+              padding: '16px',
+              borderRadius: '18px',
               backgroundColor: '#132F4C',
               border: '1.5px solid #4CAF50',
               display: 'flex',
               flexDirection: 'column',
-              gap: '10px'
+              gap: '14px'
             }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#4CAF50', fontWeight: 800, fontSize: '13px' }}>
-                <CheckCircle2 size={16} />
-                <span>NFC-e Oficial Identificada!</span>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#4CAF50', fontWeight: 800, fontSize: '13.5px' }}>
+                  <CheckCircle2 size={18} />
+                  <span>NFC-e Reconhecida com Sucesso!</span>
+                </div>
+                {qrDados.uf && (
+                  <span style={{
+                    fontSize: '10.5px',
+                    fontWeight: 800,
+                    backgroundColor: 'rgba(76, 175, 80, 0.2)',
+                    color: '#81C784',
+                    padding: '2px 8px',
+                    borderRadius: '6px'
+                  }}>
+                    {qrDados.ufNome || qrDados.uf}
+                  </span>
+                )}
               </div>
 
-              {qrResultado.chaveAcesso && (
-                <div style={{ fontSize: '11px', color: '#CBD5E1', backgroundColor: '#0A1B30', padding: '8px', borderRadius: '8px', wordBreak: 'break-all', fontFamily: 'monospace' }}>
-                  Chave: {qrResultado.chaveAcesso}
+              {/* Chave de Acesso Formatada */}
+              {qrDados.chaveAcesso && (
+                <div style={{
+                  fontSize: '10.5px',
+                  color: '#CBD5E1',
+                  backgroundColor: '#0A1B30',
+                  padding: '8px 10px',
+                  borderRadius: '10px',
+                  border: '1px solid #1E3A5F'
+                }}>
+                  <div style={{ color: '#8A99AD', fontSize: '9.5px', marginBottom: '2px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                    Chave de Acesso Oficial (44 Dígitos):
+                  </div>
+                  <div style={{ fontFamily: 'monospace', wordBreak: 'break-all', fontSize: '11px', color: '#F8D117' }}>
+                    {qrDados.chaveFormatada || qrDados.chaveAcesso}
+                  </div>
                 </div>
               )}
 
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '4px' }}>
+              {/* Campos para confirmação imediata */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                {/* Campo de Valor Total */}
+                <div>
+                  <label style={{ display: 'block', fontSize: '11px', fontWeight: 800, color: '#F8D117', marginBottom: '4px' }}>
+                    💰 VALOR TOTAL DA NOTA (R$):
+                  </label>
+                  <div style={{ position: 'relative' }}>
+                    <div style={{ position: 'absolute', left: '12px', top: '12px', color: '#8A99AD', fontWeight: 700 }}>
+                      R$
+                    </div>
+                    <input
+                      type="number"
+                      step="0.01"
+                      value={valorManual}
+                      onChange={(e) => setValorManual(e.target.value)}
+                      placeholder="0,00"
+                      style={{
+                        width: '100%',
+                        height: '46px',
+                        padding: '0 12px 0 38px',
+                        borderRadius: '12px',
+                        backgroundColor: '#0A1B30',
+                        border: '1.5px solid #F8D117',
+                        color: '#FFFFFF',
+                        fontSize: '18px',
+                        fontWeight: 900
+                      }}
+                    />
+                  </div>
+                  <span style={{ fontSize: '10px', color: '#8A99AD', display: 'block', marginTop: '3px' }}>
+                    {qrDados.valorTotal 
+                      ? '✓ Valor extraído automaticamente do QR Code da NFC-e.' 
+                      : 'Digite o valor total impresso no rodapé da nota fiscal.'}
+                  </span>
+                </div>
+
+                {/* Campo de Nome do Estabelecimento */}
+                <div>
+                  <label style={{ display: 'block', fontSize: '11px', fontWeight: 700, color: '#CBD5E1', marginBottom: '4px' }}>
+                    🏪 NOME DO ESTABELECIMENTO / LOJA:
+                  </label>
+                  <div style={{ position: 'relative' }}>
+                    <div style={{ position: 'absolute', left: '12px', top: '12px', color: '#8A99AD' }}>
+                      <Store size={16} />
+                    </div>
+                    <input
+                      type="text"
+                      value={estabelecimentoManual}
+                      onChange={(e) => setEstabelecimentoManual(e.target.value)}
+                      placeholder="Ex: Supermercado Preço Bom"
+                      style={{
+                        width: '100%',
+                        height: '42px',
+                        padding: '0 12px 0 36px',
+                        borderRadius: '12px',
+                        backgroundColor: '#0A1B30',
+                        border: '1.5px solid #1E3A5F',
+                        color: '#FFFFFF',
+                        fontSize: '13px',
+                        fontWeight: 700
+                      }}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Botões de Ação */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '6px' }}>
+                {/* BOTÃO PRINCIPAL: LANÇAR NO FINANCEIRO */}
                 <button
                   type="button"
-                  onClick={() => window.open(qrResultado.url, '_blank')}
+                  onClick={handleAvancarLancamentoQr}
                   style={{
-                    padding: '10px',
-                    borderRadius: '10px',
-                    backgroundColor: '#1976D2',
+                    padding: '13px',
+                    borderRadius: '14px',
+                    backgroundColor: '#4CAF50',
                     border: 'none',
                     color: '#FFFFFF',
-                    fontWeight: 800,
-                    fontSize: '12px',
+                    fontWeight: 900,
+                    fontSize: '14px',
                     cursor: 'pointer',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    gap: '6px'
+                    gap: '8px',
+                    boxShadow: '0 4px 14px rgba(76, 175, 80, 0.4)'
                   }}
                 >
-                  <ExternalLink size={14} />
-                  <span>🌐 Abrir Cupom no Portal da SEFAZ</span>
+                  <span>✅ Continuar e Lançar no Financeiro</span>
+                  <ArrowRight size={18} />
                 </button>
 
+                {/* BOTÃO SECUNDÁRIO: ABRIR SEFAZ */}
+                {qrDados.url && (
+                  <button
+                    type="button"
+                    onClick={() => window.open(qrDados.url, '_blank')}
+                    style={{
+                      padding: '10px',
+                      borderRadius: '12px',
+                      backgroundColor: '#1976D2',
+                      border: 'none',
+                      color: '#FFFFFF',
+                      fontWeight: 800,
+                      fontSize: '11.5px',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '6px'
+                    }}
+                  >
+                    <ExternalLink size={14} />
+                    <span>🌐 Visualizar Cupom na SEFAZ (Opcional)</span>
+                  </button>
+                )}
+
+                {/* BOTÃO PARA TIRAR FOTO SE QUISER LER ITEM A ITEM */}
                 <button
                   type="button"
                   onClick={() => {
-                    setQrResultado(null);
+                    setQrDados(null);
                     inputFotoCameraRef.current?.click();
                   }}
                   style={{
                     padding: '10px',
-                    borderRadius: '10px',
-                    backgroundColor: '#4CAF50',
-                    border: 'none',
-                    color: '#FFFFFF',
-                    fontWeight: 800,
-                    fontSize: '12px',
+                    borderRadius: '12px',
+                    backgroundColor: '#1E3A5F',
+                    border: '1px solid #265D97',
+                    color: '#CBD5E1',
+                    fontWeight: 700,
+                    fontSize: '11.5px',
                     cursor: 'pointer',
                     display: 'flex',
                     alignItems: 'center',
@@ -396,7 +562,30 @@ export const ScannerCupomModal: React.FC<ScannerCupomModalProps> = ({
                   }}
                 >
                   <Camera size={14} />
-                  <span>📸 Tirar Foto da Nota para IA Ler Itens</span>
+                  <span>📸 Preferir Ler Itens Detalhados 1 a 1 com IA</span>
+                </button>
+
+                {/* BOTÃO PARA ESCANEAR OUTRO */}
+                <button
+                  type="button"
+                  onClick={() => setQrDados(null)}
+                  style={{
+                    padding: '8px',
+                    borderRadius: '10px',
+                    backgroundColor: 'transparent',
+                    border: 'none',
+                    color: '#8A99AD',
+                    fontWeight: 700,
+                    fontSize: '11px',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '4px'
+                  }}
+                >
+                  <RotateCcw size={12} />
+                  <span>Voltar às opções de leitura</span>
                 </button>
               </div>
             </div>
@@ -486,7 +675,7 @@ export const ScannerCupomModal: React.FC<ScannerCupomModalProps> = ({
                     Ler QR Code da Nota (Câmera ao Vivo)
                   </div>
                   <span style={{ fontSize: '11px', color: '#8A99AD', display: 'block', marginTop: '2px' }}>
-                    Aponte para o QR Code da NFC-e com leitor rápido de 60 FPS, som e vibração.
+                    Aponte para o QR Code da NFC-e com leitor rápido de 60 FPS, som e lançamento direto.
                   </span>
                 </div>
               </button>
