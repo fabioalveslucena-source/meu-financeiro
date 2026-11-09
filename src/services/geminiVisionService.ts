@@ -35,7 +35,7 @@ export function limparChaveGemini(key: string): string {
 }
 
 /**
- * Consulta a API do Google para descobrir quais modelos estão disponíveis para a chave do usuário
+ * Consulta a API do Google para descobrir quais modelos ultra-rápidos estão liberados
  */
 export async function obterModeloGeminiValido(apiKey: string): Promise<string> {
   const chaveLimpa = limparChaveGemini(apiKey);
@@ -51,16 +51,13 @@ export async function obterModeloGeminiValido(apiKey: string): Promise<string> {
         .filter((m: any) => m.supportedGenerationMethods?.includes('generateContent'))
         .map((m: any) => m.name.replace(/^models\//, ''));
 
-      // Ordem de preferência de modelos multimodais de alta velocidade e precisão
+      // Modelos ultra-rápidos em primeiro lugar (resposta em ~1 segundo)
       const preferencias = [
-        'gemini-3.8-flash',
-        'gemini-flash-latest',
-        'gemini-3.7-flash',
+        'gemini-3.5-flash-lite',
         'gemini-3.5-flash',
-        'gemini-3-flash-preview',
-        'gemini-2.5-flash',
-        'gemini-2.0-flash',
-        'gemini-1.5-flash-latest'
+        'gemini-flash-lite-latest',
+        'gemini-flash-latest',
+        'gemini-3.1-flash-lite'
       ];
 
       for (const pref of preferencias) {
@@ -69,11 +66,8 @@ export async function obterModeloGeminiValido(apiKey: string): Promise<string> {
         }
       }
 
-      const algumFlash = modelosDisponiveis.find(m => m.includes('flash'));
+      const algumFlash = modelosDisponiveis.find(m => m.includes('flash') && !m.includes('3.8'));
       if (algumFlash) return algumFlash;
-
-      const algumGemini = modelosDisponiveis.find(m => m.includes('gemini'));
-      if (algumGemini) return algumGemini;
     } else {
       const errData = await res.json().catch(() => null);
       const msg = errData?.error?.message || res.statusText;
@@ -87,8 +81,8 @@ export async function obterModeloGeminiValido(apiKey: string): Promise<string> {
     }
   }
 
-  // Fallback padrão seguro
-  return 'gemini-3.8-flash';
+  // Fallback padrão de alta velocidade
+  return 'gemini-3.5-flash-lite';
 }
 
 /**
@@ -101,7 +95,7 @@ export async function comprimirImagemParaGemini(file: File): Promise<string> {
       const img = new Image();
       img.onload = () => {
         const canvas = document.createElement('canvas');
-        const maxDim = 1800; // Resolução ideal para leitura nítida de tabelas de produtos
+        const maxDim = 1600;
         let width = img.width;
         let height = img.height;
 
@@ -124,8 +118,7 @@ export async function comprimirImagemParaGemini(file: File): Promise<string> {
         }
 
         ctx.drawImage(img, 0, 0, width, height);
-        // Formato JPEG de boa qualidade
-        const dataUrl = canvas.toDataURL('image/jpeg', 0.90);
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
         resolve(dataUrl.split(',')[1]);
       };
       img.onerror = reject;
@@ -137,6 +130,34 @@ export async function comprimirImagemParaGemini(file: File): Promise<string> {
 }
 
 /**
+ * Extrai objeto JSON mesmo se houver texto adicional ou blocos markdown
+ */
+function extrairJsonDeTexto(texto: string): any {
+  if (!texto) throw new Error('A inteligência artificial retornou resposta vazia.');
+
+  // 1. Tenta achar bloco ```json ... ```
+  const matchBloco = texto.match(/```(?:json)?\s*([\s\S]*?)\s*```/i);
+  if (matchBloco) {
+    try {
+      return JSON.parse(matchBloco[1].trim());
+    } catch {}
+  }
+
+  // 2. Tenta achar substring do primeiro '{' até o último '}'
+  const inicio = texto.indexOf('{');
+  const fim = texto.lastIndexOf('}');
+  if (inicio !== -1 && fim !== -1 && fim > inicio) {
+    const substring = texto.substring(inicio, fim + 1);
+    try {
+      return JSON.parse(substring);
+    } catch {}
+  }
+
+  // 3. Fallback parse direto
+  return JSON.parse(texto.trim());
+}
+
+/**
  * Processa a imagem do cupom fiscal com Google Gemini Vision
  */
 export async function processarCupomComGemini(
@@ -145,20 +166,17 @@ export async function processarCupomComGemini(
 ): Promise<ResultadoCupomFiscal> {
   const chaveLimpa = limparChaveGemini(apiKey);
   if (!chaveLimpa) {
-    throw new Error('Chave da API do Google Gemini não configurada. Configure sua chave gratuita para continuar.');
+    throw new Error('Chave da API do Google Gemini não configurada. Configure sua chave para continuar.');
   }
 
   const prompt = `
 Você é um auditor fiscal especialista em OCR tributário brasileiro.
-Analise esta imagem, que pode ser:
-1. Uma foto de cupom fiscal em papel (NFC-e, SAT, ECF, Danfe); OU
-2. Um print de tela (screenshot) de uma página de consulta da SEFAZ na internet com a tabela de produtos.
+Analise com extrema precisão esta imagem de cupom fiscal (NFC-e, SAT, ECF ou Danfe).
+Extraia os dados em um formato JSON estritamente válido.
 
-Extraia com máxima fidelidade TODOS os produtos listados, seus preços e quantidades.
-Retorne EXCLUSIVAMENTE um JSON estritamente válido, sem formatações extras fora do JSON:
-
+Estrutura JSON obrigatória:
 {
-  "estabelecimento": "Razão Social ou Nome Fantasia da loja/supermercado",
+  "estabelecimento": "Nome da loja ou supermercado",
   "data": "YYYY-MM-DD",
   "hora": "HH:mm",
   "valorTotal": 0.00,
@@ -166,42 +184,39 @@ Retorne EXCLUSIVAMENTE um JSON estritamente válido, sem formatações extras fo
   "formaPagamentoSugerida": "💳 Crédito",
   "naturezaSugerida": "🛒 Alimentação",
   "categoriaSugerida": "Supermercado",
-  "chaveAcesso": "chave de 44 dígitos se visível ou vazio",
+  "chaveAcesso": "",
   "itens": [
     {
-      "nome": "Nome limpo e completo do produto sem abreviações confusas",
+      "nome": "Nome limpo do produto",
       "quantidade": 1.0,
       "precoUnitario": 10.00,
       "precoTotal": 10.00,
-      "categoria": "Mercearia"
+      "categoria": "Supermercado"
     }
   ]
 }
 
-Regras Cruciais:
-- No array "itens", inclua CADA UM dos itens da nota sem omitir nenhum produto.
-- "quantidade", "precoUnitario" e "precoTotal" devem ser números (float).
-- Se a imagem for um print do site da SEFAZ, extraia todos os itens da tabela de produtos visível.
+Regras:
+1. Inclua CADA UM dos itens listados no cupom sem omitir nenhum produto.
+2. Quantidade, precoUnitario e precoTotal devem ser números float.
+3. Não inclua texto explicativo fora do JSON.
 `;
 
-  // Descobre dinamicamente o modelo suportado pela conta do usuário
-  let modeloDescoberto = 'gemini-2.0-flash';
+  // Modelos ultra-rápidos para resposta em ~1 segundo
+  let modeloDescoberto = 'gemini-3.5-flash-lite';
   try {
     modeloDescoberto = await obterModeloGeminiValido(chaveLimpa);
   } catch (err: any) {
     if (err.message?.includes('rejeitada') || err.message?.includes('API key') || err.message?.includes('403') || err.message?.includes('400')) {
-      throw new Error(`Chave do Gemini rejeitada pelo Google. Verifique sua chave no Google AI Studio. (${err.message})`);
+      throw new Error(`Chave do Gemini rejeitada pelo Google: ${err.message}`);
     }
   }
 
-  // Lista de tentativas (formato REST padrão do Google com inlineData em camelCase)
   const rotasDeTentativa = [
     `https://generativelanguage.googleapis.com/v1beta/models/${modeloDescoberto}:generateContent?key=${chaveLimpa}`,
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key=${chaveLimpa}`,
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${chaveLimpa}`,
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.7-flash:generateContent?key=${chaveLimpa}`,
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent?key=${chaveLimpa}`,
     `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key=${chaveLimpa}`,
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${chaveLimpa}`
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${chaveLimpa}`
   ];
 
   const rotasUnicas = Array.from(new Set(rotasDeTentativa));
@@ -209,9 +224,13 @@ Regras Cruciais:
 
   for (const url of rotasUnicas) {
     try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 20000); // 20 segundos de timeout máximo
+
       const response = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        signal: controller.signal,
         body: JSON.stringify({
           contents: [
             {
@@ -228,11 +247,12 @@ Regras Cruciais:
           ],
           generationConfig: {
             temperature: 0.1,
-            topK: 32,
-            topP: 0.95
+            responseMimeType: 'application/json'
           }
         })
       });
+
+      clearTimeout(timeoutId);
 
       if (!response.ok) {
         const erroJson = await response.json().catch(() => null);
@@ -241,22 +261,19 @@ Regras Cruciais:
           throw new Error(`Erro na API Gemini (${response.status}): ${msg}`);
         }
         ultimoErro = new Error(msg);
-        continue; // Tenta o próximo modelo
+        continue;
       }
 
       const json = await response.json();
-      const textoResposta = json?.candidates?.[0]?.content?.parts?.[0]?.text;
+      const parts = json?.candidates?.[0]?.content?.parts || [];
+      const partComTexto = parts.find((p: any) => p.text) || parts[0];
+      const textoResposta = partComTexto?.text;
+
       if (!textoResposta) {
         throw new Error('A inteligência artificial não retornou dados para este cupom.');
       }
 
-      // Limpar marcadores de markdown caso o modelo retorne ```json ... ```
-      const jsonLimpo = textoResposta
-        .replace(/```json/gi, '')
-        .replace(/```/g, '')
-        .trim();
-
-      const dadosExtraidos = JSON.parse(jsonLimpo);
+      const dadosExtraidos = extrairJsonDeTexto(textoResposta);
 
       // Normalizar itens com IDs únicos e checkbox marcado
       const itensNormalizados: ItemCupomFiscal[] = (dadosExtraidos.itens || []).map(
@@ -266,7 +283,7 @@ Regras Cruciais:
           quantidade: Number(it.quantidade) || 1,
           precoUnitario: Number(it.precoUnitario) || Number(it.precoTotal) || 0,
           precoTotal: Number(it.precoTotal) || Number(it.precoUnitario) || 0,
-          categoria: it.categoria || 'Geral',
+          categoria: it.categoria || 'Supermercado',
           selecionado: true
         })
       );

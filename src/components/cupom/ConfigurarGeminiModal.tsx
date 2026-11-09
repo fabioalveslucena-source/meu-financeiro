@@ -51,7 +51,7 @@ export const ConfigurarGeminiModal: React.FC<ConfigurarGeminiModalProps> = ({
     } catch (err: any) {
       console.error('Erro de validação da chave Gemini:', err);
       const msg = err.message || 'Chave não reconhecida pelo Google.';
-      setMensagemErro(`Atenção: ${msg}\n\nCertifique-se de copiar a chave completa gerada no Google AI Studio (geralmente começa com "AIzaSy...").`);
+      setMensagemErro(`Atenção: ${msg}\n\nCertifique-se de copiar a chave completa gerada no Google AI Studio (começa com "AQ..." ou "AIzaSy...").`);
     } finally {
       setValidando(false);
     }
