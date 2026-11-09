@@ -53,12 +53,14 @@ export async function obterModeloGeminiValido(apiKey: string): Promise<string> {
 
       // Ordem de preferência de modelos multimodais de alta velocidade e precisão
       const preferencias = [
-        'gemini-2.0-flash',
+        'gemini-3.8-flash',
+        'gemini-flash-latest',
+        'gemini-3.7-flash',
+        'gemini-3.5-flash',
+        'gemini-3-flash-preview',
         'gemini-2.5-flash',
-        'gemini-1.5-flash-latest',
-        'gemini-1.5-flash',
-        'gemini-2.0-flash-exp',
-        'gemini-1.5-pro'
+        'gemini-2.0-flash',
+        'gemini-1.5-flash-latest'
       ];
 
       for (const pref of preferencias) {
@@ -86,7 +88,7 @@ export async function obterModeloGeminiValido(apiKey: string): Promise<string> {
   }
 
   // Fallback padrão seguro
-  return 'gemini-2.0-flash';
+  return 'gemini-3.8-flash';
 }
 
 /**
@@ -195,11 +197,11 @@ Regras Cruciais:
   // Lista de tentativas (formato REST padrão do Google com inlineData em camelCase)
   const rotasDeTentativa = [
     `https://generativelanguage.googleapis.com/v1beta/models/${modeloDescoberto}:generateContent?key=${chaveLimpa}`,
-    `https://generativelanguage.googleapis.com/v1/models/${modeloDescoberto}:generateContent?key=${chaveLimpa}`,
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${chaveLimpa}`,
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${chaveLimpa}`,
-    `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${chaveLimpa}`,
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${chaveLimpa}`
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key=${chaveLimpa}`,
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${chaveLimpa}`,
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.7-flash:generateContent?key=${chaveLimpa}`,
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key=${chaveLimpa}`,
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${chaveLimpa}`
   ];
 
   const rotasUnicas = Array.from(new Set(rotasDeTentativa));

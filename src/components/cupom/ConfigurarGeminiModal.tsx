@@ -146,7 +146,7 @@ export const ConfigurarGeminiModal: React.FC<ConfigurarGeminiModalProps> = ({
             <li>Toque no botão azul abaixo para abrir o <strong>Google AI Studio</strong>.</li>
             <li>Faça login com sua conta Google (se já estiver logado, abrirá direto).</li>
             <li>Clique no botão azul <strong>"Create API key"</strong> (Criar Chave).</li>
-            <li>Copie o código gerado que começa com <code>AIzaSy...</code> e cole aqui.</li>
+            <li>Copie o código gerado (começa com <code>AQ...</code> ou <code>AIzaSy...</code>) e cole aqui.</li>
           </ol>
 
           <button
@@ -188,7 +188,7 @@ export const ConfigurarGeminiModal: React.FC<ConfigurarGeminiModalProps> = ({
                 setChaveInput(e.target.value);
                 if (mensagemErro) setMensagemErro(null);
               }}
-              placeholder="Ex: AIzaSyD..."
+              placeholder="Cole sua chave (ex: AQ.Ab8...)"
               style={{
                 width: '100%',
                 height: '44px',

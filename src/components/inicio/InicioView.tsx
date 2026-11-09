@@ -191,17 +191,6 @@ export const InicioView: React.FC<InicioViewProps> = ({
               }}>
                 Escanear Cupom Fiscal
               </strong>
-              <span style={{ 
-                fontSize: '9.5px', 
-                fontWeight: 800, 
-                backgroundColor: 'rgba(248, 209, 23, 0.22)', 
-                color: '#F8D117', 
-                border: '1px solid rgba(248, 209, 23, 0.4)',
-                padding: '1px 5px', 
-                borderRadius: '5px' 
-              }}>
-                IA Gemini
-              </span>
             </div>
             <p style={{
               margin: '2px 0 0 0',
