@@ -3,6 +3,7 @@ import { useFinanceStore } from '../../stores/financeStore';
 import { formatarMoeda } from '../../lib/formatters';
 import type { ResultadoCupomFiscal, ItemCupomFiscal } from '../../services/geminiVisionService';
 import type { FormaPagamento } from '../../types';
+import { SeletorCategoriaPesquisa } from '../common/SeletorCategoriaPesquisa';
 import { 
   X, 
   Trash2, 
@@ -10,7 +11,6 @@ import {
   Calendar, 
   Store, 
   CreditCard, 
-  Tag, 
   ShoppingCart,
   CheckCircle2
 } from 'lucide-react';
@@ -418,32 +418,15 @@ export const ConferenciaCupomModal: React.FC<ConferenciaCupomModalProps> = ({
             )}
 
             <div>
-              <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', fontWeight: 700, color: '#8A99AD', marginBottom: '6px' }}>
-                <Tag size={13} color="#F8D117" />
-                CATEGORIA:
-              </label>
-              <select
-                value={categoriaSelecionada}
-                onChange={(e) => setCategoriaSelecionada(e.target.value)}
-                style={{
-                  width: '100%',
-                  padding: '9px 12px',
-                  borderRadius: '10px',
-                  backgroundColor: '#0A1B30',
-                  border: '1px solid #265D97',
-                  color: '#FFFFFF',
-                  fontSize: '12.5px',
-                  fontWeight: 700,
-                  boxSizing: 'border-box'
+              <SeletorCategoriaPesquisa
+                valor={categoriaSelecionada}
+                onSelecionar={(cat, nat) => {
+                  setCategoriaSelecionada(cat);
+                  if (nat) setNaturezaSelecionada(nat);
                 }}
-              >
-                {categorias.map(cat => (
-                  <option key={cat.id} value={cat.nome}>{cat.nome} ({cat.natureza})</option>
-                ))}
-                {categorias.length === 0 && (
-                  <option value="Supermercado">Supermercado</option>
-                )}
-              </select>
+                label="CATEGORIA:"
+                placeholder="Pesquisar categoria..."
+              />
             </div>
           </div>
 

@@ -1,6 +1,6 @@
 /**
  * Serviço de Visão Computacional com Google Gemini
- * Analisa fotos de cupons fiscais (NFC-e / SAT / Danfe) e extrai dados estruturados.
+ * Analisa fotos de cupons fiscais e prints de tela da SEFAZ (NFC-e / SAT / Danfe) e extrai dados estruturados.
  */
 
 export interface ItemCupomFiscal {
@@ -99,7 +99,7 @@ export async function comprimirImagemParaGemini(file: File): Promise<string> {
       const img = new Image();
       img.onload = () => {
         const canvas = document.createElement('canvas');
-        const maxDim = 1600; // Resolução suficiente para leitura de texto térmico
+        const maxDim = 1800; // Resolução ideal para leitura nítida de tabelas de produtos
         let width = img.width;
         let height = img.height;
 
@@ -122,8 +122,8 @@ export async function comprimirImagemParaGemini(file: File): Promise<string> {
         }
 
         ctx.drawImage(img, 0, 0, width, height);
-        // Formato JPEG comprimido
-        const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+        // Formato JPEG de boa qualidade
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.90);
         resolve(dataUrl.split(',')[1]);
       };
       img.onerror = reject;
@@ -147,48 +147,39 @@ export async function processarCupomComGemini(
   }
 
   const prompt = `
-Você é um especialista em OCR e auditoria fiscal brasileira.
-Analise com extrema precisão esta imagem de cupom fiscal (NFC-e, SAT, ECF ou Danfe Simplificado).
-Extraia os dados em um formato JSON estritamente válido, sem texto antes ou depois.
+Você é um auditor fiscal especialista em OCR tributário brasileiro.
+Analise esta imagem, que pode ser:
+1. Uma foto de cupom fiscal em papel (NFC-e, SAT, ECF, Danfe); OU
+2. Um print de tela (screenshot) de uma página de consulta da SEFAZ na internet com a tabela de produtos.
 
-Regras de Extração:
-1. "estabelecimento": Razão social ou nome fantasia da loja/supermercado/farmácia/posto/restaurante. Limpo, com a primeira letra maiúscula de cada palavra.
-2. "data": Data da compra no formato YYYY-MM-DD. Se não conseguir ler com clareza, use a data de hoje.
-3. "hora": Hora da compra no formato HH:mm (se disponível).
-4. "valorTotal": Valor total final pago pelo cliente (número float, ex: 124.50).
-5. "desconto": Valor do desconto se houver (número float, ou 0).
-6. "formaPagamentoSugerida": Qual forma foi usada (ex: "💳 Crédito", "💳 Débito", "📱 Pix", "💵 Dinheiro").
-7. "naturezaSugerida": Natureza financeira correspondente: "🛒 Alimentação" (se supermercado/mercearia/padaria), "💊 Saúde" (se farmácia), "⛽ Transporte" (se posto de combustível), "🍽️ Refeição" (se restaurante), ou "📦 Geral".
-8. "categoriaSugerida": Nome da categoria financeira (ex: "Supermercado", "Farmácia", "Combustível", "Padaria").
-9. "chaveAcesso": Chave de acesso de 44 dígitos se visível (apenas números).
-10. "itens": Lista com TODOS os produtos listados. Para cada item:
-   - "nome": Nome limpo e claro do produto, expandindo abreviações fiscais confusas (ex: "LEIT COND MOCOCA TP 395G" vira "Leite Condensado Mococa 395g").
-   - "quantidade": Quantidade numérica (float, ex: 1 ou 1.250).
-   - "precoUnitario": Valor unitário do item (float).
-   - "precoTotal": Valor total do item (float).
-   - "categoria": Categoria amigável do item (ex: "Mercearia", "Hortifruti", "Carnes", "Laticínios", "Bebidas", "Limpeza", "Higiene", "Medicamentos").
+Extraia com máxima fidelidade TODOS os produtos listados, seus preços e quantidades.
+Retorne EXCLUSIVAMENTE um JSON estritamente válido, sem formatações extras fora do JSON:
 
-Responda APENAS o JSON puro com esta estrutura:
 {
-  "estabelecimento": "Supermercado Exemplo",
-  "data": "2026-11-08",
-  "hora": "15:30",
-  "valorTotal": 54.90,
-  "desconto": 0,
+  "estabelecimento": "Razão Social ou Nome Fantasia da loja/supermercado",
+  "data": "YYYY-MM-DD",
+  "hora": "HH:mm",
+  "valorTotal": 0.00,
+  "desconto": 0.00,
   "formaPagamentoSugerida": "💳 Crédito",
   "naturezaSugerida": "🛒 Alimentação",
   "categoriaSugerida": "Supermercado",
-  "chaveAcesso": "",
+  "chaveAcesso": "chave de 44 dígitos se visível ou vazio",
   "itens": [
     {
-      "nome": "Arroz Branco Tipo 1 5kg",
-      "quantidade": 1,
-      "precoUnitario": 28.90,
-      "precoTotal": 28.90,
+      "nome": "Nome limpo e completo do produto sem abreviações confusas",
+      "quantidade": 1.0,
+      "precoUnitario": 10.00,
+      "precoTotal": 10.00,
       "categoria": "Mercearia"
     }
   ]
 }
+
+Regras Cruciais:
+- No array "itens", inclua CADA UM dos itens da nota sem omitir nenhum produto.
+- "quantidade", "precoUnitario" e "precoTotal" devem ser números (float).
+- Se a imagem for um print do site da SEFAZ, extraia todos os itens da tabela de produtos visível.
 `;
 
   // Descobre dinamicamente o modelo suportado pela conta do usuário
@@ -197,23 +188,21 @@ Responda APENAS o JSON puro com esta estrutura:
     modeloDescoberto = await obterModeloGeminiValido(chaveLimpa);
   } catch (err: any) {
     if (err.message?.includes('rejeitada') || err.message?.includes('API key') || err.message?.includes('403') || err.message?.includes('400')) {
-      throw new Error(`Chave do Gemini inválida ou não autorizada. Verifique sua chave no Google AI Studio. Detalhes: ${err.message}`);
+      throw new Error(`Chave do Gemini rejeitada pelo Google. Verifique sua chave no Google AI Studio. (${err.message})`);
     }
   }
 
-  // Lista de tentativas (modelo descoberto em primeiro lugar, seguido por endpoints v1beta e v1 estável)
+  // Lista de tentativas (formato REST padrão do Google com inlineData em camelCase)
   const rotasDeTentativa = [
     `https://generativelanguage.googleapis.com/v1beta/models/${modeloDescoberto}:generateContent?key=${chaveLimpa}`,
     `https://generativelanguage.googleapis.com/v1/models/${modeloDescoberto}:generateContent?key=${chaveLimpa}`,
     `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${chaveLimpa}`,
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${chaveLimpa}`,
     `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${chaveLimpa}`,
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${chaveLimpa}`,
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${chaveLimpa}`
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${chaveLimpa}`
   ];
 
-  // Remove URLs duplicadas
   const rotasUnicas = Array.from(new Set(rotasDeTentativa));
-
   let ultimoErro: any = null;
 
   for (const url of rotasUnicas) {
@@ -227,8 +216,8 @@ Responda APENAS o JSON puro com esta estrutura:
               parts: [
                 { text: prompt },
                 {
-                  inline_data: {
-                    mime_type: 'image/jpeg',
+                  inlineData: {
+                    mimeType: 'image/jpeg',
                     data: imagemBase64
                   }
                 }
@@ -250,7 +239,7 @@ Responda APENAS o JSON puro com esta estrutura:
           throw new Error(`Erro na API Gemini (${response.status}): ${msg}`);
         }
         ultimoErro = new Error(msg);
-        continue; // Tenta a próxima rota
+        continue; // Tenta o próximo modelo
       }
 
       const json = await response.json();
@@ -285,7 +274,7 @@ Responda APENAS o JSON puro com esta estrutura:
       const valorTotalFinal = Number(dadosExtraidos.valorTotal) || totalItens;
 
       return {
-        estabelecimento: dadosExtraidos.estabelecimento || 'Compra com Cupom Fiscal',
+        estabelecimento: dadosExtraidos.estabelecimento || 'Compra Fiscal',
         data: dadosExtraidos.data || new Date().toISOString().slice(0, 10),
         hora: dadosExtraidos.hora,
         valorTotal: valorTotalFinal,
@@ -298,7 +287,6 @@ Responda APENAS o JSON puro com esta estrutura:
       };
     } catch (err: any) {
       ultimoErro = err;
-      // Se for erro definitivo de chave inválida, não adianta tentar outros endpoints
       if (err.message?.includes('API key') || err.message?.includes('rejeitada') || err.message?.includes('403') || err.message?.includes('400')) {
         throw err;
       }
@@ -320,7 +308,7 @@ export function tocarBipSucesso() {
     const gain = ctx.createGain();
 
     osc.type = 'sine';
-    osc.frequency.setValueAtTime(880, ctx.currentTime); // Nota Lá (A5)
+    osc.frequency.setValueAtTime(880, ctx.currentTime);
     osc.frequency.exponentialRampToValueAtTime(1320, ctx.currentTime + 0.12);
 
     gain.gain.setValueAtTime(0.2, ctx.currentTime);
