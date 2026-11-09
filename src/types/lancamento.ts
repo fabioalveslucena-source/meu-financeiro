@@ -64,6 +64,8 @@ export interface LancamentoInput {
   cartao?: string;
   conta?: string;
   parcelas?: number;
+  origem?: 'app' | 'planilha' | 'voz' | 'importacao' | 'meu-mercado';
+  detalhesMercado?: DetalhesMercado;
 }
 
 export interface FiltroLancamento {

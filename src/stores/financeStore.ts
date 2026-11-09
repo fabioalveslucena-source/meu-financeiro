@@ -42,6 +42,7 @@ export interface UsuarioPerfil {
   avatarUrl: string;
   email?: string;
   uid?: string;
+  geminiApiKey?: string;
 }
 
 interface FinanceState {
@@ -885,7 +886,8 @@ export const useFinanceStore = create<FinanceState>((set, get) => {
           totalParcelas: totalParcelas > 1 ? totalParcelas : undefined,
           vencimento,
           fatura: input.pagamento === '💳 Crédito' ? faturaCompetencia : undefined,
-          origem: 'app',
+          origem: input.origem || 'app',
+          detalhesMercado: input.detalhesMercado,
           criadoEm: new Date(),
           atualizadoEm: new Date(),
         });

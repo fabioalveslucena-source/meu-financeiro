@@ -8,6 +8,7 @@ import {
   PiggyBank, 
   CreditCard, 
   Mic, 
+  Camera,
   ArrowRight,
   ChevronDown,
   ChevronUp,
@@ -19,6 +20,7 @@ import type { Lancamento, TipoLancamento } from '../../types';
 import { CartaoVisual } from '../cartoes/CartaoVisual';
 import { ReciboMercadoModal } from '../mercado/ReciboMercadoModal';
 import { DetalhesLancamentoModal } from '../extrato/DetalhesLancamentoModal';
+import { ScannerCupomModal } from '../cupom/ScannerCupomModal';
 
 interface InicioViewProps {
   onIrParaLancar?: (tipo?: TipoLancamento) => void;
@@ -58,6 +60,7 @@ export const InicioView: React.FC<InicioViewProps> = ({
   const [lancamentoMercado, setLancamentoMercado] = useState<Lancamento | null>(null);
   const [lancamentoDetalhes, setLancamentoDetalhes] = useState<Lancamento | null>(null);
   const [saldoVisivel, setSaldoVisivel] = useState(false);
+  const [modalScannerAberto, setModalScannerAberto] = useState(false);
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
@@ -139,6 +142,97 @@ export const InicioView: React.FC<InicioViewProps> = ({
         }}>
           <span>Falar</span>
           <span style={{ fontSize: '14px' }}>🎙️</span>
+        </div>
+      </div>
+
+      {/* Novo Card Exclusivo: Escanear Cupom Fiscal com IA */}
+      <div 
+        onClick={() => setModalScannerAberto(true)}
+        style={{
+          cursor: 'pointer',
+          padding: '12px 14px',
+          borderRadius: '18px',
+          background: 'linear-gradient(135deg, rgba(20, 55, 35, 0.8) 0%, rgba(35, 110, 60, 0.5) 100%)',
+          border: '1.5px solid rgba(76, 175, 80, 0.45)',
+          boxShadow: '0 4px 18px rgba(0, 0, 0, 0.3), 0 0 15px rgba(76, 175, 80, 0.18)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: '10px',
+          transition: 'all 0.2s ease',
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0, flex: 1 }}>
+          {/* Câmera / Scanner com pulso verde */}
+          <div style={{
+            width: '40px',
+            height: '40px',
+            borderRadius: '50%',
+            background: 'linear-gradient(135deg, #2E7D32 0%, #4CAF50 100%)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: '#FFFFFF',
+            boxShadow: '0 0 14px rgba(76, 175, 80, 0.55)',
+            flexShrink: 0
+          }}>
+            <Camera size={20} />
+          </div>
+
+          <div style={{ minWidth: 0, flex: 1 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <strong style={{ 
+                fontSize: '13px', 
+                color: '#FFFFFF', 
+                fontWeight: 800,
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis'
+              }}>
+                Escanear Cupom Fiscal
+              </strong>
+              <span style={{ 
+                fontSize: '9.5px', 
+                fontWeight: 800, 
+                backgroundColor: 'rgba(248, 209, 23, 0.22)', 
+                color: '#F8D117', 
+                border: '1px solid rgba(248, 209, 23, 0.4)',
+                padding: '1px 5px', 
+                borderRadius: '5px' 
+              }}>
+                IA Gemini
+              </span>
+            </div>
+            <p style={{
+              margin: '2px 0 0 0',
+              fontSize: '10.5px',
+              color: '#A5D6A7',
+              lineHeight: 1.2,
+              whiteSpace: 'nowrap',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis'
+            }}>
+              Tirar foto da nota ou ler QR Code para conferir e lançar
+            </p>
+          </div>
+        </div>
+
+        {/* Botão de Ação à Direita */}
+        <div style={{
+          padding: '8px 12px',
+          borderRadius: '12px',
+          background: 'linear-gradient(135deg, #4CAF50 0%, #388E3C 100%)',
+          color: '#FFFFFF',
+          fontWeight: 800,
+          fontSize: '12px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '5px',
+          flexShrink: 0,
+          boxShadow: '0 3px 10px rgba(76, 175, 80, 0.35)'
+        }}>
+          <span>Escanear</span>
+          <span style={{ fontSize: '13px' }}>📸</span>
         </div>
       </div>
 
@@ -793,6 +887,12 @@ export const InicioView: React.FC<InicioViewProps> = ({
         detalhes={lancamentoMercado?.detalhesMercado}
         valorTotalLancamento={lancamentoMercado?.valor}
         formaPagamento={lancamentoMercado?.pagamento}
+      />
+
+      {/* Modal Moderno de Scanner e Leitura de Cupom Fiscal com IA */}
+      <ScannerCupomModal
+        aberto={modalScannerAberto}
+        onFechar={() => setModalScannerAberto(false)}
       />
     </div>
   );
