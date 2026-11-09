@@ -1,5 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useFinanceStore } from '../../stores/financeStore';
+import { formatarMoeda } from '../../lib/formatters';
+import type { FormaPagamento } from '../../types';
 import { 
   X, 
   Camera, 
@@ -11,8 +13,11 @@ import {
   ExternalLink,
   CheckCircle2,
   Store,
-  ArrowRight,
-  RotateCcw
+  CreditCard,
+  Tag,
+  Calendar,
+  RotateCcw,
+  ListFilter
 } from 'lucide-react';
 import { 
   comprimirImagemParaGemini, 
@@ -37,7 +42,14 @@ export const ScannerCupomModal: React.FC<ScannerCupomModalProps> = ({
   aberto,
   onFechar,
 }) => {
-  const { usuario, mostrarToast } = useFinanceStore();
+  const { 
+    usuario, 
+    cartoes,
+    contas,
+    categorias,
+    adicionarLancamento,
+    mostrarToast 
+  } = useFinanceStore();
 
   const [modoCameraAoVivo, setModoCameraAoVivo] = useState(false);
   const [processandoIA, setProcessandoIA] = useState(false);
@@ -48,8 +60,13 @@ export const ScannerCupomModal: React.FC<ScannerCupomModalProps> = ({
   const [qrDados, setQrDados] = useState<DadosNfceQrCode | null>(null);
   const [valorManual, setValorManual] = useState<string>('');
   const [estabelecimentoManual, setEstabelecimentoManual] = useState<string>('');
+  const [dataManual, setDataManual] = useState<string>(new Date().toISOString().slice(0, 10));
+  const [formaPagamentoManual, setFormaPagamentoManual] = useState<FormaPagamento>('💳 Crédito');
+  const [cartaoManual, setCartaoManual] = useState<string>(cartoes[0]?.nome || 'Banco do Brasil Ourocard');
+  const [contaManual, setContaManual] = useState<string>(contas[0]?.nome || 'Conta Corrente');
+  const [categoriaManual, setCategoriaManual] = useState<string>('Supermercado');
 
-  // Resultado da IA para conferência
+  // Resultado da IA para conferência detalhada
   const [resultadoIA, setResultadoIA] = useState<ResultadoCupomFiscal | null>(null);
   const [modalConferenciaAberto, setModalConferenciaAberto] = useState(false);
 
@@ -100,6 +117,7 @@ export const ScannerCupomModal: React.FC<ScannerCupomModalProps> = ({
             setQrDados(decodificado);
             setValorManual(decodificado.valorTotal ? decodificado.valorTotal.toFixed(2) : '');
             setEstabelecimentoManual(decodificado.estabelecimentoSugerido);
+            setDataManual(decodificado.dataEmissao || new Date().toISOString().slice(0, 10));
 
             mostrarToast('✓ QR Code da NFC-e lido com sucesso!', 'sucesso');
           },
@@ -122,24 +140,70 @@ export const ScannerCupomModal: React.FC<ScannerCupomModalProps> = ({
     setModoCameraAoVivo(false);
   };
 
-  // Prosseguir para conferência e lançamento a partir do QR Code lido
-  const handleAvancarLancamentoQr = () => {
+  // Lançamento DIRETO no Financeiro a partir dos dados do QR Code (1 clique!)
+  const handleLancarDiretoQr = () => {
     if (!qrDados) return;
 
     const valorNumerico = parseFloat(valorManual.replace(',', '.')) || 0;
     if (valorNumerico <= 0) {
-      alert('Por favor, informe o valor total da nota para realizar o lançamento.');
+      alert('Por favor, informe o valor total da nota antes de lançar.');
+      return;
+    }
+
+    const ehCredito = formaPagamentoManual === '💳 Crédito';
+    const nomeFinalLoja = estabelecimentoManual.trim() || qrDados.estabelecimentoSugerido;
+
+    adicionarLancamento({
+      tipo: 'Despesa',
+      descricao: nomeFinalLoja,
+      valor: parseFloat(valorNumerico.toFixed(2)),
+      data: dataManual,
+      natureza: '🛒 Alimentação',
+      categoria: categoriaManual || 'Supermercado',
+      pagamento: formaPagamentoManual,
+      cartao: ehCredito ? cartaoManual : undefined,
+      conta: !ehCredito ? contaManual : undefined,
+      origem: 'meu-mercado',
+      detalhesMercado: {
+        mercadoNome: nomeFinalLoja,
+        dataCompra: dataManual,
+        totalItens: 1,
+        valorTotal: parseFloat(valorNumerico.toFixed(2)),
+        itens: [
+          {
+            nome: `${nomeFinalLoja} (${qrDados.uf || 'NFC-e'})`,
+            quantidade: 1,
+            precoUnitario: parseFloat(valorNumerico.toFixed(2)),
+            precoTotal: parseFloat(valorNumerico.toFixed(2)),
+            categoriaItem: categoriaManual
+          }
+        ]
+      }
+    });
+
+    mostrarToast(`✓ Despesa de ${formatarMoeda(valorNumerico)} lançada com sucesso no extrato!`, 'sucesso');
+    setQrDados(null);
+    onFechar();
+  };
+
+  // Abrir tela de conferência detalhada (caso o usuário queira itemizar)
+  const handleAbrirConferenciaDetalhada = () => {
+    if (!qrDados) return;
+
+    const valorNumerico = parseFloat(valorManual.replace(',', '.')) || 0;
+    if (valorNumerico <= 0) {
+      alert('Por favor, informe o valor total da nota.');
       return;
     }
 
     const resultadoMontado: ResultadoCupomFiscal = {
       estabelecimento: estabelecimentoManual.trim() || qrDados.estabelecimentoSugerido,
-      data: qrDados.dataEmissao || new Date().toISOString().slice(0, 10),
+      data: dataManual || qrDados.dataEmissao || new Date().toISOString().slice(0, 10),
       valorTotal: valorNumerico,
       desconto: 0,
-      formaPagamentoSugerida: '💳 Crédito',
+      formaPagamentoSugerida: formaPagamentoManual,
       naturezaSugerida: '🛒 Alimentação',
-      categoriaSugerida: 'Supermercado',
+      categoriaSugerida: categoriaManual,
       chaveAcesso: qrDados.chaveAcesso,
       itens: [
         {
@@ -148,7 +212,7 @@ export const ScannerCupomModal: React.FC<ScannerCupomModalProps> = ({
           quantidade: 1,
           precoUnitario: valorNumerico,
           precoTotal: valorNumerico,
-          categoria: 'Supermercado',
+          categoria: categoriaManual,
           selecionado: true
         }
       ]
@@ -185,11 +249,14 @@ export const ScannerCupomModal: React.FC<ScannerCupomModalProps> = ({
     } catch (err: any) {
       console.error('Erro na leitura com IA:', err);
       const msg = err.message || 'Falha ao analisar a foto da nota.';
-      if (msg.includes('API key') || msg.includes('403') || msg.includes('rejeitada')) {
-        alert('A chave do Google Gemini foi rejeitada pelo Google. Abra a configuração da chave para inserir sua chave oficial.');
+      
+      if (msg.includes('API key') || msg.includes('403') || msg.includes('400') || msg.includes('rejeitada')) {
+        alert('Chave do Google Gemini rejeitada ou inválida.\n\nPor favor, toque em "⚙️ Alterar Chave" e cole sua chave oficial do Google AI Studio.');
         setModalChaveAberto(true);
+      } else if (msg.includes('is not found') || msg.includes('not supported')) {
+        alert(`O modelo de IA do Gemini retornou uma indisponibilidade temporária no Google: ${msg}\n\nRecomendamos usar a opção "Ler QR Code da Nota (Câmera ao Vivo)", que lê instantaneamente sem precisar de IA.`);
       } else {
-        alert(`Não foi possível ler o cupom: ${msg}\n\nDica: Procure tirar uma foto com boa iluminação e o cupom bem plano.`);
+        alert(`Erro na leitura do cupom:\n${msg}`);
       }
     } finally {
       setProcessandoIA(false);
@@ -383,6 +450,7 @@ export const ScannerCupomModal: React.FC<ScannerCupomModalProps> = ({
               flexDirection: 'column',
               gap: '14px'
             }}>
+              {/* Identificação de Sucesso */}
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#4CAF50', fontWeight: 800, fontSize: '13.5px' }}>
                   <CheckCircle2 size={18} />
@@ -390,12 +458,13 @@ export const ScannerCupomModal: React.FC<ScannerCupomModalProps> = ({
                 </div>
                 {qrDados.uf && (
                   <span style={{
-                    fontSize: '10.5px',
-                    fontWeight: 800,
-                    backgroundColor: 'rgba(76, 175, 80, 0.2)',
+                    fontSize: '11px',
+                    fontWeight: 900,
+                    backgroundColor: 'rgba(76, 175, 80, 0.25)',
                     color: '#81C784',
-                    padding: '2px 8px',
-                    borderRadius: '6px'
+                    padding: '3px 9px',
+                    borderRadius: '6px',
+                    border: '1px solid rgba(76, 175, 80, 0.4)'
                   }}>
                     {qrDados.ufNome || qrDados.uf}
                   </span>
@@ -421,15 +490,71 @@ export const ScannerCupomModal: React.FC<ScannerCupomModalProps> = ({
                 </div>
               )}
 
-              {/* Campos para confirmação imediata */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                {/* Campo de Valor Total */}
+              {/* Botão de Abrir e Visualizar na SEFAZ */}
+              {qrDados.url && (
+                <button
+                  type="button"
+                  onClick={() => window.open(qrDados.url, '_blank')}
+                  style={{
+                    padding: '10px 14px',
+                    borderRadius: '12px',
+                    backgroundColor: '#1976D2',
+                    border: 'none',
+                    color: '#FFFFFF',
+                    fontWeight: 800,
+                    fontSize: '12px',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '7px',
+                    boxShadow: '0 3px 10px rgba(25, 118, 210, 0.35)'
+                  }}
+                >
+                  <ExternalLink size={15} />
+                  <span>🌐 Abrir e Visualizar Nota na SEFAZ</span>
+                </button>
+              )}
+
+              {/* Formulário de Lançamento no Próprio Modal (Sem sobreposições) */}
+              <div style={{
+                backgroundColor: '#0A1B30',
+                padding: '14px',
+                borderRadius: '14px',
+                border: '1px solid #1E3A5F',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '12px'
+              }}>
+                <div style={{ fontSize: '12px', fontWeight: 800, color: '#F8D117', borderBottom: '1px solid #1E3A5F', paddingBottom: '6px' }}>
+                  📝 Confirmar Dados para Lançar no Extrato:
+                </div>
+
+                {/* Campo 1: Valor Total (Layout Flexbox limpo) */}
                 <div>
                   <label style={{ display: 'block', fontSize: '11px', fontWeight: 800, color: '#F8D117', marginBottom: '4px' }}>
-                    💰 VALOR TOTAL DA NOTA (R$):
+                    VALOR TOTAL DA NOTA (R$):
                   </label>
-                  <div style={{ position: 'relative' }}>
-                    <div style={{ position: 'absolute', left: '12px', top: '12px', color: '#8A99AD', fontWeight: 700 }}>
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    backgroundColor: '#132F4C',
+                    border: '1.5px solid #F8D117',
+                    borderRadius: '10px',
+                    height: '46px',
+                    overflow: 'hidden',
+                    boxSizing: 'border-box'
+                  }}>
+                    <div style={{
+                      padding: '0 12px',
+                      backgroundColor: 'rgba(248, 209, 23, 0.15)',
+                      height: '100%',
+                      display: 'flex',
+                      alignItems: 'center',
+                      color: '#F8D117',
+                      fontWeight: 900,
+                      fontSize: '15px'
+                    }}>
                       R$
                     </div>
                     <input
@@ -437,65 +562,224 @@ export const ScannerCupomModal: React.FC<ScannerCupomModalProps> = ({
                       step="0.01"
                       value={valorManual}
                       onChange={(e) => setValorManual(e.target.value)}
-                      placeholder="0,00"
+                      placeholder="0.00"
                       style={{
-                        width: '100%',
-                        height: '46px',
-                        padding: '0 12px 0 38px',
-                        borderRadius: '12px',
-                        backgroundColor: '#0A1B30',
-                        border: '1.5px solid #F8D117',
+                        flex: 1,
+                        height: '100%',
+                        backgroundColor: 'transparent',
+                        border: 'none',
+                        outline: 'none',
                         color: '#FFFFFF',
                         fontSize: '18px',
-                        fontWeight: 900
+                        fontWeight: 900,
+                        padding: '0 12px',
+                        boxSizing: 'border-box'
                       }}
                     />
                   </div>
                   <span style={{ fontSize: '10px', color: '#8A99AD', display: 'block', marginTop: '3px' }}>
                     {qrDados.valorTotal 
-                      ? '✓ Valor extraído automaticamente do QR Code da NFC-e.' 
-                      : 'Digite o valor total impresso no rodapé da nota fiscal.'}
+                      ? '✓ Valor detectado do QR Code.' 
+                      : 'Confira o valor total exibido na SEFAZ ou no papel e digite acima.'}
                   </span>
                 </div>
 
-                {/* Campo de Nome do Estabelecimento */}
+                {/* Campo 2: Nome da Loja / Estabelecimento */}
                 <div>
                   <label style={{ display: 'block', fontSize: '11px', fontWeight: 700, color: '#CBD5E1', marginBottom: '4px' }}>
-                    🏪 NOME DO ESTABELECIMENTO / LOJA:
+                    ESTABELECIMENTO / LOJA:
                   </label>
-                  <div style={{ position: 'relative' }}>
-                    <div style={{ position: 'absolute', left: '12px', top: '12px', color: '#8A99AD' }}>
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    backgroundColor: '#132F4C',
+                    border: '1px solid #265D97',
+                    borderRadius: '10px',
+                    height: '42px',
+                    overflow: 'hidden',
+                    boxSizing: 'border-box'
+                  }}>
+                    <div style={{
+                      padding: '0 10px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      color: '#8A99AD'
+                    }}>
                       <Store size={16} />
                     </div>
                     <input
                       type="text"
                       value={estabelecimentoManual}
                       onChange={(e) => setEstabelecimentoManual(e.target.value)}
-                      placeholder="Ex: Supermercado Preço Bom"
+                      placeholder="Ex: Supermercado"
                       style={{
-                        width: '100%',
-                        height: '42px',
-                        padding: '0 12px 0 36px',
-                        borderRadius: '12px',
-                        backgroundColor: '#0A1B30',
-                        border: '1.5px solid #1E3A5F',
+                        flex: 1,
+                        height: '100%',
+                        backgroundColor: 'transparent',
+                        border: 'none',
+                        outline: 'none',
                         color: '#FFFFFF',
                         fontSize: '13px',
-                        fontWeight: 700
+                        fontWeight: 700,
+                        padding: '0 8px',
+                        boxSizing: 'border-box'
                       }}
                     />
+                  </div>
+                </div>
+
+                {/* Linha com Data e Categoria */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                  <div>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '10.5px', fontWeight: 700, color: '#8A99AD', marginBottom: '4px' }}>
+                      <Calendar size={12} color="#5090D3" />
+                      DATA:
+                    </label>
+                    <input
+                      type="date"
+                      value={dataManual}
+                      onChange={(e) => setDataManual(e.target.value)}
+                      style={{
+                        width: '100%',
+                        height: '38px',
+                        backgroundColor: '#132F4C',
+                        border: '1px solid #265D97',
+                        borderRadius: '8px',
+                        color: '#FFFFFF',
+                        fontSize: '12px',
+                        fontWeight: 700,
+                        padding: '0 8px',
+                        boxSizing: 'border-box'
+                      }}
+                    />
+                  </div>
+
+                  <div>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '10.5px', fontWeight: 700, color: '#8A99AD', marginBottom: '4px' }}>
+                      <Tag size={12} color="#F8D117" />
+                      CATEGORIA:
+                    </label>
+                    <select
+                      value={categoriaManual}
+                      onChange={(e) => setCategoriaManual(e.target.value)}
+                      style={{
+                        width: '100%',
+                        height: '38px',
+                        backgroundColor: '#132F4C',
+                        border: '1px solid #265D97',
+                        borderRadius: '8px',
+                        color: '#FFFFFF',
+                        fontSize: '12px',
+                        fontWeight: 700,
+                        padding: '0 6px',
+                        boxSizing: 'border-box'
+                      }}
+                    >
+                      {categorias.map(cat => (
+                        <option key={cat.id} value={cat.nome}>{cat.nome}</option>
+                      ))}
+                      {categorias.length === 0 && (
+                        <option value="Supermercado">Supermercado</option>
+                      )}
+                    </select>
+                  </div>
+                </div>
+
+                {/* Linha com Forma de Pagamento e Cartão/Conta */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.2fr', gap: '8px' }}>
+                  <div>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '10.5px', fontWeight: 700, color: '#8A99AD', marginBottom: '4px' }}>
+                      <CreditCard size={12} color="#4CAF50" />
+                      PAGAMENTO:
+                    </label>
+                    <select
+                      value={formaPagamentoManual}
+                      onChange={(e) => setFormaPagamentoManual(e.target.value as FormaPagamento)}
+                      style={{
+                        width: '100%',
+                        height: '38px',
+                        backgroundColor: '#132F4C',
+                        border: '1px solid #265D97',
+                        borderRadius: '8px',
+                        color: '#FFFFFF',
+                        fontSize: '12px',
+                        fontWeight: 700,
+                        padding: '0 6px',
+                        boxSizing: 'border-box'
+                      }}
+                    >
+                      <option value="💳 Crédito">💳 Crédito</option>
+                      <option value="💳 Débito">💳 Débito</option>
+                      <option value="📱 Pix">📱 Pix</option>
+                      <option value="💵 Dinheiro">💵 Dinheiro</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label style={{ display: 'block', fontSize: '10.5px', fontWeight: 700, color: '#8A99AD', marginBottom: '4px' }}>
+                      {formaPagamentoManual === '💳 Crédito' ? 'CARTÃO:' : 'CONTA:'}
+                    </label>
+                    {formaPagamentoManual === '💳 Crédito' ? (
+                      <select
+                        value={cartaoManual}
+                        onChange={(e) => setCartaoManual(e.target.value)}
+                        style={{
+                          width: '100%',
+                          height: '38px',
+                          backgroundColor: '#132F4C',
+                          border: '1px solid #265D97',
+                          borderRadius: '8px',
+                          color: '#FFFFFF',
+                          fontSize: '12px',
+                          fontWeight: 700,
+                          padding: '0 6px',
+                          boxSizing: 'border-box'
+                        }}
+                      >
+                        {cartoes.map(c => (
+                          <option key={c.id} value={c.nome}>{c.nome}</option>
+                        ))}
+                        {cartoes.length === 0 && (
+                          <option value="Cartão Padrão">Cartão Padrão</option>
+                        )}
+                      </select>
+                    ) : (
+                      <select
+                        value={contaManual}
+                        onChange={(e) => setContaManual(e.target.value)}
+                        style={{
+                          width: '100%',
+                          height: '38px',
+                          backgroundColor: '#132F4C',
+                          border: '1px solid #265D97',
+                          borderRadius: '8px',
+                          color: '#FFFFFF',
+                          fontSize: '12px',
+                          fontWeight: 700,
+                          padding: '0 6px',
+                          boxSizing: 'border-box'
+                        }}
+                      >
+                        {contas.map(ct => (
+                          <option key={ct.id} value={ct.nome}>{ct.nome}</option>
+                        ))}
+                        {contas.length === 0 && (
+                          <option value="Conta Corrente">Conta Corrente</option>
+                        )}
+                      </select>
+                    )}
                   </div>
                 </div>
               </div>
 
               {/* Botões de Ação */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '6px' }}>
-                {/* BOTÃO PRINCIPAL: LANÇAR NO FINANCEIRO */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '4px' }}>
+                {/* BOTÃO PRINCIPAL: LANÇAMENTO DIRETO COM 1 CLIQUE */}
                 <button
                   type="button"
-                  onClick={handleAvancarLancamentoQr}
+                  onClick={handleLancarDiretoQr}
                   style={{
-                    padding: '13px',
+                    padding: '14px',
                     borderRadius: '14px',
                     backgroundColor: '#4CAF50',
                     border: 'none',
@@ -507,53 +791,25 @@ export const ScannerCupomModal: React.FC<ScannerCupomModalProps> = ({
                     alignItems: 'center',
                     justifyContent: 'center',
                     gap: '8px',
-                    boxShadow: '0 4px 14px rgba(76, 175, 80, 0.4)'
+                    boxShadow: '0 4px 14px rgba(76, 175, 80, 0.45)'
                   }}
                 >
-                  <span>✅ Continuar e Lançar no Financeiro</span>
-                  <ArrowRight size={18} />
+                  <CheckCircle2 size={18} />
+                  <span>Confirmar e Lançar Despesa no Extrato</span>
                 </button>
 
-                {/* BOTÃO SECUNDÁRIO: ABRIR SEFAZ */}
-                {qrDados.url && (
-                  <button
-                    type="button"
-                    onClick={() => window.open(qrDados.url, '_blank')}
-                    style={{
-                      padding: '10px',
-                      borderRadius: '12px',
-                      backgroundColor: '#1976D2',
-                      border: 'none',
-                      color: '#FFFFFF',
-                      fontWeight: 800,
-                      fontSize: '11.5px',
-                      cursor: 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      gap: '6px'
-                    }}
-                  >
-                    <ExternalLink size={14} />
-                    <span>🌐 Visualizar Cupom na SEFAZ (Opcional)</span>
-                  </button>
-                )}
-
-                {/* BOTÃO PARA TIRAR FOTO SE QUISER LER ITEM A ITEM */}
+                {/* BOTÃO SECUNDÁRIO: CONFERÊNCIA DETALHADA COM ITENS */}
                 <button
                   type="button"
-                  onClick={() => {
-                    setQrDados(null);
-                    inputFotoCameraRef.current?.click();
-                  }}
+                  onClick={handleAbrirConferenciaDetalhada}
                   style={{
                     padding: '10px',
                     borderRadius: '12px',
-                    backgroundColor: '#1E3A5F',
+                    backgroundColor: '#132F4C',
                     border: '1px solid #265D97',
                     color: '#CBD5E1',
                     fontWeight: 700,
-                    fontSize: '11.5px',
+                    fontSize: '12px',
                     cursor: 'pointer',
                     display: 'flex',
                     alignItems: 'center',
@@ -561,17 +817,43 @@ export const ScannerCupomModal: React.FC<ScannerCupomModalProps> = ({
                     gap: '6px'
                   }}
                 >
-                  <Camera size={14} />
-                  <span>📸 Preferir Ler Itens Detalhados 1 a 1 com IA</span>
+                  <ListFilter size={15} color="#5090D3" />
+                  <span>Detalhar Produtos / Conferência Completa</span>
                 </button>
 
-                {/* BOTÃO PARA ESCANEAR OUTRO */}
+                {/* BOTÃO ALTERNATIVO: TIRAR FOTO PARA A IA LER CADA PRODUTO */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setQrDados(null);
+                    inputFotoCameraRef.current?.click();
+                  }}
+                  style={{
+                    padding: '9px',
+                    borderRadius: '10px',
+                    backgroundColor: 'transparent',
+                    border: '1px solid #1E3A5F',
+                    color: '#8A99AD',
+                    fontWeight: 700,
+                    fontSize: '11px',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '6px'
+                  }}
+                >
+                  <Camera size={13} />
+                  <span>Ler Produtos 1 a 1 por Foto com IA</span>
+                </button>
+
+                {/* BOTÃO PARA ESCANEAR OUTRO QR CODE */}
                 <button
                   type="button"
                   onClick={() => setQrDados(null)}
                   style={{
                     padding: '8px',
-                    borderRadius: '10px',
+                    borderRadius: '8px',
                     backgroundColor: 'transparent',
                     border: 'none',
                     color: '#8A99AD',
@@ -756,6 +1038,7 @@ export const ScannerCupomModal: React.FC<ScannerCupomModalProps> = ({
         onFechar={() => setModalConferenciaAberto(false)}
         onConcluido={() => {
           setModalConferenciaAberto(false);
+          setQrDados(null);
           onFechar();
         }}
       />

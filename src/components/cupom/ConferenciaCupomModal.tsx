@@ -12,8 +12,7 @@ import {
   CreditCard, 
   Tag, 
   ShoppingCart,
-  CheckCircle2,
-  DollarSign
+  CheckCircle2
 } from 'lucide-react';
 
 interface ConferenciaCupomModalProps {
@@ -31,31 +30,34 @@ export const ConferenciaCupomModal: React.FC<ConferenciaCupomModalProps> = ({
 }) => {
   const { 
     cartoes, 
+    contas,
     naturezas, 
     categorias, 
     adicionarLancamento, 
     mostrarToast
   } = useFinanceStore();
 
-  if (!aberto || !resultado) return null;
-
-  // Estados locais da conferência
-  const [estabelecimento, setEstabelecimento] = useState(resultado.estabelecimento);
-  const [dataCompra, setDataCompra] = useState(resultado.data);
-  const [itens, setItens] = useState<ItemCupomFiscal[]>(resultado.itens);
+  // Estados locais da conferência - SEMPRE chamados no topo incondicionalmente
+  const [estabelecimento, setEstabelecimento] = useState(resultado?.estabelecimento || '');
+  const [dataCompra, setDataCompra] = useState(resultado?.data || new Date().toISOString().slice(0, 10));
+  const [itens, setItens] = useState<ItemCupomFiscal[]>(resultado?.itens || []);
   
   // Forma de pagamento
   const [formaPagamento, setFormaPagamento] = useState<FormaPagamento>(
-    (resultado.formaPagamentoSugerida as FormaPagamento) || '💳 Crédito'
+    (resultado?.formaPagamentoSugerida as FormaPagamento) || '💳 Crédito'
   );
   
   // Cartão associado (se for crédito)
   const cartaoInicial = cartoes[0]?.nome || 'Banco do Brasil Ourocard';
   const [cartaoSelecionado, setCartaoSelecionado] = useState<string>(cartaoInicial);
 
+  // Conta associada (se for débito/pix)
+  const contaInicial = contas[0]?.nome || 'Conta Corrente';
+  const [contaSelecionada, setContaSelecionada] = useState<string>(contaInicial);
+
   // Natureza e Categoria
   const [naturezaSelecionada, setNaturezaSelecionada] = useState<string>(
-    resultado.naturezaSugerida || naturezas[0]?.label || '🛒 Alimentação'
+    resultado?.naturezaSugerida || naturezas[0]?.label || '🛒 Alimentação'
   );
   
   const categoriasDaNatureza = useMemo(() => {
@@ -63,15 +65,15 @@ export const ConferenciaCupomModal: React.FC<ConferenciaCupomModalProps> = ({
   }, [categorias, naturezaSelecionada]);
 
   const [categoriaSelecionada, setCategoriaSelecionada] = useState<string>(
-    resultado.categoriaSugerida || categoriasDaNatureza[0]?.nome || 'Supermercado'
+    resultado?.categoriaSugerida || categoriasDaNatureza[0]?.nome || 'Supermercado'
   );
 
   // Sincronizar estados caso um novo resultado chegue
   useEffect(() => {
     if (resultado) {
-      setEstabelecimento(resultado.estabelecimento);
-      setDataCompra(resultado.data);
-      setItens(resultado.itens);
+      setEstabelecimento(resultado.estabelecimento || 'Compra Fiscal');
+      setDataCompra(resultado.data || new Date().toISOString().slice(0, 10));
+      setItens(resultado.itens || []);
       if (resultado.formaPagamentoSugerida) {
         setFormaPagamento(resultado.formaPagamentoSugerida as FormaPagamento);
       }
@@ -89,6 +91,9 @@ export const ConferenciaCupomModal: React.FC<ConferenciaCupomModalProps> = ({
   const valorTotalCalculado = useMemo(() => {
     return itensMarcados.reduce((acc, curr) => acc + (Number(curr.precoTotal) || 0), 0);
   }, [itensMarcados]);
+
+  // Regra de Hooks: early return SOMENTE após todas as declarações de Hooks!
+  if (!aberto || !resultado) return null;
 
   // Alternar checkbox de item
   const toggleItem = (id: string) => {
@@ -157,7 +162,7 @@ export const ConferenciaCupomModal: React.FC<ConferenciaCupomModalProps> = ({
       categoria: categoriaSelecionada,
       pagamento: formaPagamento,
       cartao: ehCredito ? cartaoSelecionado : undefined,
-      conta: !ehCredito ? 'Conta Corrente' : undefined,
+      conta: !ehCredito ? contaSelecionada : undefined,
       origem: 'meu-mercado',
       detalhesMercado: {
         mercadoNome: estabelecimento.trim() || 'Supermercado',
@@ -258,138 +263,120 @@ export const ConferenciaCupomModal: React.FC<ConferenciaCupomModalProps> = ({
           overflowY: 'auto',
           display: 'flex',
           flexDirection: 'column',
-          gap: '14px'
+          gap: '16px'
         }}>
-          {/* Card Principal: Estabelecimento, Data e Total */}
+          {/* Seção 1: Dados Gerais da Compra */}
           <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+            gap: '12px',
             backgroundColor: '#132F4C',
-            borderRadius: '16px',
             padding: '14px',
-            border: '1px solid #1E3A5F',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '10px'
+            borderRadius: '14px',
+            border: '1px solid #1E3A5F'
           }}>
-            {/* Estabelecimento */}
             <div>
-              <label style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '10.5px', fontWeight: 800, color: '#AAB4BE', textTransform: 'uppercase', marginBottom: '4px' }}>
-                <Store size={12} color="#F8D117" />
-                <span>Estabelecimento / Loja</span>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', fontWeight: 700, color: '#8A99AD', marginBottom: '6px' }}>
+                <Store size={13} color="#F8D117" />
+                ESTABELECIMENTO:
               </label>
-              <input
-                type="text"
+              <input 
+                type="text" 
                 value={estabelecimento}
                 onChange={(e) => setEstabelecimento(e.target.value)}
-                placeholder="Ex: Supermercado Pão de Açúcar"
                 style={{
                   width: '100%',
-                  height: '38px',
+                  padding: '9px 12px',
                   borderRadius: '10px',
                   backgroundColor: '#0A1B30',
                   border: '1px solid #265D97',
                   color: '#FFFFFF',
-                  padding: '0 12px',
                   fontSize: '13px',
-                  fontWeight: 700
+                  fontWeight: 700,
+                  boxSizing: 'border-box'
                 }}
               />
             </div>
 
-            {/* Linha com Data e Valor Total */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-              <div>
-                <label style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '10.5px', fontWeight: 800, color: '#AAB4BE', textTransform: 'uppercase', marginBottom: '4px' }}>
-                  <Calendar size={12} color="#5090D3" />
-                  <span>Data da Compra</span>
-                </label>
-                <input
-                  type="date"
-                  value={dataCompra}
-                  onChange={(e) => setDataCompra(e.target.value)}
-                  style={{
-                    width: '100%',
-                    height: '38px',
-                    borderRadius: '10px',
-                    backgroundColor: '#0A1B30',
-                    border: '1px solid #265D97',
-                    color: '#FFFFFF',
-                    padding: '0 10px',
-                    fontSize: '12.5px',
-                    fontWeight: 700
-                  }}
-                />
-              </div>
-
-              <div>
-                <label style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '10.5px', fontWeight: 800, color: '#AAB4BE', textTransform: 'uppercase', marginBottom: '4px' }}>
-                  <DollarSign size={12} color="#4CAF50" />
-                  <span>Total Marcado</span>
-                </label>
-                <div style={{
-                  height: '38px',
+            <div>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', fontWeight: 700, color: '#8A99AD', marginBottom: '6px' }}>
+                <Calendar size={13} color="#5090D3" />
+                DATA DA COMPRA:
+              </label>
+              <input 
+                type="date" 
+                value={dataCompra}
+                onChange={(e) => setDataCompra(e.target.value)}
+                style={{
+                  width: '100%',
+                  padding: '9px 12px',
                   borderRadius: '10px',
-                  backgroundColor: 'rgba(76, 175, 80, 0.16)',
-                  border: '1.5px solid #4CAF50',
-                  display: 'flex',
-                  alignItems: 'center',
-                  padding: '0 12px',
-                  fontSize: '14px',
-                  fontWeight: 900,
-                  color: '#4CAF50'
-                }}>
-                  {formatarMoeda(valorTotalCalculado)}
-                </div>
-              </div>
+                  backgroundColor: '#0A1B30',
+                  border: '1px solid #265D97',
+                  color: '#FFFFFF',
+                  fontSize: '13px',
+                  fontWeight: 700,
+                  boxSizing: 'border-box'
+                }}
+              />
+            </div>
+          </div>
+
+          {/* Seção 2: Classificação Financeira */}
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+            gap: '12px',
+            backgroundColor: '#132F4C',
+            padding: '14px',
+            borderRadius: '14px',
+            border: '1px solid #1E3A5F'
+          }}>
+            <div>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', fontWeight: 700, color: '#8A99AD', marginBottom: '6px' }}>
+                <CreditCard size={13} color="#4CAF50" />
+                FORMA DE PAGAMENTO:
+              </label>
+              <select
+                value={formaPagamento}
+                onChange={(e) => setFormaPagamento(e.target.value as FormaPagamento)}
+                style={{
+                  width: '100%',
+                  padding: '9px 12px',
+                  borderRadius: '10px',
+                  backgroundColor: '#0A1B30',
+                  border: '1px solid #265D97',
+                  color: '#FFFFFF',
+                  fontSize: '12.5px',
+                  fontWeight: 700,
+                  boxSizing: 'border-box'
+                }}
+              >
+                <option value="💳 Crédito">💳 Cartão de Crédito</option>
+                <option value="💳 Débito">💳 Cartão de Débito</option>
+                <option value="📱 Pix">📱 Pix</option>
+                <option value="💵 Dinheiro">💵 Dinheiro</option>
+              </select>
             </div>
 
-            {/* Linha com Forma de Pagamento e Cartão */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+            {formaPagamento === '💳 Crédito' ? (
               <div>
-                <label style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '10.5px', fontWeight: 800, color: '#AAB4BE', textTransform: 'uppercase', marginBottom: '4px' }}>
-                  <CreditCard size={12} color="#F8D117" />
-                  <span>Forma de Pagamento</span>
-                </label>
-                <select
-                  value={formaPagamento}
-                  onChange={(e) => setFormaPagamento(e.target.value as FormaPagamento)}
-                  style={{
-                    width: '100%',
-                    height: '38px',
-                    borderRadius: '10px',
-                    backgroundColor: '#0A1B30',
-                    border: '1px solid #265D97',
-                    color: '#FFFFFF',
-                    padding: '0 10px',
-                    fontSize: '12px',
-                    fontWeight: 700
-                  }}
-                >
-                  <option value="💳 Crédito">💳 Cartão de Crédito</option>
-                  <option value="💳 Débito">💳 Cartão de Débito</option>
-                  <option value="📱 Pix">📱 Pix</option>
-                  <option value="💵 Dinheiro">💵 Dinheiro</option>
-                </select>
-              </div>
-
-              <div>
-                <label style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '10.5px', fontWeight: 800, color: '#AAB4BE', textTransform: 'uppercase', marginBottom: '4px' }}>
-                  <Tag size={12} color="#5090D3" />
-                  <span>Cartão Utilizado</span>
+                <label style={{ display: 'block', fontSize: '11px', fontWeight: 700, color: '#8A99AD', marginBottom: '6px' }}>
+                  CARTÃO DE CRÉDITO:
                 </label>
                 <select
                   value={cartaoSelecionado}
                   onChange={(e) => setCartaoSelecionado(e.target.value)}
-                  disabled={!formaPagamento.includes('Crédito')}
                   style={{
                     width: '100%',
-                    height: '38px',
+                    padding: '9px 12px',
                     borderRadius: '10px',
-                    backgroundColor: formaPagamento.includes('Crédito') ? '#0A1B30' : '#0B1929',
+                    backgroundColor: '#0A1B30',
                     border: '1px solid #265D97',
-                    color: formaPagamento.includes('Crédito') ? '#FFFFFF' : '#64748B',
-                    padding: '0 10px',
-                    fontSize: '12px',
-                    fontWeight: 700
+                    color: '#FFFFFF',
+                    fontSize: '12.5px',
+                    fontWeight: 700,
+                    boxSizing: 'border-box'
                   }}
                 >
                   {cartoes.map(c => (
@@ -400,98 +387,88 @@ export const ConferenciaCupomModal: React.FC<ConferenciaCupomModalProps> = ({
                   )}
                 </select>
               </div>
-            </div>
-
-            {/* Linha com Natureza e Categoria Financeira */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+            ) : (
               <div>
-                <label style={{ display: 'block', fontSize: '10.5px', fontWeight: 800, color: '#AAB4BE', textTransform: 'uppercase', marginBottom: '4px' }}>
-                  Natureza Financeira
+                <label style={{ display: 'block', fontSize: '11px', fontWeight: 700, color: '#8A99AD', marginBottom: '6px' }}>
+                  CONTA DE SAÍDA:
                 </label>
                 <select
-                  value={naturezaSelecionada}
-                  onChange={(e) => {
-                    setNaturezaSelecionada(e.target.value);
-                    const novasCats = categorias.filter(c => c.natureza.toLowerCase().trim() === e.target.value.toLowerCase().trim());
-                    if (novasCats[0]) setCategoriaSelecionada(novasCats[0].nome);
-                  }}
+                  value={contaSelecionada}
+                  onChange={(e) => setContaSelecionada(e.target.value)}
                   style={{
                     width: '100%',
-                    height: '38px',
+                    padding: '9px 12px',
                     borderRadius: '10px',
                     backgroundColor: '#0A1B30',
                     border: '1px solid #265D97',
                     color: '#FFFFFF',
-                    padding: '0 10px',
-                    fontSize: '12px',
-                    fontWeight: 700
+                    fontSize: '12.5px',
+                    fontWeight: 700,
+                    boxSizing: 'border-box'
                   }}
                 >
-                  {naturezas.map(n => (
-                    <option key={n.id} value={n.label}>{n.label}</option>
+                  {contas.map(ct => (
+                    <option key={ct.id} value={ct.nome}>{ct.nome}</option>
                   ))}
-                </select>
-              </div>
-
-              <div>
-                <label style={{ display: 'block', fontSize: '10.5px', fontWeight: 800, color: '#AAB4BE', textTransform: 'uppercase', marginBottom: '4px' }}>
-                  Categoria Financeira
-                </label>
-                <select
-                  value={categoriaSelecionada}
-                  onChange={(e) => setCategoriaSelecionada(e.target.value)}
-                  style={{
-                    width: '100%',
-                    height: '38px',
-                    borderRadius: '10px',
-                    backgroundColor: '#0A1B30',
-                    border: '1px solid #265D97',
-                    color: '#FFFFFF',
-                    padding: '0 10px',
-                    fontSize: '12px',
-                    fontWeight: 700
-                  }}
-                >
-                  {categoriasDaNatureza.map(c => (
-                    <option key={c.id} value={c.nome}>{c.nome}</option>
-                  ))}
-                  {categoriasDaNatureza.length === 0 && (
-                    <option value="Supermercado">Supermercado</option>
+                  {contas.length === 0 && (
+                    <option value="Conta Corrente">Conta Corrente</option>
                   )}
                 </select>
               </div>
+            )}
+
+            <div>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', fontWeight: 700, color: '#8A99AD', marginBottom: '6px' }}>
+                <Tag size={13} color="#F8D117" />
+                CATEGORIA:
+              </label>
+              <select
+                value={categoriaSelecionada}
+                onChange={(e) => setCategoriaSelecionada(e.target.value)}
+                style={{
+                  width: '100%',
+                  padding: '9px 12px',
+                  borderRadius: '10px',
+                  backgroundColor: '#0A1B30',
+                  border: '1px solid #265D97',
+                  color: '#FFFFFF',
+                  fontSize: '12.5px',
+                  fontWeight: 700,
+                  boxSizing: 'border-box'
+                }}
+              >
+                {categorias.map(cat => (
+                  <option key={cat.id} value={cat.nome}>{cat.nome} ({cat.natureza})</option>
+                ))}
+                {categorias.length === 0 && (
+                  <option value="Supermercado">Supermercado</option>
+                )}
+              </select>
             </div>
           </div>
 
-          {/* Seção da Lista de Itens do Cupom */}
+          {/* Seção 3: Lista de Produtos */}
           <div>
-            <div style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              marginBottom: '8px'
-            }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span style={{ fontSize: '12.5px', fontWeight: 800, color: '#FFFFFF' }}>
+                  Itens do Cupom ({itensMarcados.length}/{itens.length} selecionados)
+                </span>
                 <button
                   type="button"
                   onClick={toggleTodos}
                   style={{
                     background: 'none',
                     border: 'none',
-                    color: '#F8D117',
+                    color: '#5090D3',
                     fontSize: '11px',
-                    fontWeight: 800,
+                    fontWeight: 700,
                     cursor: 'pointer',
-                    padding: '2px 6px',
-                    borderRadius: '6px',
-                    backgroundColor: 'rgba(248, 209, 23, 0.12)'
+                    padding: 0
                   }}
                 >
-                  {todosMarcados ? 'Desmarcar Todos' : 'Marcar Todos'}
+                  {todosMarcados ? 'Desmarcar todos' : 'Marcar todos'}
                 </button>
-                <span style={{ fontSize: '11.5px', color: '#8A99AD' }}>
-                  ({itensMarcados.length} de {itens.length} itens inclusos)
-                </span>
               </div>
 
               <button
@@ -501,39 +478,43 @@ export const ConferenciaCupomModal: React.FC<ConferenciaCupomModalProps> = ({
                   display: 'flex',
                   alignItems: 'center',
                   gap: '4px',
-                  backgroundColor: '#132F4C',
-                  border: '1px solid #1E3A5F',
+                  backgroundColor: 'rgba(80, 144, 211, 0.16)',
+                  border: '1px solid rgba(80, 144, 211, 0.35)',
                   color: '#5090D3',
-                  fontSize: '11px',
-                  fontWeight: 800,
-                  padding: '4px 8px',
+                  padding: '4px 10px',
                   borderRadius: '8px',
+                  fontSize: '11px',
+                  fontWeight: 700,
                   cursor: 'pointer'
                 }}
               >
-                <Plus size={12} />
-                <span>Item</span>
+                <Plus size={13} />
+                <span>Adicionar Item</span>
               </button>
             </div>
 
-            {/* Grade de Itens */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+            <div style={{
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '8px',
+              maxHeight: '340px',
+              overflowY: 'auto'
+            }}>
               {itens.map((it) => (
-                <div
+                <div 
                   key={it.id}
                   style={{
                     display: 'flex',
                     alignItems: 'center',
-                    gap: '8px',
-                    padding: '8px 10px',
+                    gap: '10px',
+                    padding: '10px 12px',
                     borderRadius: '12px',
-                    backgroundColor: it.selecionado ? '#132F4C' : 'rgba(19, 47, 76, 0.4)',
-                    border: it.selecionado ? '1px solid #265D97' : '1px dashed #1E3A5F',
+                    backgroundColor: it.selecionado ? '#132F4C' : '#0B1E33',
+                    border: it.selecionado ? '1px solid #265D97' : '1px solid #162C46',
                     opacity: it.selecionado ? 1 : 0.6,
                     transition: 'all 0.15s ease'
                   }}
                 >
-                  {/* Checkbox */}
                   <input
                     type="checkbox"
                     checked={it.selecionado}
@@ -542,143 +523,149 @@ export const ConferenciaCupomModal: React.FC<ConferenciaCupomModalProps> = ({
                       width: '18px',
                       height: '18px',
                       cursor: 'pointer',
-                      accentColor: '#4CAF50',
-                      flexShrink: 0
+                      accentColor: '#4CAF50'
                     }}
                   />
 
-                  {/* Nome do Item */}
-                  <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px' }}>
                     <input
                       type="text"
                       value={it.nome}
                       onChange={(e) => atualizarItem(it.id, 'nome', e.target.value)}
                       style={{
                         width: '100%',
-                        backgroundColor: 'transparent',
+                        background: 'transparent',
                         border: 'none',
-                        color: it.selecionado ? '#FFFFFF' : '#8A99AD',
+                        outline: 'none',
+                        color: '#FFFFFF',
                         fontSize: '12.5px',
-                        fontWeight: 700,
-                        padding: 0,
-                        outline: 'none'
+                        fontWeight: 700
                       }}
                     />
-                    <div style={{ display: 'flex', gap: '6px', fontSize: '10px', color: '#8A99AD', marginTop: '2px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '11px', color: '#8A99AD' }}>
                       <span>Qtd:</span>
                       <input
                         type="number"
-                        step="any"
+                        step="0.01"
                         value={it.quantidade}
                         onChange={(e) => atualizarItem(it.id, 'quantidade', e.target.value)}
                         style={{
-                          width: '42px',
-                          backgroundColor: '#0A1B30',
+                          width: '50px',
+                          background: '#0A1B30',
                           border: '1px solid #1E3A5F',
-                          borderRadius: '4px',
-                          color: '#5090D3',
-                          fontSize: '10px',
-                          fontWeight: 700,
-                          padding: '1px 3px'
+                          borderRadius: '6px',
+                          color: '#FFFFFF',
+                          fontSize: '11px',
+                          padding: '2px 4px',
+                          textAlign: 'center'
                         }}
                       />
-                      <span>x</span>
-                      <span>{formatarMoeda(it.precoUnitario)}</span>
+                      <span>x R$</span>
+                      <input
+                        type="number"
+                        step="0.01"
+                        value={it.precoUnitario}
+                        onChange={(e) => atualizarItem(it.id, 'precoUnitario', e.target.value)}
+                        style={{
+                          width: '65px',
+                          background: '#0A1B30',
+                          border: '1px solid #1E3A5F',
+                          borderRadius: '6px',
+                          color: '#FFFFFF',
+                          fontSize: '11px',
+                          padding: '2px 4px',
+                          textAlign: 'center'
+                        }}
+                      />
                     </div>
                   </div>
 
-                  {/* Valor Total do Item */}
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
-                    <input
-                      type="number"
-                      step="0.01"
-                      value={it.precoTotal}
-                      onChange={(e) => atualizarItem(it.id, 'precoTotal', e.target.value)}
-                      style={{
-                        width: '68px',
-                        backgroundColor: '#0A1B30',
-                        border: '1px solid #1E3A5F',
-                        borderRadius: '6px',
-                        color: it.selecionado ? '#4CAF50' : '#8A99AD',
-                        fontSize: '12.5px',
-                        fontWeight: 800,
-                        textAlign: 'right',
-                        padding: '4px 6px'
-                      }}
-                    />
-
-                    <button
-                      type="button"
-                      onClick={() => removerItem(it.id)}
-                      style={{
-                        background: 'none',
-                        border: 'none',
-                        color: '#EF5350',
-                        cursor: 'pointer',
-                        padding: '4px',
-                        display: 'flex'
-                      }}
-                      title="Excluir este item"
-                    >
-                      <Trash2 size={13} />
-                    </button>
+                  <div style={{ textAlign: 'right', minWidth: '70px' }}>
+                    <span style={{ fontSize: '13px', fontWeight: 800, color: '#4CAF50' }}>
+                      {formatarMoeda(it.precoTotal)}
+                    </span>
                   </div>
+
+                  <button
+                    type="button"
+                    onClick={() => removerItem(it.id)}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      color: '#F44336',
+                      opacity: 0.7,
+                      cursor: 'pointer',
+                      padding: '4px',
+                      display: 'flex'
+                    }}
+                  >
+                    <Trash2 size={15} />
+                  </button>
                 </div>
               ))}
             </div>
           </div>
         </div>
 
-        {/* Rodapé Fixo com Botão de Confirmação */}
+        {/* Rodapé Fixo com Total e Botão de Ação */}
         <div style={{
           padding: '14px 18px',
           borderTop: '1px solid #1E3A5F',
           backgroundColor: '#0A1B30',
           display: 'flex',
-          gap: '10px',
-          alignItems: 'center'
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          gap: '12px'
         }}>
-          <button
-            type="button"
-            onClick={onFechar}
-            style={{
-              flex: 1,
-              padding: '11px',
-              borderRadius: '12px',
-              backgroundColor: '#132F4C',
-              border: '1px solid #1E3A5F',
-              color: '#CBD5E1',
-              fontWeight: 700,
-              fontSize: '12.5px',
-              cursor: 'pointer'
-            }}
-          >
-            Voltar
-          </button>
+          <div>
+            <div style={{ fontSize: '10.5px', color: '#8A99AD', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+              TOTAL SELECIONADO:
+            </div>
+            <div style={{ fontSize: '18px', fontWeight: 900, color: '#F8D117' }}>
+              {formatarMoeda(valorTotalCalculado)}
+            </div>
+          </div>
 
-          <button
-            type="button"
-            onClick={handleConfirmar}
-            style={{
-              flex: 2,
-              padding: '11px',
-              borderRadius: '12px',
-              backgroundColor: '#4CAF50',
-              border: 'none',
-              color: '#FFFFFF',
-              fontWeight: 900,
-              fontSize: '13px',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '6px',
-              boxShadow: '0 3px 14px rgba(76, 175, 80, 0.4)'
-            }}
-          >
-            <CheckCircle2 size={16} />
-            <span>Confirmar e Lançar ({formatarMoeda(valorTotalCalculado)})</span>
-          </button>
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <button
+              type="button"
+              onClick={onFechar}
+              style={{
+                padding: '10px 16px',
+                borderRadius: '12px',
+                backgroundColor: '#132F4C',
+                border: '1px solid #1E3A5F',
+                color: '#CBD5E1',
+                fontSize: '12px',
+                fontWeight: 700,
+                cursor: 'pointer'
+              }}
+            >
+              Cancelar
+            </button>
+
+            <button
+              type="button"
+              onClick={handleConfirmar}
+              style={{
+                padding: '10px 20px',
+                borderRadius: '12px',
+                backgroundColor: '#4CAF50',
+                border: 'none',
+                color: '#FFFFFF',
+                fontSize: '13px',
+                fontWeight: 900,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                boxShadow: '0 4px 14px rgba(76, 175, 80, 0.4)'
+              }}
+            >
+              <CheckCircle2 size={16} />
+              <span>Confirmar e Lançar Despesa</span>
+            </button>
+          </div>
         </div>
       </div>
     </div>
