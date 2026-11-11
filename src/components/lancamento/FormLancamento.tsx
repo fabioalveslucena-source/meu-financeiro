@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useFinanceStore } from '../../stores/financeStore';
 import { TIPOS_LANCAMENTO } from '../../lib/constants';
-import { formatarDataInput, formatarMoeda, parseMoedaBR } from '../../lib/formatters';
+import { formatarData, formatarDataInput, formatarMoeda, parseMoedaBR } from '../../lib/formatters';
+import { calcularFaturaParcela, obterConfigCartao } from '../../lib/cartaoFatura';
 import type { FormaPagamento, TipoLancamento } from '../../types';
 import { Mic, Plus, X, Check } from 'lucide-react';
 
@@ -620,6 +621,35 @@ export const FormLancamento: React.FC<FormLancamentoProps> = ({
                   ))}
                 </select>
               </div>
+
+              {data && (() => {
+                const [a, m, d] = data.split('-').map(Number);
+                if (!a || !m || !d) return null;
+                const { diaFechamento, diaVencimento } = obterConfigCartao(cartao, cartoes);
+                const prev = calcularFaturaParcela(a, m, d, diaFechamento, diaVencimento, 1);
+                return (
+                  <div style={{
+                    fontSize: '11.5px',
+                    color: '#93C5FD',
+                    backgroundColor: 'rgba(11, 25, 41, 0.7)',
+                    border: '1px solid rgba(59, 130, 246, 0.25)',
+                    borderRadius: '8px',
+                    padding: '6px 10px',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    gap: '6px',
+                    flexWrap: 'wrap'
+                  }}>
+                    <span>
+                      📅 {parcelas > 1 ? '1ª parcela' : 'Lançamento'} na fatura <strong style={{ color: '#F8D117' }}>{prev.competencia}</strong>
+                    </span>
+                    <span style={{ color: '#AAB4BE', fontSize: '11px' }}>
+                      Venc. {formatarData(prev.vencimento)} (Fech. dia {diaFechamento})
+                    </span>
+                  </div>
+                );
+              })()}
             </div>
           )}
 

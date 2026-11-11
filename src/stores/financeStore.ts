@@ -22,6 +22,12 @@ import {
   CONTAS_PADRAO 
 } from '../services/mockData';
 import { competenciaAtual } from '../lib/formatters';
+import {
+  obterConfigCartao,
+  criarDataParcelaSegura,
+  calcularFaturaParcela,
+  repararFaturasCartaoDesatualizadas,
+} from '../lib/cartaoFatura';
 import { FirestoreSyncService, MASTER_UID } from '../services/firestoreSync';
 
 export interface RealtimeLog {
@@ -396,6 +402,16 @@ function salvarNoStorage<T>(chave: string, valor: T): void {
   }
 }
 
+function aplicarReparoFaturas(uid: string, lancamentos: Lancamento[], cartoes: Cartao[]): Lancamento[] {
+  const { lista, alterados } = repararFaturasCartaoDesatualizadas(lancamentos, cartoes);
+  if (alterados.length > 0 && uid) {
+    alterados.forEach((item) => {
+      FirestoreSyncService.salvarLancamento(uid, item).catch(console.warn);
+    });
+  }
+  return lista;
+}
+
 export const useFinanceStore = create<FinanceState>((set, get) => {
   const activeUid = typeof localStorage !== 'undefined' ? localStorage.getItem(STORAGE_KEY_ACTIVE_UID) : null;
   const existeFabioLocal = typeof localStorage !== 'undefined' && Boolean(localStorage.getItem(STORAGE_KEY_USUARIO));
@@ -432,19 +448,24 @@ export const useFinanceStore = create<FinanceState>((set, get) => {
     usuarioInicial.uid = MASTER_UID;
   }
 
-  const lancamentosIniciais = ehNovoDispositivo
-    ? []
-    : carregarDoStorage<Lancamento[]>(
-        getStorageKey(STORAGE_KEY_LANCAMENTOS, uidInicial),
-        []
-      );
-
   const cartoesIniciais = ehNovoDispositivo
     ? []
     : carregarDoStorage<Cartao[]>(
         getStorageKey(STORAGE_KEY_CARTOES, uidInicial),
         isFabio ? CARTAO_PADRAO : []
       );
+
+  const lancamentosIniciaisBrutos = ehNovoDispositivo
+    ? []
+    : carregarDoStorage<Lancamento[]>(
+        getStorageKey(STORAGE_KEY_LANCAMENTOS, uidInicial),
+        []
+      );
+
+  const lancamentosIniciais = aplicarReparoFaturas(uidInicial, lancamentosIniciaisBrutos, cartoesIniciais);
+  if (lancamentosIniciais !== lancamentosIniciaisBrutos && uidInicial) {
+    salvarNoStorage(getStorageKey(STORAGE_KEY_LANCAMENTOS, uidInicial), lancamentosIniciais);
+  }
 
   const categoriasIniciais = carregarDoStorage<Categoria[]>(
     getStorageKey(STORAGE_KEY_CATEGORIAS, uidInicial),
@@ -623,7 +644,7 @@ export const useFinanceStore = create<FinanceState>((set, get) => {
     },
 
     adicionarCompraMercado: (dados) => {
-      const { lancamentos, usuario, adicionarLogRealtime, mostrarToast } = get();
+      const { lancamentos, cartoes, usuario, adicionarLogRealtime, mostrarToast } = get();
       const uid = usuario.uid || MASTER_UID;
       const totalParcelas = Math.max(1, dados.totalParcelas || 1);
       const dataObj = new Date(dados.data + 'T12:00:00');
@@ -632,8 +653,8 @@ export const useFinanceStore = create<FinanceState>((set, get) => {
       const mesNum = parseInt(mesStr) || (new Date().getMonth() + 1);
       const diaNum = dataObj.getDate();
 
-      const diaFechamento = (dados.cartao && dados.cartao.toLowerCase().includes('bradesco')) ? 10 : 25;
-      const comprouAposFechamento = (dados.formaPagamento === '💳 Crédito') && (diaNum > diaFechamento);
+      const ehCredito = dados.formaPagamento === '💳 Crédito';
+      const { diaFechamento, diaVencimento } = obterConfigCartao(dados.cartao, cartoes);
 
       const valorCentavos = Math.round(dados.valorTotal * 100);
       const centavosBase = Math.floor(valorCentavos / totalParcelas);
@@ -643,11 +664,15 @@ export const useFinanceStore = create<FinanceState>((set, get) => {
       const novosLancamentos: Lancamento[] = [];
 
       for (let p = 1; p <= totalParcelas; p++) {
-        const deslocamentoFatura = comprouAposFechamento ? p : (p - 1);
-        const dataFatura = new Date(anoNum, (mesNum - 1) + deslocamentoFatura, 1);
-        const compMes = String(dataFatura.getMonth() + 1).padStart(2, '0');
-        const compAno = dataFatura.getFullYear();
-        const faturaCompetencia = dados.competencia && totalParcelas === 1 ? dados.competencia : `${compMes}/${compAno}`;
+        const calcFatura = ehCredito
+          ? calcularFaturaParcela(anoNum, mesNum, diaNum, diaFechamento, diaVencimento, p)
+          : null;
+        const compPadrao = `${String(mesNum).padStart(2, '0')}/${anoNum}`;
+        const faturaCompetencia = calcFatura
+          ? calcFatura.competencia
+          : dados.competencia && totalParcelas === 1
+          ? dados.competencia
+          : compPadrao;
 
         const centavosParcela = p <= restoCentavos ? centavosBase + 1 : centavosBase;
         const valorFinal = Number((centavosParcela / 100).toFixed(2));
@@ -672,10 +697,11 @@ export const useFinanceStore = create<FinanceState>((set, get) => {
           conta: dados.conta,
           status: 'Lançado',
           origem: 'meu-mercado',
-          compraId: dados.formaPagamento === '💳 Crédito' ? compraId : undefined,
+          compraId: ehCredito ? compraId : undefined,
           parcela: totalParcelas > 1 ? p : undefined,
           totalParcelas: totalParcelas > 1 ? totalParcelas : undefined,
-          fatura: dados.formaPagamento === '💳 Crédito' ? faturaCompetencia : undefined,
+          vencimento: calcFatura ? calcFatura.vencimento : undefined,
+          fatura: ehCredito ? faturaCompetencia : undefined,
           detalhesMercado: {
             mercadoNome: dados.mercadoNome || 'Meu Mercado',
             cupomNumero: `MM-${Date.now().toString().slice(-4)}`,
@@ -824,44 +850,29 @@ export const useFinanceStore = create<FinanceState>((set, get) => {
       const novos: Lancamento[] = [];
 
       const [ano, mes, dia] = input.data.split('-').map(Number);
-      const dataBase = new Date(ano, mes - 1, dia);
 
       // Localizar configuração do cartão se for crédito
-      let diaFechamento = 25;
-      let diaVencimento = 5;
-      if (input.pagamento === '💳 Crédito' && input.cartao) {
-        const cartaoConfig = get().cartoes.find((c) => c.nome === input.cartao);
-        if (cartaoConfig) {
-          diaFechamento = cartaoConfig.diaFechamento || 25;
-          diaVencimento = cartaoConfig.diaVencimento || 5;
-        }
-      }
+      const ehCredito = input.pagamento === '💳 Crédito';
+      const { diaFechamento, diaVencimento } = ehCredito
+        ? obterConfigCartao(input.cartao, get().cartoes)
+        : { diaFechamento: 25, diaVencimento: 5 };
 
       // Distribuição precisa em centavos (evita dízima e erros de arredondamento)
       const valorCentavos = Math.round(input.valor * 100);
       const centavosBase = Math.floor(valorCentavos / totalParcelas);
       const restoCentavos = valorCentavos % totalParcelas;
 
-      const diaCompra = dataBase.getDate();
-      const comprouAposFechamento = input.pagamento === '💳 Crédito' && diaCompra > diaFechamento;
-
       for (let i = 1; i <= totalParcelas; i++) {
-        // Se a compra foi feita após o fechamento (ex: dia 26 com fechamento dia 25),
-        // a primeira parcela entra na fatura do mês seguinte!
-        const deslocamentoFatura = comprouAposFechamento ? i : (i - 1);
+        const calcFatura = ehCredito
+          ? calcularFaturaParcela(ano, mes, dia, diaFechamento, diaVencimento, i)
+          : null;
+        const faturaCompetencia = calcFatura
+          ? calcFatura.competencia
+          : `${String(mes).padStart(2, '0')}/${ano}`;
+        const vencimento = calcFatura ? calcFatura.vencimento : undefined;
 
-        const dataFatura = new Date(ano, (mes - 1) + deslocamentoFatura, 1);
-        const compMes = String(dataFatura.getMonth() + 1).padStart(2, '0');
-        const compAno = dataFatura.getFullYear();
-        const faturaCompetencia = `${compMes}/${compAno}`;
-
-        // Data de vencimento da fatura
-        const vencimento = input.pagamento === '💳 Crédito'
-          ? new Date(compAno, dataFatura.getMonth(), diaVencimento)
-          : undefined;
-
-        // Data do registro da parcela (data da compra para a 1ª parcela, e mês subsequente para as próximas)
-        const dataParcela = new Date(ano, (mes - 1) + (i - 1), dia);
+        // Data do registro da parcela (protegida contra estouro de dia 31 em meses com 30 dias)
+        const dataParcela = criarDataParcelaSegura(ano, mes, dia, i - 1);
 
         // Centavos exatos: distribui o resto nas primeiras parcelas
         const centavosParcela = i <= restoCentavos ? centavosBase + 1 : centavosBase;
@@ -1158,62 +1169,22 @@ export const useFinanceStore = create<FinanceState>((set, get) => {
         comprasAgrupadas.forEach((parcelasDaCompra, compraId) => {
           // Ordenar parcelas numericamente (1, 2, 3...)
           parcelasDaCompra.sort((a, b) => (a.parcela || 1) - (b.parcela || 1));
-          
-          // 1. Procurar a parcela correspondente à competência ativa selecionada no cabeçalho
+
+          // Mostrar apenas a parcela que realmente incide na fatura da competência ativa
           const parcelaNaCompetencia = parcelasDaCompra.find((l) => l.competencia === competenciaAtiva);
-          
-          if (parcelaNaCompetencia) {
-            // Existe parcela incidindo na fatura deste mês específico (ex: 1/2 no mês 10, 2/2 no mês 11)
-            parcelamentosMap.set(compraId, {
-              descricao: parcelaNaCompetencia.descricao,
-              valorTotal: (parcelaNaCompetencia.valor || 0) * (parcelaNaCompetencia.totalParcelas || 1),
-              valorParcela: parcelaNaCompetencia.valor,
-              parcelaAtual: parcelaNaCompetencia.parcela,
-              totalParcelas: parcelaNaCompetencia.totalParcelas || 1,
-              compraId,
-              competencia: parcelaNaCompetencia.competencia,
-            });
-          } else {
-            // Se a competência selecionada for antes do fim das parcelas, calcular a parcela vigente
-            const primeiraParcela = parcelasDaCompra[0];
-            const ultimaParcela = parcelasDaCompra[parcelasDaCompra.length - 1];
+          if (!parcelaNaCompetencia) return;
 
-            const [mesAtivo, anoAtivo] = competenciaAtiva.split('/').map(Number);
-            const valAtivo = anoAtivo * 12 + mesAtivo;
+          const valorTotalCompra = parcelasDaCompra.reduce((acc, p) => acc + (p.valor || 0), 0);
 
-            const [mesPrim, anoPrim] = primeiraParcela.competencia.split('/').map(Number);
-            const valPrim = anoPrim * 12 + mesPrim;
-
-            const [mesUlt, anoUlt] = ultimaParcela.competencia.split('/').map(Number);
-            const valUlt = anoUlt * 12 + mesUlt;
-
-            if (valAtivo < valPrim) {
-              parcelamentosMap.set(compraId, {
-                descricao: primeiraParcela.descricao,
-                valorTotal: (primeiraParcela.valor || 0) * (primeiraParcela.totalParcelas || 1),
-                valorParcela: primeiraParcela.valor,
-                parcelaAtual: 1,
-                totalParcelas: primeiraParcela.totalParcelas || 1,
-                compraId,
-                competencia: primeiraParcela.competencia,
-              });
-            } else if (valAtivo <= valUlt) {
-              const parcelaVigente = parcelasDaCompra.find((l) => {
-                const [m, a] = l.competencia.split('/').map(Number);
-                return (a * 12 + m) >= valAtivo;
-              }) || primeiraParcela;
-
-              parcelamentosMap.set(compraId, {
-                descricao: parcelaVigente.descricao,
-                valorTotal: (parcelaVigente.valor || 0) * (parcelaVigente.totalParcelas || 1),
-                valorParcela: parcelaVigente.valor,
-                parcelaAtual: parcelaVigente.parcela,
-                totalParcelas: parcelaVigente.totalParcelas || 1,
-                compraId,
-                competencia: parcelaVigente.competencia,
-              });
-            }
-          }
+          parcelamentosMap.set(compraId, {
+            descricao: parcelaNaCompetencia.descricao,
+            valorTotal: valorTotalCompra,
+            valorParcela: parcelaNaCompetencia.valor,
+            parcelaAtual: parcelaNaCompetencia.parcela,
+            totalParcelas: parcelaNaCompetencia.totalParcelas || 1,
+            compraId,
+            competencia: parcelaNaCompetencia.competencia,
+          });
         });
 
         return {
@@ -1517,8 +1488,11 @@ export const useFinanceStore = create<FinanceState>((set, get) => {
           naturezas
         });
 
-        salvarNoStorage(getStorageKey(STORAGE_KEY_LANCAMENTOS, uid), res.lancamentosSincronizados);
-        salvarNoStorage(getStorageKey(STORAGE_KEY_CARTOES, uid), res.cartoesSincronizados);
+        const cartoesSync = res.cartoesSincronizados;
+        const lancamentosReparados = aplicarReparoFaturas(uid, res.lancamentosSincronizados, cartoesSync);
+
+        salvarNoStorage(getStorageKey(STORAGE_KEY_LANCAMENTOS, uid), lancamentosReparados);
+        salvarNoStorage(getStorageKey(STORAGE_KEY_CARTOES, uid), cartoesSync);
         if (res.usuarioSincronizado) {
           salvarNoStorage(getStorageKey(STORAGE_KEY_USUARIO, uid), res.usuarioSincronizado);
         }
@@ -1538,8 +1512,8 @@ export const useFinanceStore = create<FinanceState>((set, get) => {
         };
 
         set({
-          lancamentos: res.lancamentosSincronizados,
-          cartoes: res.cartoesSincronizados,
+          lancamentos: lancamentosReparados,
+          cartoes: cartoesSync,
           usuario: usuarioFinal,
           categorias: res.categoriasSincronizados || categorias,
           naturezas: res.naturezasSincronizados || naturezas,
@@ -1591,7 +1565,12 @@ export const useFinanceStore = create<FinanceState>((set, get) => {
           localStorage.setItem(STORAGE_KEY_LANCAMENTOS_EXCLUIDOS, JSON.stringify(idsExcluidosNuvem));
         }
         const setExcluidos = new Set(idsExcluidosNuvem);
-        const lancamentosFiltrados = lancamentosNuvem.filter(l => !setExcluidos.has(l.id));
+        const cartoesFinaisDownload = cartoesNuvem.length > 0 ? cartoesNuvem : get().cartoes;
+        const lancamentosFiltrados = aplicarReparoFaturas(
+          uid,
+          lancamentosNuvem.filter(l => !setExcluidos.has(l.id)),
+          cartoesFinaisDownload
+        );
 
         salvarNoStorage(getStorageKey(STORAGE_KEY_LANCAMENTOS, uid), lancamentosFiltrados);
         set({ lancamentos: lancamentosFiltrados });
@@ -1687,8 +1666,12 @@ export const useFinanceStore = create<FinanceState>((set, get) => {
         const catLocal  = carregarDoStorage<Categoria[]>(keyCat, CATEGORIAS_PADRAO);
         const natLocal  = carregarDoStorage<Natureza[]>(keyNat, NATUREZAS_PADRAO);
 
-        const lancamentosFinais = lancamentosNuvem.length > 0 ? lancamentosNuvem : lancLocal;
         const cartoesFinais = cartoesNuvem.length > 0 ? cartoesNuvem : cartLocal;
+        const lancamentosFinais = aplicarReparoFaturas(
+          uidFinal,
+          lancamentosNuvem.length > 0 ? lancamentosNuvem : lancLocal,
+          cartoesFinais
+        );
         const categoriasFinais = categoriasNuvem.length > 0 ? categoriasNuvem : catLocal;
         const naturezasFinais = naturezasNuvem.length > 0 ? naturezasNuvem : natLocal;
 
