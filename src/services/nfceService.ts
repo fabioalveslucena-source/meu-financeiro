@@ -122,8 +122,22 @@ export function decodificarQrCodeNfce(rawText: string): DadosNfceQrCode {
     ? `Compra Fiscal (NFC-e ${uf})`
     : 'Compra Fiscal (NFC-e)';
 
+  // Se o código lido for apenas a chave de 44 dígitos (sem http), gera link oficial de consulta
+  let urlFinal = url;
+  if (!/^https?:\/\//i.test(urlFinal)) {
+    if (chaveAcesso) {
+      if (uf === 'GO') {
+        urlFinal = `https://nfe.sefaz.go.gov.br/nfeweb/sites/nfce/danfeNFCe?p=${chaveAcesso}|2|1`;
+      } else {
+        urlFinal = `https://www.nfe.fazenda.gov.br/portal/consultaRecaptcha.aspx?tipoConsulta=resumo&tipoConteudo=7PhJ+gAVw2g=&nfe=${chaveAcesso}`;
+      }
+    } else {
+      urlFinal = '';
+    }
+  }
+
   return {
-    url,
+    url: urlFinal,
     chaveAcesso,
     chaveFormatada,
     uf,

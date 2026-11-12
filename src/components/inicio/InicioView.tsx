@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useFinanceStore } from '../../stores/financeStore';
 import { formatarMoeda, formatarData } from '../../lib/formatters';
+import { obterProximaCompetencia } from '../../lib/cartaoFatura';
 import { 
   ArrowUpRight, 
   ArrowDownRight, 
@@ -14,7 +15,8 @@ import {
   ChevronUp,
   ShoppingCart,
   Eye,
-  EyeOff
+  EyeOff,
+  CalendarClock
 } from 'lucide-react';
 import type { Lancamento, TipoLancamento } from '../../types';
 import { CartaoVisual } from '../cartoes/CartaoVisual';
@@ -45,8 +47,12 @@ export const InicioView: React.FC<InicioViewProps> = ({
     usuario 
   } = useFinanceStore();
 
+  const [verProximaFatura, setVerProximaFatura] = useState(false);
+  const proximaCompetencia = obterProximaCompetencia(competenciaAtiva);
+  const compCartaoExibida = verProximaFatura ? proximaCompetencia : competenciaAtiva;
+
   const resumo = obterResumoLivroCaixa(competenciaAtiva);
-  const cartoesResumo = obterResumoCartoes();
+  const cartoesResumo = obterResumoCartoes(compCartaoExibida);
   const cartaoPrincipalResumo = cartoesResumo.find(c => 
     c.cartao.nome.toLowerCase().includes((usuario.bancoPrincipal || '').toLowerCase())
   ) || cartoesResumo[0];
@@ -577,13 +583,37 @@ export const InicioView: React.FC<InicioViewProps> = ({
                 agenciaUsuario={usuario.agencia}
                 contaUsuario={usuario.numeroConta}
                 valorFatura={cartaoPrincipalResumo.valorFatura}
+                rotuloFatura={verProximaFatura ? `Fatura Próx. Mês (${proximaCompetencia})` : undefined}
                 mostrarFatura={true}
                 onClick={onIrParaCartoes}
               />
             </div>
 
-            {/* Ação Limpa e Sem Redundância "Ver Fatura Completa" */}
-            <div style={{ width: '100%', display: 'flex', justifyContent: 'center' }}>
+            {/* Ações Limpas: Alternar Fatura Próximo Mês + Ver Fatura Completa */}
+            <div style={{ width: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+              <button
+                type="button"
+                onClick={() => setVerProximaFatura((v) => !v)}
+                style={{
+                  background: verProximaFatura ? 'rgba(248, 209, 23, 0.16)' : 'rgba(19, 47, 76, 0.9)',
+                  border: verProximaFatura ? '1px solid rgba(248, 209, 23, 0.5)' : '1px solid #1E3A5F',
+                  borderRadius: '12px',
+                  padding: '7px 14px',
+                  color: verProximaFatura ? '#F8D117' : '#CBD5E1',
+                  fontSize: '12px',
+                  fontWeight: 800,
+                  cursor: 'pointer',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  transition: 'all 0.15s ease'
+                }}
+                title={verProximaFatura ? 'Voltar para a fatura do mês atual' : 'Visualizar valor da fatura do próximo mês'}
+              >
+                <CalendarClock size={14} color={verProximaFatura ? '#F8D117' : '#5090D3'} />
+                <span>{verProximaFatura ? `Fatura Atual (${competenciaAtiva})` : `Próx. Fatura (${proximaCompetencia})`}</span>
+              </button>
+
               <button
                 type="button"
                 onClick={onIrParaCartoes}

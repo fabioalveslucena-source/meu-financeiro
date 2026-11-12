@@ -17,7 +17,6 @@ import {
   Calendar,
   RotateCcw,
   ListFilter,
-  ClipboardPaste,
   Eye
 } from 'lucide-react';
 import { 
@@ -30,7 +29,6 @@ import {
   decodificarQrCodeNfce, 
   type DadosNfceQrCode 
 } from '../../services/nfceService';
-import { extrairItensDeTextoFiscal } from '../../services/nfceTextParser';
 import { Html5Qrcode } from 'html5-qrcode';
 import { ConfigurarGeminiModal } from './ConfigurarGeminiModal';
 import { ConferenciaCupomModal } from './ConferenciaCupomModal';
@@ -57,13 +55,6 @@ export const ScannerCupomModal: React.FC<ScannerCupomModalProps> = ({
   const [processandoIA, setProcessandoIA] = useState(false);
   const [mensagemStatus, setMensagemStatus] = useState<string>('');
   const [modalChaveAberto, setModalChaveAberto] = useState(false);
-  
-  // Visualizador SEFAZ na tela do celular
-  const [modalSefazAberto, setModalSefazAberto] = useState(false);
-
-  // Modal para colar texto da SEFAZ
-  const [modalColarTextoAberto, setModalColarTextoAberto] = useState(false);
-  const [textoColado, setTextoColado] = useState('');
 
   // Resultado da leitura por QR Code da NFC-e
   const [qrDados, setQrDados] = useState<DadosNfceQrCode | null>(null);
@@ -91,7 +82,6 @@ export const ScannerCupomModal: React.FC<ScannerCupomModalProps> = ({
       } catch {}
       setModoCameraAoVivo(false);
       setQrDados(null);
-      setModalSefazAberto(false);
     }
   }, [aberto]);
 
@@ -146,26 +136,6 @@ export const ScannerCupomModal: React.FC<ScannerCupomModalProps> = ({
       html5QrCodeRef.current.stop().catch(() => {});
     }
     setModoCameraAoVivo(false);
-  };
-
-  // Processar texto colado da página da SEFAZ
-  const handleProcessarTextoColado = () => {
-    if (!textoColado.trim()) {
-      alert('Cole o texto ou a tabela de produtos da SEFAZ para extrair os itens.');
-      return;
-    }
-
-    const resultado = extrairItensDeTextoFiscal(textoColado);
-    if (resultado.itens.length === 0) {
-      alert('Não encontramos itens reconhecíveis no texto colado. Certifique-se de copiar as linhas da tabela de produtos da SEFAZ.');
-      return;
-    }
-
-    tocarBipSucesso();
-    setResultadoIA(resultado);
-    setModalColarTextoAberto(false);
-    setTextoColado('');
-    setModalConferenciaAberto(true);
   };
 
   // Lançamento DIRETO no Financeiro
@@ -342,7 +312,7 @@ export const ScannerCupomModal: React.FC<ScannerCupomModalProps> = ({
                   Escanear Cupom Fiscal
                 </h3>
                 <p style={{ margin: '2px 0 0 0', fontSize: '11.5px', color: '#8A99AD' }}>
-                  Extração Item a Item por IA, Print ou QR Code
+                  Foto da Nota, Print da SEFAZ ou QR Code
                 </p>
               </div>
             </div>
@@ -516,11 +486,12 @@ export const ScannerCupomModal: React.FC<ScannerCupomModalProps> = ({
                 </div>
               )}
 
-              {/* BOTÃO PRINCIPAL SOLICITADO: VISUALIZAR NA TELA DO CELULAR */}
+              {/* BOTÃO PRINCIPAL: ABRIR NOTA DA SEFAZ DIRETO NO NAVEGADOR DO CELULAR */}
               {qrDados.url && (
-                <button
-                  type="button"
-                  onClick={() => setModalSefazAberto(true)}
+                <a
+                  href={qrDados.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
                   style={{
                     padding: '12px 14px',
                     borderRadius: '12px',
@@ -534,68 +505,39 @@ export const ScannerCupomModal: React.FC<ScannerCupomModalProps> = ({
                     alignItems: 'center',
                     justifyContent: 'center',
                     gap: '8px',
+                    textDecoration: 'none',
                     boxShadow: '0 3px 12px rgba(25, 118, 210, 0.4)'
                   }}
                 >
                   <Eye size={17} />
-                  <span>👁️ Abrir Nota da SEFAZ na Tela do Celular</span>
-                </button>
+                  <span>Abrir Nota da SEFAZ na Tela do Celular</span>
+                  <ExternalLink size={14} />
+                </a>
               )}
 
-              {/* Opções de Leitura Item por Item */}
-              <div style={{
-                display: 'grid',
-                gridTemplateColumns: '1fr 1fr',
-                gap: '8px'
-              }}>
-                {/* Opção A: Tirar print/foto e ler com IA */}
-                <button
-                  type="button"
-                  onClick={() => inputGaleriaRef.current?.click()}
-                  style={{
-                    padding: '10px 8px',
-                    borderRadius: '12px',
-                    backgroundColor: '#0A1B30',
-                    border: '1.5px solid #265D97',
-                    color: '#FFFFFF',
-                    fontSize: '11px',
-                    fontWeight: 800,
-                    cursor: 'pointer',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'center',
-                    gap: '4px',
-                    textAlign: 'center'
-                  }}
-                >
-                  <ImageIcon size={18} color="#5090D3" />
-                  <span>Ler Print da SEFAZ com IA</span>
-                </button>
-
-                {/* Opção B: Colar texto copiado da SEFAZ */}
-                <button
-                  type="button"
-                  onClick={() => setModalColarTextoAberto(true)}
-                  style={{
-                    padding: '10px 8px',
-                    borderRadius: '12px',
-                    backgroundColor: '#0A1B30',
-                    border: '1.5px solid #F8D117',
-                    color: '#FFFFFF',
-                    fontSize: '11px',
-                    fontWeight: 800,
-                    cursor: 'pointer',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'center',
-                    gap: '4px',
-                    textAlign: 'center'
-                  }}
-                >
-                  <ClipboardPaste size={18} color="#F8D117" />
-                  <span>Colar Texto da SEFAZ</span>
-                </button>
-              </div>
+              {/* Ler Print da SEFAZ para extrair produtos */}
+              <button
+                type="button"
+                onClick={() => inputGaleriaRef.current?.click()}
+                style={{
+                  padding: '11px 12px',
+                  borderRadius: '12px',
+                  backgroundColor: '#0A1B30',
+                  border: '1.5px solid #265D97',
+                  color: '#FFFFFF',
+                  fontSize: '12px',
+                  fontWeight: 800,
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '8px',
+                  textAlign: 'center'
+                }}
+              >
+                <ImageIcon size={17} color="#5090D3" />
+                <span>Enviar Print da Nota da SEFAZ</span>
+              </button>
 
               {/* Formulário de Lançamento Direto com Categoria Pesquisável */}
               <div style={{
@@ -928,14 +870,11 @@ export const ScannerCupomModal: React.FC<ScannerCupomModalProps> = ({
                   <Camera size={22} />
                 </div>
                 <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: '13.5px', fontWeight: 800, color: '#FFFFFF', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <span>Tirar Foto da Nota (com IA)</span>
-                    <span style={{ fontSize: '10px', backgroundColor: 'rgba(248, 209, 23, 0.2)', color: '#F8D117', padding: '1px 6px', borderRadius: '4px' }}>
-                      Item a Item
-                    </span>
+                  <div style={{ fontSize: '13.5px', fontWeight: 800, color: '#FFFFFF' }}>
+                    Tirar Foto da Nota
                   </div>
                   <span style={{ fontSize: '11px', color: '#8A99AD', display: 'block', marginTop: '2px' }}>
-                    Fotografe o cupom inteiro. A IA extrai produtos, preços e total item por item.
+                    Fotografe o cupom inteiro para extrair todos os produtos, preços e total.
                   </span>
                 </div>
               </button>
@@ -976,7 +915,7 @@ export const ScannerCupomModal: React.FC<ScannerCupomModalProps> = ({
                     Ler QR Code da Nota (Câmera ao Vivo)
                   </div>
                   <span style={{ fontSize: '11px', color: '#8A99AD', display: 'block', marginTop: '2px' }}>
-                    Aponte para o QR Code da NFC-e e veja a nota oficial da SEFAZ na tela.
+                    Aponte para o QR Code da NFC-e e abra a nota oficial da SEFAZ na tela.
                   </span>
                 </div>
               </button>
@@ -1021,47 +960,6 @@ export const ScannerCupomModal: React.FC<ScannerCupomModalProps> = ({
                   </span>
                 </div>
               </button>
-
-              {/* Opção 4: Colar Texto Copiado da SEFAZ */}
-              <button
-                type="button"
-                onClick={() => setModalColarTextoAberto(true)}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '14px',
-                  padding: '14px 16px',
-                  borderRadius: '16px',
-                  backgroundColor: '#132F4C',
-                  border: '1.5px solid #1E3A5F',
-                  color: '#FFFFFF',
-                  cursor: 'pointer',
-                  textAlign: 'left'
-                }}
-              >
-                <div style={{
-                  width: '42px',
-                  height: '42px',
-                  borderRadius: '12px',
-                  backgroundColor: 'rgba(248, 209, 23, 0.12)',
-                  border: '1px solid rgba(248, 209, 23, 0.3)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  color: '#F8D117',
-                  flexShrink: 0
-                }}>
-                  <ClipboardPaste size={22} />
-                </div>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: '13.5px', fontWeight: 800, color: '#FFFFFF' }}>
-                    Colar Texto Copiado da SEFAZ
-                  </div>
-                  <span style={{ fontSize: '11px', color: '#8A99AD', display: 'block', marginTop: '2px' }}>
-                    Copie a tabela da SEFAZ e cole aqui para extrair todos os itens em 1 segundo.
-                  </span>
-                </div>
-              </button>
             </div>
           )}
 
@@ -1083,262 +981,6 @@ export const ScannerCupomModal: React.FC<ScannerCupomModalProps> = ({
           />
         </div>
       </div>
-
-      {/* MODAL SOLICITADO: VISUALIZADOR DA NOTA DA SEFAZ NA TELA DO CELULAR */}
-      {modalSefazAberto && qrDados?.url && (
-        <div style={{
-          position: 'fixed',
-          inset: 0,
-          backgroundColor: 'rgba(0,0,0,0.92)',
-          zIndex: 120,
-          display: 'flex',
-          flexDirection: 'column'
-        }}>
-          {/* Barra superior de controle */}
-          <div style={{
-            padding: '12px 16px',
-            backgroundColor: '#0F2744',
-            borderBottom: '1.5px solid #1E3A5F',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between'
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <Eye size={18} color="#F8D117" />
-              <div>
-                <div style={{ fontSize: '13px', fontWeight: 900, color: '#FFFFFF' }}>
-                  Nota Fiscal SEFAZ ({qrDados.ufNome || qrDados.uf || 'Brasil'})
-                </div>
-                <div style={{ fontSize: '10.5px', color: '#8A99AD' }}>
-                  Visualize na tela, copie o texto ou envie um print
-                </div>
-              </div>
-            </div>
-
-            <button
-              type="button"
-              onClick={() => setModalSefazAberto(false)}
-              style={{
-                background: '#132F4C',
-                border: '1px solid #1E3A5F',
-                borderRadius: '8px',
-                color: '#CBD5E1',
-                padding: '6px 12px',
-                fontSize: '12px',
-                fontWeight: 700,
-                cursor: 'pointer'
-              }}
-            >
-              ✕ Fechar Visualizador
-            </button>
-          </div>
-
-          {/* Barra de Ações Rápidas da SEFAZ */}
-          <div style={{
-            padding: '8px 12px',
-            backgroundColor: '#0A1B30',
-            borderBottom: '1px solid #1E3A5F',
-            display: 'flex',
-            gap: '8px',
-            overflowX: 'auto'
-          }}>
-            <button
-              type="button"
-              onClick={() => {
-                setModalSefazAberto(false);
-                inputGaleriaRef.current?.click();
-              }}
-              style={{
-                padding: '8px 12px',
-                borderRadius: '8px',
-                backgroundColor: '#1976D2',
-                border: 'none',
-                color: '#FFFFFF',
-                fontSize: '11.5px',
-                fontWeight: 800,
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px',
-                whiteSpace: 'nowrap'
-              }}
-            >
-              <ImageIcon size={14} />
-              <span>📸 Ler Print da SEFAZ com IA</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => {
-                setModalSefazAberto(false);
-                setModalColarTextoAberto(true);
-              }}
-              style={{
-                padding: '8px 12px',
-                borderRadius: '8px',
-                backgroundColor: '#F8D117',
-                border: 'none',
-                color: '#0A1B30',
-                fontSize: '11.5px',
-                fontWeight: 900,
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px',
-                whiteSpace: 'nowrap'
-              }}
-            >
-              <ClipboardPaste size={14} />
-              <span>📋 Colar Texto Copiado da SEFAZ</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => window.open(qrDados.url, '_blank')}
-              style={{
-                padding: '8px 12px',
-                borderRadius: '8px',
-                backgroundColor: '#132F4C',
-                border: '1px solid #1E3A5F',
-                color: '#CBD5E1',
-                fontSize: '11.5px',
-                fontWeight: 700,
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px',
-                whiteSpace: 'nowrap'
-              }}
-            >
-              <ExternalLink size={14} />
-              <span>Abrir no Chrome</span>
-            </button>
-          </div>
-
-          {/* Iframe que exibe a SEFAZ diretamente na tela do celular */}
-          <div style={{ flex: 1, position: 'relative', backgroundColor: '#FFFFFF' }}>
-            <iframe
-              src={qrDados.url}
-              title="Portal da SEFAZ"
-              style={{
-                width: '100%',
-                height: '100%',
-                border: 'none'
-              }}
-            />
-          </div>
-        </div>
-      )}
-
-      {/* MODAL PARA COLAR TEXTO DA SEFAZ */}
-      {modalColarTextoAberto && (
-        <div style={{
-          position: 'fixed',
-          inset: 0,
-          backgroundColor: 'rgba(5, 12, 22, 0.88)',
-          zIndex: 125,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          padding: '16px'
-        }}>
-          <div style={{
-            maxWidth: '500px',
-            width: '100%',
-            backgroundColor: '#0F2744',
-            border: '1.5px solid #1E3A5F',
-            borderRadius: '20px',
-            padding: '20px',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '14px',
-            boxShadow: '0 12px 35px rgba(0,0,0,0.7)',
-            color: '#FFFFFF'
-          }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <ClipboardPaste size={18} color="#F8D117" />
-                <h4 style={{ margin: 0, fontSize: '15px', fontWeight: 800 }}>
-                  Colar Texto da SEFAZ
-                </h4>
-              </div>
-              <button
-                type="button"
-                onClick={() => setModalColarTextoAberto(false)}
-                style={{ background: 'none', border: 'none', color: '#8A99AD', cursor: 'pointer', padding: '4px' }}
-              >
-                <X size={18} />
-              </button>
-            </div>
-
-            <p style={{ margin: 0, fontSize: '11.5px', color: '#CBD5E1', lineHeight: 1.4 }}>
-              Na página da SEFAZ, selecione o texto com os produtos da nota fiscal, copie e cole na caixa abaixo:
-            </p>
-
-            <textarea
-              value={textoColado}
-              onChange={(e) => setTextoColado(e.target.value)}
-              placeholder="Cole aqui o texto copiado da SEFAZ..."
-              rows={8}
-              style={{
-                width: '100%',
-                backgroundColor: '#0A1B30',
-                border: '1.5px solid #265D97',
-                borderRadius: '12px',
-                color: '#FFFFFF',
-                fontSize: '12px',
-                padding: '10px',
-                fontFamily: 'monospace',
-                outline: 'none',
-                boxSizing: 'border-box',
-                resize: 'none'
-              }}
-            />
-
-            <div style={{ display: 'flex', gap: '8px' }}>
-              <button
-                type="button"
-                onClick={() => setModalColarTextoAberto(false)}
-                style={{
-                  flex: 1,
-                  padding: '10px',
-                  borderRadius: '10px',
-                  backgroundColor: '#132F4C',
-                  border: '1px solid #1E3A5F',
-                  color: '#CBD5E1',
-                  fontSize: '12px',
-                  fontWeight: 700,
-                  cursor: 'pointer'
-                }}
-              >
-                Cancelar
-              </button>
-              <button
-                type="button"
-                onClick={handleProcessarTextoColado}
-                style={{
-                  flex: 1.5,
-                  padding: '10px',
-                  borderRadius: '10px',
-                  backgroundColor: '#4CAF50',
-                  border: 'none',
-                  color: '#FFFFFF',
-                  fontSize: '12.5px',
-                  fontWeight: 900,
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '6px'
-                }}
-              >
-                <CheckCircle2 size={16} />
-                <span>Extrair Todos os Produtos</span>
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Modal de Configuração da Chave da IA */}
       <ConfigurarGeminiModal

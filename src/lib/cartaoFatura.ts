@@ -1,6 +1,16 @@
 import type { Cartao, Lancamento } from '../types';
 
 /**
+ * Retorna a competência (MM/AAAA) do mês seguinte à informada.
+ */
+export function obterProximaCompetencia(competencia: string): string {
+  const [mes, ano] = (competencia || '').split('/').map(Number);
+  if (!mes || !ano) return competencia;
+  const prox = new Date(ano, mes, 1);
+  return `${String(prox.getMonth() + 1).padStart(2, '0')}/${prox.getFullYear()}`;
+}
+
+/**
  * Obtém o dia de fechamento e dia de vencimento configurados para o cartão.
  */
 export function obterConfigCartao(

@@ -113,7 +113,7 @@ interface FinanceState {
 
   // Cálculos Derivados
   obterResumoLivroCaixa: (competencia?: string) => LivroCaixaResumo;
-  obterResumoCartoes: () => ResumoCartao[];
+  obterResumoCartoes: (competenciaAlvo?: string) => ResumoCartao[];
   obterLancamentosFiltrados: () => Lancamento[];
 
   // Despesas Fixas e Recorrentes
@@ -1137,8 +1137,9 @@ export const useFinanceStore = create<FinanceState>((set, get) => {
       };
     },
 
-    obterResumoCartoes: () => {
+    obterResumoCartoes: (competenciaAlvo) => {
       const { cartoes, lancamentos, competenciaAtiva } = get();
+      const compReferencia = competenciaAlvo || competenciaAtiva;
 
       return cartoes.map((cartao) => {
         const lancamentosCartao = lancamentos.filter(
@@ -1146,14 +1147,14 @@ export const useFinanceStore = create<FinanceState>((set, get) => {
         );
 
         const faturaMes = lancamentosCartao
-          .filter((l) => l.competencia === competenciaAtiva)
+          .filter((l) => l.competencia === compReferencia)
           .reduce((acc, curr) => acc + curr.valor, 0);
 
         const totalComprometido = lancamentosCartao.reduce((acc, curr) => acc + curr.valor, 0);
         const limiteDisponivel = Math.max(0, cartao.limite - totalComprometido);
         const percentualUsado = Math.min(100, Math.round((totalComprometido / cartao.limite) * 100));
 
-        // Identificar os parcelamentos ativos incidentes na competência ativa selecionada
+        // Identificar os parcelamentos ativos incidentes na competência selecionada
         const parcelamentosMap = new Map<string, any>();
 
         // Agrupar todos os lançamentos parcelados deste cartão por compraId
@@ -1170,8 +1171,8 @@ export const useFinanceStore = create<FinanceState>((set, get) => {
           // Ordenar parcelas numericamente (1, 2, 3...)
           parcelasDaCompra.sort((a, b) => (a.parcela || 1) - (b.parcela || 1));
 
-          // Mostrar apenas a parcela que realmente incide na fatura da competência ativa
-          const parcelaNaCompetencia = parcelasDaCompra.find((l) => l.competencia === competenciaAtiva);
+          // Mostrar apenas a parcela que realmente incide na fatura da competência selecionada
+          const parcelaNaCompetencia = parcelasDaCompra.find((l) => l.competencia === compReferencia);
           if (!parcelaNaCompetencia) return;
 
           const valorTotalCompra = parcelasDaCompra.reduce((acc, p) => acc + (p.valor || 0), 0);
@@ -1189,7 +1190,7 @@ export const useFinanceStore = create<FinanceState>((set, get) => {
 
         return {
           cartao,
-          faturaAtual: competenciaAtiva,
+          faturaAtual: compReferencia,
           valorFatura: faturaMes,
           limiteDisponivel,
           percentualUsado,
