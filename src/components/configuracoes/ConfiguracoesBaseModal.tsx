@@ -115,9 +115,9 @@ export const ConfiguracoesBaseModal: React.FC<ConfiguracoesBaseModalProps> = ({
     }
   }, [aberto, abaInicial]);
 
-  // Se for usuário comum e tentar acessar aba administrativa, redireciona para 'cartoes'
+  // Se for usuário comum e tentar acessar aba administrativa restrita, redireciona para 'cartoes'
   useEffect(() => {
-    if (!ehAdmin && (abaAtiva === 'backup' || abaAtiva === 'nuvem' || abaAtiva === 'usuarios')) {
+    if (!ehAdmin && (abaAtiva === 'backup' || abaAtiva === 'usuarios')) {
       setAbaAtiva('cartoes');
     }
   }, [ehAdmin, abaAtiva]);
@@ -528,31 +528,29 @@ export const ConfiguracoesBaseModal: React.FC<ConfiguracoesBaseModalProps> = ({
             </button>
           )}
 
-          {/* Aba Google & Nuvem (Apenas Administrador) */}
-          {ehAdmin && (
-            <button
-              type="button"
-              onClick={() => setAbaAtiva('nuvem')}
-              style={{
-                flex: '0 0 auto',
-                padding: '12px 12px',
-                border: 'none',
-                borderBottom: abaAtiva === 'nuvem' ? '3px solid #F8D117' : '3px solid transparent',
-                backgroundColor: 'transparent',
-                color: abaAtiva === 'nuvem' ? '#F8D117' : '#AAB4BE',
-                fontWeight: abaAtiva === 'nuvem' ? 800 : 600,
-                fontSize: '11.5px',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '4px',
-              }}
-            >
-              <Globe size={14} />
-              <span>Google & Nuvem</span>
-            </button>
-          )}
+          {/* Aba Google & Nuvem (Acessível a todos para sincronizar PC e Celular) */}
+          <button
+            type="button"
+            onClick={() => setAbaAtiva('nuvem')}
+            style={{
+              flex: '0 0 auto',
+              padding: '12px 12px',
+              border: 'none',
+              borderBottom: abaAtiva === 'nuvem' ? '3px solid #F8D117' : '3px solid transparent',
+              backgroundColor: 'transparent',
+              color: abaAtiva === 'nuvem' ? '#F8D117' : '#AAB4BE',
+              fontWeight: abaAtiva === 'nuvem' ? 800 : 600,
+              fontSize: '11.5px',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '4px',
+            }}
+          >
+            <Globe size={14} />
+            <span>Google & Nuvem</span>
+          </button>
 
           {/* Aba Usuários (Apenas Administrador) */}
           {ehAdmin && (
@@ -1375,7 +1373,7 @@ export const ConfiguracoesBaseModal: React.FC<ConfiguracoesBaseModalProps> = ({
           {/* ========================================================
               🌐 ABA 6: NUVEM & GOOGLE MAGIC LOGON (ADMIN)
              ======================================================== */}
-          {ehAdmin && abaAtiva === 'nuvem' && (
+          {abaAtiva === 'nuvem' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
               <div>
                 <h3 style={{ fontSize: '15px', fontWeight: 800, margin: 0, color: '#FFFFFF', display: 'flex', alignItems: 'center', gap: '8px' }}>

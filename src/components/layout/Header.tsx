@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { useFinanceStore, isUsuarioAdmin } from '../../stores/financeStore';
-import { Calendar, User, Check, Edit3, X, Upload, Camera, Settings, Moon, Sun, Eye, Users } from 'lucide-react';
+import { Calendar, User, Check, Edit3, X, Upload, Camera, Settings, Moon, Sun, RotateCw, ShoppingCart, Eye, Users } from 'lucide-react';
 import { ConfiguracoesBaseModal } from '../configuracoes/ConfiguracoesBaseModal';
 import { SincronizarMercadoModal } from '../mercado/SincronizarMercadoModal';
 import type { SecaoAtiva } from './Sidebar';
@@ -25,6 +25,8 @@ export const Header: React.FC<HeaderProps> = ({ onSelecionarSecao }) => {
     setUsuario, 
     tema, 
     alternarTema, 
+    sincronizarComNuvem, 
+    sincronizandoNuvem,
     usuariosAutorizados,
     usuarioSupervisionadoAtivo,
     ativarModoSupervisao,
@@ -477,7 +479,108 @@ export const Header: React.FC<HeaderProps> = ({ onSelecionarSecao }) => {
             </div>
           </div>
 
+          {/* Linha 3: Sincronização da Nuvem (Esquerda) e Sincronizar Meu Mercado (Direita) */}
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: '1fr 1fr',
+            gap: '8px',
+            width: '100%',
+            paddingTop: '4px'
+          }}>
+            {/* Botão Esquerda: Sincronizar Nuvem */}
+            <button 
+              type="button"
+              onClick={() => sincronizarComNuvem()}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '5px',
+                cursor: 'pointer',
+                padding: '7px 8px',
+                borderRadius: '16px',
+                backgroundColor: sincronizandoNuvem ? 'rgba(40, 126, 165, 0.5)' : 'rgba(11, 25, 41, 0.65)',
+                border: '1.5px solid rgba(76, 175, 80, 0.6)',
+                boxShadow: '0 2px 8px rgba(0, 0, 0, 0.25)',
+                transition: 'all 0.15s ease',
+                color: '#FFFFFF',
+                width: '100%',
+                minWidth: 0
+              }}
+              title="Clique para sincronizar todos os dados entre PC e Celular agora"
+            >
+              <RotateCw size={12} color="#4CAF50" className={sincronizandoNuvem ? 'animate-spin' : ''} style={{ flexShrink: 0 }} />
+              <span style={{ 
+                fontSize: '11px', 
+                fontWeight: 800, 
+                color: '#FFFFFF',
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis'
+              }}>
+                {sincronizandoNuvem ? 'Nuvem...' : 'Sincronizar Nuvem'}
+              </span>
+              <span style={{
+                fontSize: '8px',
+                fontWeight: 900,
+                padding: '1px 5px',
+                borderRadius: '6px',
+                backgroundColor: 'rgba(76, 175, 80, 0.25)',
+                color: '#4CAF50',
+                border: '1px solid #4CAF50',
+                flexShrink: 0
+              }}>
+                100%
+              </span>
+            </button>
 
+            {/* Botão Direita: Sincronizar Meu Mercado */}
+            <button 
+              type="button"
+              onClick={() => setModalMercadoAberto(true)}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '5px',
+                cursor: 'pointer',
+                padding: '7px 8px',
+                borderRadius: '16px',
+                backgroundColor: 'rgba(11, 25, 41, 0.65)',
+                border: '1.5px solid rgba(80, 144, 211, 0.6)',
+                boxShadow: '0 2px 8px rgba(0, 0, 0, 0.25)',
+                transition: 'all 0.15s ease',
+                color: '#FFFFFF',
+                width: '100%',
+                minWidth: 0
+              }}
+              title="Sincronizar compras e recibos do Meu Mercado"
+            >
+              <ShoppingCart size={12} color="#5090D3" style={{ flexShrink: 0 }} />
+              <span style={{ 
+                fontSize: '11px', 
+                fontWeight: 800, 
+                color: '#FFFFFF',
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis'
+              }}>
+                Meu Mercado
+              </span>
+              <span style={{
+                fontSize: '8px',
+                fontWeight: 900,
+                padding: '1px 5px',
+                borderRadius: '6px',
+                backgroundColor: 'rgba(80, 144, 211, 0.25)',
+                color: '#5090D3',
+                border: '1px solid #5090D3',
+                flexShrink: 0
+              }}>
+                CONECTAR
+              </span>
+            </button>
+          </div>
         </div>
       </header>
 
