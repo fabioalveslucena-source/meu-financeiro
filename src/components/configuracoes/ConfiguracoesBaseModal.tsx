@@ -26,10 +26,12 @@ import {
   EyeOff,
   UserPlus,
   CheckCircle,
-  User
+  User,
+  ShoppingCart
 } from 'lucide-react';
 import { fazerLoginGoogle, fazerLogoutGoogle } from '../../features/auth/googleAuth';
 import { isFirebaseConfigured } from '../../services/firebase';
+import { SincronizarMercadoModal } from '../mercado/SincronizarMercadoModal';
 
 interface ConfiguracoesBaseModalProps {
   aberto: boolean;
@@ -107,6 +109,7 @@ export const ConfiguracoesBaseModal: React.FC<ConfiguracoesBaseModalProps> = ({
   const ehAdmin = isUsuarioAdmin(usuario.email, usuario.uid, usuario.nome);
 
   const [abaAtiva, setAbaAtiva] = useState<'cartoes' | 'categorias' | 'banco' | 'seguranca' | 'backup' | 'nuvem' | 'usuarios' | 'conta'>(abaInicial);
+  const [modalMercadoAberto, setModalMercadoAberto] = useState(false);
 
   // Sincroniza a aba ativa sempre que o modal for aberto com uma aba específica
   useEffect(() => {
@@ -368,6 +371,63 @@ export const ConfiguracoesBaseModal: React.FC<ConfiguracoesBaseModalProps> = ({
           </button>
         </div>
 
+        {/* Barra de Acesso Rápido de Sincronização no topo do Painel */}
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: '1fr 1fr',
+          gap: '8px',
+          padding: '10px 16px',
+          backgroundColor: '#0F2744',
+          borderBottom: '1px solid #1E3A5F'
+        }}>
+          <button
+            type="button"
+            disabled={sincronizandoNuvem}
+            onClick={() => sincronizarComNuvem()}
+            style={{
+              padding: '8px 10px',
+              borderRadius: '10px',
+              backgroundColor: sincronizandoNuvem ? 'rgba(40, 126, 165, 0.4)' : 'rgba(76, 175, 80, 0.15)',
+              border: '1.5px solid rgba(76, 175, 80, 0.6)',
+              color: '#FFFFFF',
+              fontSize: '11.5px',
+              fontWeight: 800,
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '6px',
+              cursor: 'pointer'
+            }}
+            title="Sincronizar dados entre PC e Celular"
+          >
+            <RotateCw size={13} color="#4CAF50" className={sincronizandoNuvem ? 'animate-spin' : ''} />
+            <span>{sincronizandoNuvem ? 'Sincronizando...' : 'Sincronizar Nuvem'}</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setModalMercadoAberto(true)}
+            style={{
+              padding: '8px 10px',
+              borderRadius: '10px',
+              backgroundColor: 'rgba(80, 144, 211, 0.15)',
+              border: '1.5px solid rgba(80, 144, 211, 0.6)',
+              color: '#FFFFFF',
+              fontSize: '11.5px',
+              fontWeight: 800,
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '6px',
+              cursor: 'pointer'
+            }}
+            title="Sincronizar compras do Meu Mercado"
+          >
+            <ShoppingCart size={13} color="#5090D3" />
+            <span>Meu Mercado</span>
+          </button>
+        </div>
+
         {/* Abas Superiores do Modal com Rolagem Horizontal Suave */}
         <div style={{
           display: 'flex',
@@ -380,6 +440,30 @@ export const ConfiguracoesBaseModal: React.FC<ConfiguracoesBaseModalProps> = ({
           WebkitOverflowScrolling: 'touch',
           gap: '6px'
         }}>
+          {/* Aba Sincronização & Nuvem (Destaque) */}
+          <button
+            type="button"
+            onClick={() => setAbaAtiva('nuvem')}
+            style={{
+              flex: '0 0 auto',
+              padding: '12px 12px',
+              border: 'none',
+              borderBottom: abaAtiva === 'nuvem' ? '3px solid #4CAF50' : '3px solid transparent',
+              backgroundColor: 'transparent',
+              color: abaAtiva === 'nuvem' ? '#4CAF50' : '#AAB4BE',
+              fontWeight: abaAtiva === 'nuvem' ? 800 : 600,
+              fontSize: '11.5px',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '5px',
+            }}
+          >
+            <RotateCw size={13} color={abaAtiva === 'nuvem' ? '#4CAF50' : '#AAB4BE'} />
+            <span>Nuvem & Mercado</span>
+          </button>
+
           {/* Aba Cartões (Todos) */}
           <button
             type="button"
@@ -1585,6 +1669,27 @@ export const ConfiguracoesBaseModal: React.FC<ConfiguracoesBaseModalProps> = ({
                   <span>{sincronizandoNuvem ? 'Sincronizando com a Nuvem...' : '🔄 Sincronizar Tudo Agora (PC ↔ Celular)'}</span>
                 </button>
 
+                {/* Botão de Conexão e Sincronização do Meu Mercado */}
+                <button
+                  type="button"
+                  onClick={() => setModalMercadoAberto(true)}
+                  className="btn-secondary"
+                  style={{
+                    padding: '11px',
+                    justifyContent: 'center',
+                    gap: '8px',
+                    fontWeight: 800,
+                    fontSize: '13px',
+                    backgroundColor: 'rgba(80, 144, 211, 0.15)',
+                    border: '1.5px solid rgba(80, 144, 211, 0.6)',
+                    color: '#82B1FF',
+                    cursor: 'pointer'
+                  }}
+                >
+                  <ShoppingCart size={16} color="#5090D3" />
+                  <span>🛒 Conectar & Sincronizar Meu Mercado</span>
+                </button>
+
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
                   <button
                     type="button"
@@ -2076,6 +2181,12 @@ export const ConfiguracoesBaseModal: React.FC<ConfiguracoesBaseModalProps> = ({
           )}
         </div>
       </div>
+
+      {/* Modal de Conexão e Sincronização do Meu Mercado */}
+      <SincronizarMercadoModal
+        aberto={modalMercadoAberto}
+        onFechar={() => setModalMercadoAberto(false)}
+      />
     </div>
   );
 };
