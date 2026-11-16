@@ -51,13 +51,13 @@ export async function obterModeloGeminiValido(apiKey: string): Promise<string> {
         .filter((m: any) => m.supportedGenerationMethods?.includes('generateContent'))
         .map((m: any) => m.name.replace(/^models\//, ''));
 
-      // Modelos ultra-rápidos em primeiro lugar (resposta em ~1 segundo)
+      // Modelos ultra-rápidos e oficiais do Google Gemini
       const preferencias = [
-        'gemini-3.5-flash-lite',
-        'gemini-3.5-flash',
-        'gemini-flash-lite-latest',
-        'gemini-flash-latest',
-        'gemini-3.1-flash-lite'
+        'gemini-1.5-flash',
+        'gemini-1.5-flash-latest',
+        'gemini-2.0-flash',
+        'gemini-2.0-flash-exp',
+        'gemini-1.5-pro'
       ];
 
       for (const pref of preferencias) {
@@ -66,7 +66,7 @@ export async function obterModeloGeminiValido(apiKey: string): Promise<string> {
         }
       }
 
-      const algumFlash = modelosDisponiveis.find(m => m.includes('flash') && !m.includes('3.8'));
+      const algumFlash = modelosDisponiveis.find(m => m.includes('flash'));
       if (algumFlash) return algumFlash;
     } else {
       const errData = await res.json().catch(() => null);
@@ -81,8 +81,8 @@ export async function obterModeloGeminiValido(apiKey: string): Promise<string> {
     }
   }
 
-  // Fallback padrão de alta velocidade
-  return 'gemini-3.5-flash-lite';
+  // Fallback padrão de alta velocidade oficial
+  return 'gemini-1.5-flash';
 }
 
 /**
@@ -202,8 +202,8 @@ Regras:
 3. Não inclua texto explicativo fora do JSON.
 `;
 
-  // Modelos ultra-rápidos para resposta em ~1 segundo
-  let modeloDescoberto = 'gemini-3.5-flash-lite';
+  // Modelos ultra-rápidos e oficiais do Google
+  let modeloDescoberto = 'gemini-1.5-flash';
   try {
     modeloDescoberto = await obterModeloGeminiValido(chaveLimpa);
   } catch (err: any) {
@@ -214,9 +214,9 @@ Regras:
 
   const rotasDeTentativa = [
     `https://generativelanguage.googleapis.com/v1beta/models/${modeloDescoberto}:generateContent?key=${chaveLimpa}`,
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent?key=${chaveLimpa}`,
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key=${chaveLimpa}`,
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${chaveLimpa}`
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${chaveLimpa}`,
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${chaveLimpa}`,
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${chaveLimpa}`
   ];
 
   const rotasUnicas = Array.from(new Set(rotasDeTentativa));

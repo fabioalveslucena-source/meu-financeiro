@@ -12,24 +12,23 @@ export const CartoesView: React.FC = () => {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-      {/* Cabeçalho Compacto de Cartões & Faturas */}
+      {/* Cabeçalho de Cartões & Faturas Centralizado */}
       <div style={{
         display: 'flex',
+        flexDirection: 'column',
         alignItems: 'center',
-        justifyContent: 'space-between',
-        flexWrap: 'wrap',
-        gap: '10px',
+        justifyContent: 'center',
+        textAlign: 'center',
+        gap: '6px',
         width: '100%',
-        paddingBottom: '2px'
+        paddingBottom: '6px'
       }}>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-          <h2 style={{ fontSize: '1.35rem', fontWeight: 800, margin: 0, color: '#FFFFFF' }}>
-            Cartões de Crédito & Faturas
-          </h2>
-          <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', margin: 0 }}>
-            Faturas, limites e compras parceladas • <strong style={{ color: '#F8D117' }}>{competenciaAtiva}</strong>
-          </p>
-        </div>
+        <h2 style={{ fontSize: '1.35rem', fontWeight: 800, margin: 0, color: '#FFFFFF', textAlign: 'center' }}>
+          Cartões de Crédito & Faturas
+        </h2>
+        <p style={{ fontSize: '0.84rem', color: 'var(--text-secondary)', margin: 0, textAlign: 'center' }}>
+          Faturas, limites e compras parceladas • <strong style={{ color: '#F8D117' }}>{competenciaAtiva}</strong>
+        </p>
 
         <button
           type="button"
@@ -39,7 +38,7 @@ export const CartoesView: React.FC = () => {
             alignItems: 'center',
             justifyContent: 'center',
             gap: '6px',
-            padding: '7px 13px',
+            padding: '7px 16px',
             borderRadius: '12px',
             backgroundColor: '#132F4C',
             border: '1px solid #1E3A5F',
@@ -47,7 +46,8 @@ export const CartoesView: React.FC = () => {
             fontSize: '11.5px',
             fontWeight: 800,
             cursor: 'pointer',
-            transition: 'all 0.15s ease'
+            transition: 'all 0.15s ease',
+            marginTop: '4px'
           }}
           title="Gerenciar Cartões, Bancos e Limites"
         >

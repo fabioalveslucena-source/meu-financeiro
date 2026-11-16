@@ -16,7 +16,10 @@ import {
   Table,
   CalendarCheck,
   ShoppingCart,
-  UploadCloud
+  UploadCloud,
+  Wallet,
+  CreditCard,
+  BookOpen
 } from 'lucide-react';
 import type { Lancamento } from '../../types';
 import { ReciboMercadoModal } from '../mercado/ReciboMercadoModal';
@@ -30,6 +33,7 @@ export const LivroCaixaView: React.FC<LivroCaixaViewProps> = ({ onAbrirImportar 
   const { competenciaAtiva, obterResumoLivroCaixa, lancamentos, usuario } = useFinanceStore();
   const [gerandoPdf, setGerandoPdf] = useState(false);
   const [modoVisualizacao, setModoVisualizacao] = useState<'extrato' | 'tabela'>('extrato');
+  const [filtroAba, setFiltroAba] = useState<'caixa' | 'cartoes' | 'todos'>('caixa');
   const [lancamentoMercado, setLancamentoMercado] = useState<Lancamento | null>(null);
   const [lancamentoDetalhes, setLancamentoDetalhes] = useState<Lancamento | null>(null);
 
@@ -40,9 +44,21 @@ export const LivroCaixaView: React.FC<LivroCaixaViewProps> = ({ onAbrirImportar 
     .filter((l) => l.competencia === competenciaAtiva && l.status === 'Lançado')
     .sort((a, b) => new Date(a.data).getTime() - new Date(b.data).getTime());
 
+  // Separação solicitada:
+  // 1) Conta & Caixa: Movimentações efetivas de conta (Débito, Pix, Dinheiro, Receitas)
+  // 2) Cartões: Faturas e compras parceladas
+  const lancamentosConta = lancamentosDoMes.filter((l) => l.pagamento !== '💳 Crédito');
+  const lancamentosCartao = lancamentosDoMes.filter((l) => l.pagamento === '💳 Crédito');
+
+  const itensAtivos = filtroAba === 'caixa'
+    ? lancamentosConta
+    : filtroAba === 'cartoes'
+    ? lancamentosCartao
+    : lancamentosDoMes;
+
   // Calcular saldo acumulado linha a linha
   let acumulador = resumo.saldoAnterior;
-  const lancamentosComSaldo = lancamentosDoMes.map((item) => {
+  const lancamentosComSaldo = itensAtivos.map((item) => {
     if (item.tipo === 'Receita') {
       acumulador += item.valor;
     } else if (item.tipo === 'Despesa') {
@@ -95,6 +111,22 @@ export const LivroCaixaView: React.FC<LivroCaixaViewProps> = ({ onAbrirImportar 
     if (item.tipo === 'Despesa') grupo.totalDespesasSemana += item.valor;
   });
 
+  // Agrupamento para a aba dedicada de Cartões de Crédito
+  const cartoesAgrupados = React.useMemo(() => {
+    const mapa: { [nomeCartao: string]: { nome: string; itens: typeof lancamentosCartao; total: number } } = {};
+    lancamentosCartao.forEach((item) => {
+      const nome = item.cartao || 'Cartão de Crédito';
+      if (!mapa[nome]) {
+        mapa[nome] = { nome, itens: [], total: 0 };
+      }
+      mapa[nome].itens.push(item);
+      mapa[nome].total += item.valor;
+    });
+    return Object.values(mapa);
+  }, [lancamentosCartao]);
+
+  const totalFaturaMes = lancamentosCartao.reduce((acc, curr) => acc + curr.valor, 0);
+
   const handleExportarPdf = async () => {
     try {
       setGerandoPdf(true);
@@ -146,13 +178,13 @@ export const LivroCaixaView: React.FC<LivroCaixaViewProps> = ({ onAbrirImportar 
           </p>
         </div>
 
-        {/* Linha Única de Ações Compactas (Importar OFX, Exportar PDF e CSV) */}
+        {/* Linha Única de Ações Compactas (Importar OFX, Exportar PDF e CSV) - Sem quebra no Celular */}
         <div style={{
           display: 'flex',
-          gap: '8px',
+          gap: '6px',
           alignItems: 'center',
-          justifyContent: 'flex-start',
-          flexWrap: 'wrap',
+          justifyContent: 'space-between',
+          flexWrap: 'nowrap',
           width: '100%'
         }}>
           {onAbrirImportar && (
@@ -160,22 +192,26 @@ export const LivroCaixaView: React.FC<LivroCaixaViewProps> = ({ onAbrirImportar 
               type="button"
               onClick={onAbrirImportar}
               style={{
-                padding: '6px 12px',
+                flex: 1,
+                padding: '7px 4px',
                 borderRadius: '10px',
                 backgroundColor: 'rgba(40, 126, 165, 0.15)',
                 border: '1px solid rgba(40, 126, 165, 0.45)',
                 color: '#82B1FF',
-                fontSize: '11.5px',
+                fontSize: '11px',
                 fontWeight: 700,
                 display: 'inline-flex',
                 alignItems: 'center',
-                gap: '5px',
-                cursor: 'pointer'
+                justifyContent: 'center',
+                gap: '4px',
+                cursor: 'pointer',
+                whiteSpace: 'nowrap',
+                minWidth: 0
               }}
               title="Importar extrato bancário OFX ou CSV"
             >
-              <UploadCloud size={14} color="#5090D3" />
-              <span>Importar OFX</span>
+              <UploadCloud size={13} color="#5090D3" style={{ flexShrink: 0 }} />
+              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>Importar OFX</span>
             </button>
           )}
 
@@ -183,54 +219,62 @@ export const LivroCaixaView: React.FC<LivroCaixaViewProps> = ({ onAbrirImportar 
             onClick={handleExportarPdf}
             disabled={gerandoPdf}
             style={{
-              padding: '6px 12px',
+              flex: 1,
+              padding: '7px 4px',
               borderRadius: '10px',
               backgroundColor: '#1E3A5F',
               border: '1px solid #287EA5',
               color: '#FFFFFF',
-              fontSize: '11.5px',
+              fontSize: '11px',
               fontWeight: 700,
               display: 'inline-flex',
               alignItems: 'center',
-              gap: '5px',
+              justifyContent: 'center',
+              gap: '4px',
               cursor: gerandoPdf ? 'not-allowed' : 'pointer',
-              opacity: gerandoPdf ? 0.7 : 1
+              opacity: gerandoPdf ? 0.7 : 1,
+              whiteSpace: 'nowrap',
+              minWidth: 0
             }}
             title="Exportar Livro Caixa para PDF"
           >
             {gerandoPdf ? (
               <>
-                <Loader2 size={14} className="animate-spin" />
-                <span>Gerando PDF...</span>
+                <Loader2 size={13} className="animate-spin" style={{ flexShrink: 0 }} />
+                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>Gerando...</span>
               </>
             ) : (
               <>
-                <FileDown size={14} />
-                <span>Exportar PDF</span>
+                <FileDown size={13} style={{ flexShrink: 0 }} />
+                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>Exportar PDF</span>
               </>
             )}
           </button>
 
           <button
             type="button"
-            onClick={() => exportarLancamentosCSV(lancamentosDoMes, `Extrato_${competenciaAtiva.replace('/', '_')}.csv`)}
+            onClick={() => exportarLancamentosCSV(itensAtivos, `Extrato_${competenciaAtiva.replace('/', '_')}.csv`)}
             style={{
-              padding: '6px 12px',
+              flex: 1,
+              padding: '7px 4px',
               borderRadius: '10px',
               backgroundColor: 'rgba(16, 185, 129, 0.12)',
               border: '1px solid rgba(16, 185, 129, 0.4)',
               color: '#34D399',
-              fontSize: '11.5px',
+              fontSize: '11px',
               fontWeight: 700,
               display: 'inline-flex',
               alignItems: 'center',
-              gap: '5px',
-              cursor: 'pointer'
+              justifyContent: 'center',
+              gap: '4px',
+              cursor: 'pointer',
+              whiteSpace: 'nowrap',
+              minWidth: 0
             }}
             title="Exportar para Excel / Planilhas (CSV)"
           >
-            <Table size={14} color="#10B981" />
-            <span>Exportar CSV</span>
+            <Table size={13} color="#10B981" style={{ flexShrink: 0 }} />
+            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>Exportar CSV</span>
           </button>
         </div>
       </div>
@@ -409,7 +453,226 @@ export const LivroCaixaView: React.FC<LivroCaixaViewProps> = ({ onAbrirImportar 
           </div>
         </div>
 
-        {gruposPorSemana.length === 0 ? (
+        {/* Seletor de Abas de Extrato: Conta & Caixa vs Fatura de Cartões vs Todos */}
+        <div style={{
+          display: 'flex',
+          gap: '6px',
+          padding: '8px 12px',
+          backgroundColor: 'rgba(11, 25, 41, 0.65)',
+          borderBottom: '1px solid var(--border-subtle)',
+          overflowX: 'auto',
+          alignItems: 'center'
+        }}>
+          <button
+            type="button"
+            onClick={() => setFiltroAba('caixa')}
+            style={{
+              padding: '6px 12px',
+              borderRadius: '8px',
+              fontSize: '11.5px',
+              fontWeight: 800,
+              backgroundColor: filtroAba === 'caixa' ? '#287EA5' : 'transparent',
+              color: filtroAba === 'caixa' ? '#FFFFFF' : '#8A99AD',
+              border: filtroAba === 'caixa' ? '1px solid #5090D3' : '1px solid rgba(80, 144, 211, 0.2)',
+              cursor: 'pointer',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              whiteSpace: 'nowrap',
+              transition: 'all 0.15s ease'
+            }}
+          >
+            <Wallet size={13} color={filtroAba === 'caixa' ? '#FFFFFF' : '#5090D3'} />
+            <span>Conta & Caixa ({lancamentosConta.length})</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setFiltroAba('cartoes')}
+            style={{
+              padding: '6px 12px',
+              borderRadius: '8px',
+              fontSize: '11.5px',
+              fontWeight: 800,
+              backgroundColor: filtroAba === 'cartoes' ? '#287EA5' : 'transparent',
+              color: filtroAba === 'cartoes' ? '#FFFFFF' : '#8A99AD',
+              border: filtroAba === 'cartoes' ? '1px solid #5090D3' : '1px solid rgba(248, 209, 23, 0.25)',
+              cursor: 'pointer',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              whiteSpace: 'nowrap',
+              transition: 'all 0.15s ease'
+            }}
+          >
+            <CreditCard size={13} color={filtroAba === 'cartoes' ? '#FFFFFF' : '#F8D117'} />
+            <span>Fatura de Cartões ({lancamentosCartao.length})</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setFiltroAba('todos')}
+            style={{
+              padding: '6px 12px',
+              borderRadius: '8px',
+              fontSize: '11.5px',
+              fontWeight: 800,
+              backgroundColor: filtroAba === 'todos' ? '#287EA5' : 'transparent',
+              color: filtroAba === 'todos' ? '#FFFFFF' : '#8A99AD',
+              border: filtroAba === 'todos' ? '1px solid #5090D3' : '1px solid rgba(255, 255, 255, 0.15)',
+              cursor: 'pointer',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              whiteSpace: 'nowrap',
+              transition: 'all 0.15s ease'
+            }}
+          >
+            <BookOpen size={13} color={filtroAba === 'todos' ? '#FFFFFF' : '#AAB4BE'} />
+            <span>Todos ({lancamentosDoMes.length})</span>
+          </button>
+        </div>
+
+        {filtroAba === 'cartoes' && modoVisualizacao === 'extrato' ? (
+          /* ==========================================================
+             MODO FATURA DE CARTÕES DE CRÉDITO AGRUPADO POR CARTÃO
+             ========================================================== */
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', padding: '14px' }}>
+            {/* Banner de Total da Fatura */}
+            <div style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              padding: '12px 16px',
+              borderRadius: '12px',
+              backgroundColor: 'rgba(248, 209, 23, 0.08)',
+              border: '1px solid rgba(248, 209, 23, 0.25)'
+            }}>
+              <div>
+                <span style={{ fontSize: '11px', color: '#AAB4BE', textTransform: 'uppercase', fontWeight: 700 }}>
+                  Fatura Total do Mês ({competenciaAtiva})
+                </span>
+                <h4 style={{ margin: '2px 0 0 0', fontSize: '14px', color: '#FFFFFF', fontWeight: 800 }}>
+                  Compras Parceladas & Faturas
+                </h4>
+              </div>
+              <div style={{ textAlign: 'right' }}>
+                <span style={{ fontSize: '16px', fontWeight: 900, color: '#F8D117' }}>
+                  {formatarMoeda(totalFaturaMes)}
+                </span>
+              </div>
+            </div>
+
+            {cartoesAgrupados.length === 0 ? (
+              <div style={{ padding: '2.5rem', textAlign: 'center', color: 'var(--text-secondary)' }}>
+                Nenhum lançamento no cartão de crédito nesta competência.
+              </div>
+            ) : (
+              cartoesAgrupados.map((cartao) => (
+                <div key={cartao.nome} style={{
+                  backgroundColor: 'rgba(11, 25, 41, 0.7)',
+                  border: '1px solid rgba(38, 93, 151, 0.45)',
+                  borderRadius: '12px',
+                  overflow: 'hidden'
+                }}>
+                  {/* Cabeçalho do Cartão */}
+                  <div style={{
+                    backgroundColor: 'rgba(23, 63, 95, 0.5)',
+                    padding: '10px 14px',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    borderBottom: '1px solid rgba(38, 93, 151, 0.35)'
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <CreditCard size={15} color="#F8D117" />
+                      <strong style={{ fontSize: '13px', color: '#FFFFFF' }}>{cartao.nome}</strong>
+                      <span style={{
+                        fontSize: '10.5px',
+                        color: '#AAB4BE',
+                        backgroundColor: 'rgba(255,255,255,0.08)',
+                        padding: '1px 6px',
+                        borderRadius: '6px'
+                      }}>
+                        {cartao.itens.length} {cartao.itens.length === 1 ? 'item' : 'itens'}
+                      </span>
+                    </div>
+
+                    <span style={{ fontSize: '13px', fontWeight: 900, color: '#F8D117' }}>
+                      {formatarMoeda(cartao.total)}
+                    </span>
+                  </div>
+
+                  {/* Lista de itens deste cartão */}
+                  <div>
+                    {cartao.itens.map((item, idx) => (
+                      <div
+                        key={item.id}
+                        onClick={() => setLancamentoDetalhes(item)}
+                        style={{
+                          padding: '11px 14px',
+                          borderBottom: idx < cartao.itens.length - 1 ? '1px solid rgba(30, 58, 95, 0.35)' : 'none',
+                          backgroundColor: idx % 2 === 1 ? 'rgba(19, 47, 76, 0.25)' : 'transparent',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          gap: '10px',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '3px', flex: 1, minWidth: 0 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', minWidth: 0, flexWrap: 'wrap' }}>
+                            <strong style={{ fontSize: '13.5px', fontWeight: 700, color: '#FFFFFF' }}>
+                              {item.descricao}
+                            </strong>
+
+                            {item.totalParcelas && item.totalParcelas > 1 ? (
+                              <span style={{
+                                fontSize: '10.5px',
+                                fontWeight: 800,
+                                padding: '1px 6px',
+                                borderRadius: '4px',
+                                backgroundColor: 'rgba(138, 5, 190, 0.25)',
+                                color: '#C084FC',
+                                border: '1px solid rgba(192, 132, 252, 0.4)',
+                                whiteSpace: 'nowrap'
+                              }}>
+                                📦 Parcela {item.parcela || 1} de {item.totalParcelas}
+                              </span>
+                            ) : null}
+                          </div>
+
+                          <div style={{
+                            fontSize: '11px',
+                            color: '#8A99AD',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '6px',
+                            flexWrap: 'wrap'
+                          }}>
+                            <span style={{ color: '#82B1FF' }}>
+                              📅 Compra: {formatarData(item.data)}
+                            </span>
+                            <span>•</span>
+                            <span style={{ color: '#E2E8F0' }}>{item.categoria}</span>
+                            <span>•</span>
+                            <span style={{ color: '#F8D117' }}>Fatura: {item.competencia}</span>
+                          </div>
+                        </div>
+
+                        <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                          <strong style={{ fontSize: '14.5px', fontWeight: 900, color: 'var(--color-despesa)', whiteSpace: 'nowrap' }}>
+                            - {formatarMoeda(item.valor)}
+                          </strong>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        ) : gruposPorSemana.length === 0 ? (
           <div style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-secondary)' }}>
             Nenhum lançamento registrado nesta competência.
           </div>
@@ -506,6 +769,23 @@ export const LivroCaixaView: React.FC<LivroCaixaViewProps> = ({ onAbrirImportar 
                               flexShrink: 0
                             }}>
                               📦 {item.parcela || 1}/{item.totalParcelas}
+                            </span>
+                          ) : null}
+
+                          {/* Se for cartão de crédito e estiver na aba Todos, indicar a fatura */}
+                          {item.pagamento === '💳 Crédito' && filtroAba === 'todos' ? (
+                            <span style={{
+                              fontSize: '10px',
+                              fontWeight: 800,
+                              padding: '1px 5px',
+                              borderRadius: '4px',
+                              backgroundColor: 'rgba(248, 209, 23, 0.15)',
+                              color: '#F8D117',
+                              border: '1px solid rgba(248, 209, 23, 0.3)',
+                              whiteSpace: 'nowrap',
+                              flexShrink: 0
+                            }}>
+                              💳 Fatura {item.competencia}
                             </span>
                           ) : null}
                         </div>
