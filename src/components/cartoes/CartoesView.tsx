@@ -1,18 +1,14 @@
 import React, { useState } from 'react';
 import { useFinanceStore } from '../../stores/financeStore';
 import { formatarMoeda } from '../../lib/formatters';
-import { obterProximaCompetencia } from '../../lib/cartaoFatura';
-import { Settings, CalendarClock } from 'lucide-react';
+import { Settings } from 'lucide-react';
 import { ConfiguracoesBaseModal } from '../configuracoes/ConfiguracoesBaseModal';
 import { CartaoVisual } from './CartaoVisual';
 
 export const CartoesView: React.FC = () => {
   const { obterResumoCartoes, competenciaAtiva, usuario } = useFinanceStore();
   const [modalConfigAberto, setModalConfigAberto] = useState(false);
-  const [verProximaFatura, setVerProximaFatura] = useState(false);
-  const proximaCompetencia = obterProximaCompetencia(competenciaAtiva);
-  const compExibida = verProximaFatura ? proximaCompetencia : competenciaAtiva;
-  const resumoCartoes = obterResumoCartoes(compExibida);
+  const resumoCartoes = obterResumoCartoes();
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
@@ -31,59 +27,33 @@ export const CartoesView: React.FC = () => {
             Cartões de Crédito & Faturas
           </h2>
           <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', margin: 0 }}>
-            Faturas, limites e compras parceladas • <strong style={{ color: '#F8D117' }}>{compExibida}</strong>
+            Faturas, limites e compras parceladas • <strong style={{ color: '#F8D117' }}>{competenciaAtiva}</strong>
           </p>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-          <button
-            type="button"
-            onClick={() => setVerProximaFatura((v) => !v)}
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '6px',
-              padding: '7px 13px',
-              borderRadius: '12px',
-              backgroundColor: verProximaFatura ? 'rgba(248, 209, 23, 0.16)' : '#132F4C',
-              border: verProximaFatura ? '1px solid rgba(248, 209, 23, 0.5)' : '1px solid #1E3A5F',
-              color: verProximaFatura ? '#F8D117' : '#CBD5E1',
-              fontSize: '11.5px',
-              fontWeight: 800,
-              cursor: 'pointer',
-              transition: 'all 0.15s ease'
-            }}
-            title={verProximaFatura ? 'Voltar para a fatura atual' : 'Visualizar fatura futura do próximo mês'}
-          >
-            <CalendarClock size={14} color={verProximaFatura ? '#F8D117' : '#5090D3'} />
-            <span>{verProximaFatura ? `Fatura Atual (${competenciaAtiva})` : `Próx. Fatura (${proximaCompetencia})`}</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setModalConfigAberto(true)}
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '6px',
-              padding: '7px 13px',
-              borderRadius: '12px',
-              backgroundColor: '#132F4C',
-              border: '1px solid #1E3A5F',
-              color: '#F8D117',
-              fontSize: '11.5px',
-              fontWeight: 800,
-              cursor: 'pointer',
-              transition: 'all 0.15s ease'
-            }}
-            title="Gerenciar Cartões, Bancos e Limites"
-          >
-            <Settings size={14} />
-            <span>Gerenciar Cartões & Limites</span>
-          </button>
-        </div>
+        <button
+          type="button"
+          onClick={() => setModalConfigAberto(true)}
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '6px',
+            padding: '7px 13px',
+            borderRadius: '12px',
+            backgroundColor: '#132F4C',
+            border: '1px solid #1E3A5F',
+            color: '#F8D117',
+            fontSize: '11.5px',
+            fontWeight: 800,
+            cursor: 'pointer',
+            transition: 'all 0.15s ease'
+          }}
+          title="Gerenciar Cartões, Bancos e Limites"
+        >
+          <Settings size={14} />
+          <span>Gerenciar Cartões & Limites</span>
+        </button>
       </div>
 
       {/* Grid de Cartões */}
@@ -126,7 +96,6 @@ export const CartoesView: React.FC = () => {
                   agenciaUsuario={usuario.agencia}
                   contaUsuario={usuario.numeroConta}
                   valorFatura={valorFatura}
-                  rotuloFatura={verProximaFatura ? `Fatura Próx. Mês (${compExibida})` : undefined}
                   limiteDisponivel={limiteDisponivel}
                   mostrarFatura={true}
                 />
@@ -180,11 +149,11 @@ export const CartoesView: React.FC = () => {
               {/* Compras Parceladas Ativas */}
               <div>
                 <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', display: 'block', marginBottom: '0.5rem' }}>
-                  Parcelamentos Ativos ({parcelamentos.length}) • Fatura {compExibida}
+                  Parcelamentos Ativos ({parcelamentos.length}) • Fatura {competenciaAtiva}
                 </span>
                 {parcelamentos.length === 0 ? (
                   <p style={{ fontSize: '0.8rem', color: 'var(--text-tertiary)', margin: 0, fontStyle: 'italic' }}>
-                    Nenhuma parcela pendente na fatura de {compExibida}.
+                    Nenhuma parcela pendente na fatura de {competenciaAtiva}.
                   </p>
                 ) : (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>

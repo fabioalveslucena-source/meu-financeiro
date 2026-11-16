@@ -17,7 +17,6 @@ interface CartaoVisualProps {
   agenciaUsuario?: string;
   contaUsuario?: string;
   valorFatura?: number;
-  rotuloFatura?: string;
   limiteDisponivel?: number;
   percentualUsado?: number;
   parcelamentos?: ParcelamentoResumo[];
@@ -33,7 +32,6 @@ export const CartaoVisual: React.FC<CartaoVisualProps> = ({
   agenciaUsuario,
   contaUsuario,
   valorFatura,
-  rotuloFatura,
   mostrarFatura = true,
   estiloCompacto = false,
   onClick
@@ -334,7 +332,7 @@ export const CartaoVisual: React.FC<CartaoVisualProps> = ({
             {mostrarFatura && valorFatura !== undefined && (
               <div style={{ marginBottom: '4px' }}>
                 <span style={{ fontSize: '9px', fontWeight: 800, textTransform: 'uppercase', color: '#FFE600', display: 'block', letterSpacing: '0.5px' }}>
-                  {rotuloFatura || 'Fatura Aberta'}
+                  Fatura Aberta
                 </span>
                 <span style={{ fontSize: estiloCompacto ? '16px' : '22px', fontWeight: 900, color: '#FFFFFF' }}>
                   {formatarMoeda(valorFatura)}
@@ -431,7 +429,7 @@ export const CartaoVisual: React.FC<CartaoVisualProps> = ({
             {mostrarFatura && valorFatura !== undefined && (
               <div style={{ marginBottom: '4px' }}>
                 <span style={{ fontSize: '9px', fontWeight: 800, textTransform: 'uppercase', color: '#3A5A80', display: 'block' }}>
-                  {rotuloFatura || 'Fatura Atual'}
+                  Fatura Atual
                 </span>
                 <span style={{ fontSize: estiloCompacto ? '16px' : '22px', fontWeight: 900, color: '#0B2545' }}>
                   {formatarMoeda(valorFatura)}
@@ -525,7 +523,7 @@ export const CartaoVisual: React.FC<CartaoVisualProps> = ({
           {mostrarFatura && valorFatura !== undefined && (
             <div style={{ marginBottom: '4px' }}>
               <span style={{ fontSize: '9px', fontWeight: 700, color: '#A0C4E8', textTransform: 'uppercase', display: 'block' }}>
-                {rotuloFatura || 'Fatura Aberta'}
+                Fatura Aberta
               </span>
               <span style={{ fontSize: estiloCompacto ? '16px' : '22px', fontWeight: 900, color: '#FFFFFF' }}>
                 {formatarMoeda(valorFatura)}
@@ -623,7 +621,7 @@ export const CartaoVisual: React.FC<CartaoVisualProps> = ({
             {mostrarFatura && valorFatura !== undefined && (
               <div style={{ marginBottom: '4px' }}>
                 <span style={{ fontSize: '9px', fontWeight: 700, color: '#A0AEC0', textTransform: 'uppercase', display: 'block' }}>
-                  {rotuloFatura || 'Fatura Atual'}
+                  Fatura Atual
                 </span>
                 <span style={{ fontSize: estiloCompacto ? '16px' : '22px', fontWeight: 900, color: '#FFFFFF' }}>
                   {formatarMoeda(valorFatura)}
@@ -704,7 +702,7 @@ export const CartaoVisual: React.FC<CartaoVisualProps> = ({
             {mostrarFatura && valorFatura !== undefined && (
               <div style={{ marginBottom: '4px' }}>
                 <span style={{ fontSize: '9px', fontWeight: 700, color: '#D4AF37', textTransform: 'uppercase', display: 'block' }}>
-                  {rotuloFatura || 'Fatura Atual'}
+                  Fatura Atual
                 </span>
                 <span style={{ fontSize: estiloCompacto ? '16px' : '22px', fontWeight: 900, color: '#FFFFFF' }}>
                   {formatarMoeda(valorFatura)}
@@ -782,7 +780,7 @@ export const CartaoVisual: React.FC<CartaoVisualProps> = ({
             {mostrarFatura && valorFatura !== undefined && (
               <div style={{ marginBottom: '4px' }}>
                 <span style={{ fontSize: '9px', fontWeight: 700, color: 'rgba(255,255,255,0.75)', textTransform: 'uppercase', display: 'block' }}>
-                  {rotuloFatura || 'Fatura Aberta'}
+                  Fatura Aberta
                 </span>
                 <span style={{ fontSize: estiloCompacto ? '16px' : '22px', fontWeight: 900, color: '#FFFFFF' }}>
                   {formatarMoeda(valorFatura)}
@@ -872,7 +870,7 @@ export const CartaoVisual: React.FC<CartaoVisualProps> = ({
           {mostrarFatura && valorFatura !== undefined && (
             <div style={{ marginBottom: '4px' }}>
               <span style={{ fontSize: '9px', fontWeight: 700, color: 'rgba(255,255,255,0.7)', textTransform: 'uppercase', display: 'block' }}>
-                {rotuloFatura || 'Fatura'}
+                Fatura
               </span>
               <span style={{ fontSize: estiloCompacto ? '16px' : '22px', fontWeight: 900 }}>
                 {formatarMoeda(valorFatura)}
