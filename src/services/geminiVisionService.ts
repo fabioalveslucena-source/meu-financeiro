@@ -34,10 +34,14 @@ export function limparChaveGemini(key: string): string {
   return key.trim().replace(/^['"\s;:]+|['"\s;:]+$/g, '');
 }
 
+let modeloCacheado: string | null = null;
+
 /**
  * Consulta a API do Google para descobrir quais modelos ultra-rápidos estão liberados
  */
 export async function obterModeloGeminiValido(apiKey: string): Promise<string> {
+  if (modeloCacheado) return modeloCacheado;
+
   const chaveLimpa = limparChaveGemini(apiKey);
   if (!chaveLimpa) {
     throw new Error('Chave da API do Google Gemini não informada.');
@@ -51,27 +55,26 @@ export async function obterModeloGeminiValido(apiKey: string): Promise<string> {
         .filter((m: any) => m.supportedGenerationMethods?.includes('generateContent'))
         .map((m: any) => m.name.replace(/^models\//, ''));
 
-      // Modelos de inteligência artificial de alta velocidade do Google Gemini
+      // Modelos ultra-rápidos otimizados para leitura instantânea (< 1s)
       const preferencias = [
-        'gemini-3.8-flash',
-        'gemini-3.5-flash',
         'gemini-3.5-flash-lite',
-        'gemini-flash-latest',
-        'gemini-3.7-flash',
-        'gemini-3.6-flash',
         'gemini-flash-lite-latest',
-        'gemini-2.5-flash',
-        'gemini-2.0-flash'
+        'gemini-3.1-flash-lite',
+        'gemini-3.5-flash'
       ];
 
       for (const pref of preferencias) {
         if (modelosDisponiveis.includes(pref)) {
+          modeloCacheado = pref;
           return pref;
         }
       }
 
-      const algumFlash = modelosDisponiveis.find(m => m.includes('flash') && !m.includes('2.5'));
-      if (algumFlash) return algumFlash;
+      const algumFlashLite = modelosDisponiveis.find(m => m.includes('flash-lite'));
+      if (algumFlashLite) {
+        modeloCacheado = algumFlashLite;
+        return algumFlashLite;
+      }
     } else {
       const errData = await res.json().catch(() => null);
       const msg = errData?.error?.message || res.statusText;
@@ -85,8 +88,9 @@ export async function obterModeloGeminiValido(apiKey: string): Promise<string> {
     }
   }
 
-  // Fallback padrão de alta velocidade oficial
-  return 'gemini-3.8-flash';
+  // Fallback padrão de altíssima velocidade e resposta instantânea (< 1s)
+  modeloCacheado = 'gemini-3.5-flash-lite';
+  return 'gemini-3.5-flash-lite';
 }
 
 /**
@@ -99,7 +103,8 @@ export async function comprimirImagemParaGemini(file: File): Promise<string> {
       const img = new Image();
       img.onload = () => {
         const canvas = document.createElement('canvas');
-        const maxDim = 1600;
+        // 1200px mantém nitidez cirúrgica no texto do cupom e reduz pela metade o tempo de upload
+        const maxDim = 1200;
         let width = img.width;
         let height = img.height;
 
@@ -122,7 +127,7 @@ export async function comprimirImagemParaGemini(file: File): Promise<string> {
         }
 
         ctx.drawImage(img, 0, 0, width, height);
-        const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.80);
         resolve(dataUrl.split(',')[1]);
       };
       img.onerror = reject;
@@ -206,8 +211,8 @@ Regras:
 3. Não inclua texto explicativo fora do JSON.
 `;
 
-  // Modelos ultra-rápidos e oficiais do Google
-  let modeloDescoberto = 'gemini-3.8-flash';
+  // Modelos ultra-rápidos e oficiais do Google (tempo de resposta < 1s)
+  let modeloDescoberto = 'gemini-3.5-flash-lite';
   try {
     modeloDescoberto = await obterModeloGeminiValido(chaveLimpa);
   } catch (err: any) {
@@ -218,10 +223,10 @@ Regras:
 
   const rotasDeTentativa = [
     `https://generativelanguage.googleapis.com/v1beta/models/${modeloDescoberto}:generateContent?key=${chaveLimpa}`,
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key=${chaveLimpa}`,
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key=${chaveLimpa}`,
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${chaveLimpa}`,
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent?key=${chaveLimpa}`
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent?key=${chaveLimpa}`,
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-lite-latest:generateContent?key=${chaveLimpa}`,
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent?key=${chaveLimpa}`,
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key=${chaveLimpa}`
   ];
 
   const rotasUnicas = Array.from(new Set(rotasDeTentativa));
@@ -230,7 +235,7 @@ Regras:
   for (const url of rotasUnicas) {
     try {
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 20000); // 20 segundos de timeout máximo
+      const timeoutId = setTimeout(() => controller.abort(), 8000); // 8 segundos de timeout para garantir resposta rápida
 
       const response = await fetch(url, {
         method: 'POST',
