@@ -51,14 +51,17 @@ export async function obterModeloGeminiValido(apiKey: string): Promise<string> {
         .filter((m: any) => m.supportedGenerationMethods?.includes('generateContent'))
         .map((m: any) => m.name.replace(/^models\//, ''));
 
-      // Modelos ultra-rápidos e oficiais do Google Gemini
+      // Modelos de inteligência artificial de alta velocidade do Google Gemini
       const preferencias = [
-        'gemini-2.5-flash',
-        'gemini-2.5-flash-lite',
+        'gemini-3.8-flash',
+        'gemini-3.5-flash',
+        'gemini-3.5-flash-lite',
         'gemini-flash-latest',
+        'gemini-3.7-flash',
+        'gemini-3.6-flash',
         'gemini-flash-lite-latest',
-        'gemini-2.0-flash',
-        'gemini-1.5-flash'
+        'gemini-2.5-flash',
+        'gemini-2.0-flash'
       ];
 
       for (const pref of preferencias) {
@@ -67,23 +70,23 @@ export async function obterModeloGeminiValido(apiKey: string): Promise<string> {
         }
       }
 
-      const algumFlash = modelosDisponiveis.find(m => m.includes('flash'));
+      const algumFlash = modelosDisponiveis.find(m => m.includes('flash') && !m.includes('2.5'));
       if (algumFlash) return algumFlash;
     } else {
       const errData = await res.json().catch(() => null);
       const msg = errData?.error?.message || res.statusText;
-      if (res.status === 400 || res.status === 403) {
+      if (msg?.toLowerCase().includes('api key not valid') || msg?.toLowerCase().includes('api_key_invalid')) {
         throw new Error(`Chave rejeitada pelo Google (${res.status}): ${msg}`);
       }
     }
   } catch (err: any) {
-    if (err.message?.includes('rejeitada') || err.message?.includes('API key') || err.message?.includes('403') || err.message?.includes('400')) {
+    if (err.message?.toLowerCase().includes('api key not valid') || err.message?.toLowerCase().includes('api_key_invalid')) {
       throw err;
     }
   }
 
   // Fallback padrão de alta velocidade oficial
-  return 'gemini-2.5-flash';
+  return 'gemini-3.8-flash';
 }
 
 /**
@@ -204,20 +207,21 @@ Regras:
 `;
 
   // Modelos ultra-rápidos e oficiais do Google
-  let modeloDescoberto = 'gemini-2.5-flash';
+  let modeloDescoberto = 'gemini-3.8-flash';
   try {
     modeloDescoberto = await obterModeloGeminiValido(chaveLimpa);
   } catch (err: any) {
-    if (err.message?.includes('rejeitada') || err.message?.includes('API key') || err.message?.includes('403') || err.message?.includes('400')) {
+    if (err.message?.toLowerCase().includes('api key not valid') || err.message?.toLowerCase().includes('api_key_invalid')) {
       throw new Error(`Chave do Gemini rejeitada pelo Google: ${err.message}`);
     }
   }
 
   const rotasDeTentativa = [
     `https://generativelanguage.googleapis.com/v1beta/models/${modeloDescoberto}:generateContent?key=${chaveLimpa}`,
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${chaveLimpa}`,
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key=${chaveLimpa}`,
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key=${chaveLimpa}`,
     `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${chaveLimpa}`,
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${chaveLimpa}`
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent?key=${chaveLimpa}`
   ];
 
   const rotasUnicas = Array.from(new Set(rotasDeTentativa));
@@ -258,8 +262,8 @@ Regras:
       if (!response.ok) {
         const erroJson = await response.json().catch(() => null);
         const msg = erroJson?.error?.message || response.statusText;
-        if (response.status === 400 || response.status === 403) {
-          throw new Error(`Erro na API Gemini (${response.status}): ${msg}`);
+        if (msg?.toLowerCase().includes('api key not valid') || msg?.toLowerCase().includes('api_key_invalid')) {
+          throw new Error(`Chave do Gemini inválida: ${msg}`);
         }
         ultimoErro = new Error(msg);
         continue;
@@ -307,7 +311,7 @@ Regras:
       };
     } catch (err: any) {
       ultimoErro = err;
-      if (err.message?.includes('API key') || err.message?.includes('rejeitada') || err.message?.includes('403') || err.message?.includes('400')) {
+      if (err.message?.toLowerCase().includes('api key not valid') || err.message?.toLowerCase().includes('api_key_invalid')) {
         throw err;
       }
     }
