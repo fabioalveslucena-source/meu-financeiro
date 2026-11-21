@@ -479,7 +479,7 @@ export const ConferenciaCupomModal: React.FC<ConferenciaCupomModalProps> = ({
             <div style={{
               display: 'flex',
               flexDirection: 'column',
-              gap: '8px',
+              gap: '6px',
               maxHeight: '340px',
               overflowY: 'auto'
             }}>
@@ -489,13 +489,15 @@ export const ConferenciaCupomModal: React.FC<ConferenciaCupomModalProps> = ({
                   style={{
                     display: 'flex',
                     alignItems: 'center',
-                    gap: '10px',
-                    padding: '10px 12px',
-                    borderRadius: '12px',
+                    gap: '8px',
+                    padding: '8px 10px',
+                    borderRadius: '10px',
                     backgroundColor: it.selecionado ? '#132F4C' : '#0B1E33',
                     border: it.selecionado ? '1px solid #265D97' : '1px solid #162C46',
                     opacity: it.selecionado ? 1 : 0.6,
-                    transition: 'all 0.15s ease'
+                    transition: 'all 0.15s ease',
+                    boxSizing: 'border-box',
+                    width: '100%'
                   }}
                 >
                   <input
@@ -503,29 +505,35 @@ export const ConferenciaCupomModal: React.FC<ConferenciaCupomModalProps> = ({
                     checked={it.selecionado}
                     onChange={() => toggleItem(it.id)}
                     style={{
-                      width: '18px',
-                      height: '18px',
+                      width: '16px',
+                      height: '16px',
                       cursor: 'pointer',
-                      accentColor: '#4CAF50'
+                      accentColor: '#4CAF50',
+                      flexShrink: 0
                     }}
                   />
 
-                  <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: '3px' }}>
                     <input
                       type="text"
                       value={it.nome}
                       onChange={(e) => atualizarItem(it.id, 'nome', e.target.value)}
+                      title={it.nome}
                       style={{
                         width: '100%',
                         background: 'transparent',
                         border: 'none',
                         outline: 'none',
                         color: '#FFFFFF',
-                        fontSize: '12.5px',
-                        fontWeight: 700
+                        fontSize: '11.5px',
+                        fontWeight: 700,
+                        textOverflow: 'ellipsis',
+                        overflow: 'hidden',
+                        whiteSpace: 'nowrap',
+                        padding: 0
                       }}
                     />
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '11px', color: '#8A99AD' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '10px', color: '#8A99AD' }}>
                       <span>Qtd:</span>
                       <input
                         type="number"
@@ -533,38 +541,38 @@ export const ConferenciaCupomModal: React.FC<ConferenciaCupomModalProps> = ({
                         value={it.quantidade}
                         onChange={(e) => atualizarItem(it.id, 'quantidade', e.target.value)}
                         style={{
-                          width: '50px',
+                          width: '42px',
                           background: '#0A1B30',
                           border: '1px solid #1E3A5F',
-                          borderRadius: '6px',
+                          borderRadius: '4px',
                           color: '#FFFFFF',
-                          fontSize: '11px',
-                          padding: '2px 4px',
+                          fontSize: '10.5px',
+                          padding: '1px 3px',
                           textAlign: 'center'
                         }}
                       />
-                      <span>x R$</span>
+                      <span>× R$</span>
                       <input
                         type="number"
                         step="0.01"
                         value={it.precoUnitario}
                         onChange={(e) => atualizarItem(it.id, 'precoUnitario', e.target.value)}
                         style={{
-                          width: '65px',
+                          width: '54px',
                           background: '#0A1B30',
                           border: '1px solid #1E3A5F',
-                          borderRadius: '6px',
+                          borderRadius: '4px',
                           color: '#FFFFFF',
-                          fontSize: '11px',
-                          padding: '2px 4px',
+                          fontSize: '10.5px',
+                          padding: '1px 3px',
                           textAlign: 'center'
                         }}
                       />
                     </div>
                   </div>
 
-                  <div style={{ textAlign: 'right', minWidth: '70px' }}>
-                    <span style={{ fontSize: '13px', fontWeight: 800, color: '#4CAF50' }}>
+                  <div style={{ textAlign: 'right', flexShrink: 0, paddingLeft: '4px' }}>
+                    <span style={{ fontSize: '12px', fontWeight: 800, color: '#4CAF50', whiteSpace: 'nowrap' }}>
                       {formatarMoeda(it.precoTotal)}
                     </span>
                   </div>
@@ -572,17 +580,23 @@ export const ConferenciaCupomModal: React.FC<ConferenciaCupomModalProps> = ({
                   <button
                     type="button"
                     onClick={() => removerItem(it.id)}
+                    title="Excluir item"
                     style={{
-                      background: 'none',
+                      background: 'rgba(244, 67, 54, 0.12)',
                       border: 'none',
+                      borderRadius: '6px',
                       color: '#F44336',
-                      opacity: 0.7,
                       cursor: 'pointer',
-                      padding: '4px',
-                      display: 'flex'
+                      padding: '5px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      flexShrink: 0,
+                      width: '26px',
+                      height: '26px'
                     }}
                   >
-                    <Trash2 size={15} />
+                    <Trash2 size={13} />
                   </button>
                 </div>
               ))}

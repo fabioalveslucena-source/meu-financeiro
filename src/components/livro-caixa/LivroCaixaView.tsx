@@ -16,7 +16,9 @@ import {
   Table,
   CalendarCheck,
   ShoppingCart,
-  UploadCloud
+  UploadCloud,
+  Eye,
+  EyeOff
 } from 'lucide-react';
 import type { Lancamento } from '../../types';
 import { ReciboMercadoModal } from '../mercado/ReciboMercadoModal';
@@ -32,6 +34,7 @@ export const LivroCaixaView: React.FC<LivroCaixaViewProps> = ({ onAbrirImportar 
   const [modoVisualizacao, setModoVisualizacao] = useState<'extrato' | 'tabela'>('extrato');
   const [lancamentoMercado, setLancamentoMercado] = useState<Lancamento | null>(null);
   const [lancamentoDetalhes, setLancamentoDetalhes] = useState<Lancamento | null>(null);
+  const [saldoVisivel, setSaldoVisivel] = useState(false);
 
   const resumo = obterResumoLivroCaixa(competenciaAtiva);
 
@@ -344,7 +347,7 @@ export const LivroCaixaView: React.FC<LivroCaixaViewProps> = ({ onAbrirImportar 
           </p>
         </div>
 
-        {/* Linha 3: Saldo Final (Sozinho, ocupando as duas colunas com destaque) */}
+        {/* Linha 3: Saldo Final (Sozinho, ocupando as duas colunas com destaque e botão de olho) */}
         <div style={{
           gridColumn: 'span 2',
           padding: '14px 18px',
@@ -362,6 +365,26 @@ export const LivroCaixaView: React.FC<LivroCaixaViewProps> = ({ onAbrirImportar 
               <span style={{ fontSize: '11.5px', fontWeight: 800, color: resumo.saldoFinal >= 0 ? '#81C784' : '#E57373', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
                 Saldo Final do Mês ({competenciaAtiva})
               </span>
+              <button
+                type="button"
+                onClick={() => setSaldoVisivel(!saldoVisivel)}
+                title={saldoVisivel ? "Ocultar Saldo Final" : "Mostrar Saldo Final"}
+                style={{
+                  background: 'rgba(255, 255, 255, 0.08)',
+                  border: '1px solid rgba(255, 255, 255, 0.15)',
+                  borderRadius: '6px',
+                  color: resumo.saldoFinal >= 0 ? '#81C784' : '#E57373',
+                  cursor: 'pointer',
+                  padding: '3px 6px',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  marginLeft: '4px',
+                  transition: 'all 0.15s ease'
+                }}
+              >
+                {saldoVisivel ? <Eye size={14} /> : <EyeOff size={14} />}
+              </button>
             </div>
             <span style={{ fontSize: '11px', color: '#AAB4BE' }}>
               Saldo consolidado pós entradas e saídas
@@ -372,9 +395,10 @@ export const LivroCaixaView: React.FC<LivroCaixaViewProps> = ({ onAbrirImportar 
             fontSize: '20px',
             fontWeight: 900,
             margin: 0,
-            color: resumo.saldoFinal >= 0 ? '#4CAF50' : '#F44336'
+            color: resumo.saldoFinal >= 0 ? '#4CAF50' : '#F44336',
+            letterSpacing: saldoVisivel ? 'normal' : '2px'
           }}>
-            {formatarMoeda(resumo.saldoFinal)}
+            {saldoVisivel ? formatarMoeda(resumo.saldoFinal) : 'R$ ••••••'}
           </p>
         </div>
       </div>

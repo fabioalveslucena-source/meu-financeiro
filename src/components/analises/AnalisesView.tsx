@@ -831,38 +831,21 @@ export const AnalisesView: React.FC = () => {
           }}>
             <div style={{
               display: 'flex',
-              justifyContent: 'space-between',
+              flexDirection: 'column',
               alignItems: 'center',
+              justifyContent: 'center',
+              textAlign: 'center',
               marginBottom: '16px',
               paddingBottom: '12px',
               borderBottom: '1px solid #1E3A5F',
-              flexWrap: 'wrap',
-              gap: '10px'
+              gap: '10px',
+              width: '100%'
             }}>
-              <div style={{ flex: '1 1 220px', minWidth: '200px' }}>
-                <div style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px',
-                  flexWrap: 'wrap'
-                }}>
-                  <span style={{ fontSize: '12px', fontWeight: 800, color: '#E2E8F0', letterSpacing: '0.4px' }}>
-                    Consumo por Natureza
-                  </span>
-                  <span style={{
-                    fontSize: '10.5px',
-                    fontWeight: 800,
-                    color: '#60A5FA',
-                    backgroundColor: 'rgba(96, 165, 250, 0.12)',
-                    border: '1px solid rgba(96, 165, 250, 0.3)',
-                    padding: '2px 8px',
-                    borderRadius: '8px',
-                    whiteSpace: 'nowrap'
-                  }}>
-                    3D Tridimensional
-                  </span>
-                </div>
-                <p style={{ margin: '3px 0 0 0', fontSize: '11px', color: '#94A3B8', fontWeight: 600, lineHeight: 1.4 }}>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center' }}>
+                <span style={{ fontSize: '13px', fontWeight: 800, color: '#E2E8F0', letterSpacing: '0.4px' }}>
+                  Consumo por Natureza
+                </span>
+                <p style={{ margin: '3px 0 0 0', fontSize: '11px', color: '#94A3B8', fontWeight: 600, lineHeight: 1.4, textAlign: 'center' }}>
                   Toque em uma barra para editar as categorias e valores
                 </p>
               </div>
@@ -871,6 +854,7 @@ export const AnalisesView: React.FC = () => {
               <div style={{
                 display: 'flex',
                 alignItems: 'center',
+                justifyContent: 'center',
                 backgroundColor: '#132F4C',
                 padding: '3px',
                 borderRadius: '12px',
@@ -881,7 +865,7 @@ export const AnalisesView: React.FC = () => {
                   type="button"
                   onClick={() => setFormatoGrafico3D('panoramico')}
                   style={{
-                    padding: '5px 10px',
+                    padding: '5px 12px',
                     borderRadius: '9px',
                     border: 'none',
                     backgroundColor: formatoGrafico3D === 'panoramico' ? '#287EA5' : 'transparent',
@@ -904,7 +888,7 @@ export const AnalisesView: React.FC = () => {
                   type="button"
                   onClick={() => setFormatoGrafico3D('colunas')}
                   style={{
-                    padding: '5px 10px',
+                    padding: '5px 12px',
                     borderRadius: '9px',
                     border: 'none',
                     backgroundColor: formatoGrafico3D === 'colunas' ? '#287EA5' : 'transparent',
