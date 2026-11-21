@@ -73,7 +73,20 @@ export const ConferenciaCupomModal: React.FC<ConferenciaCupomModalProps> = ({
     if (resultado) {
       setEstabelecimento(resultado.estabelecimento || 'Compra Fiscal');
       setDataCompra(resultado.data || new Date().toISOString().slice(0, 10));
-      setItens(resultado.itens || []);
+      setItens(
+        (resultado.itens || []).map(it => {
+          const q = Number(it.quantidade) || 1;
+          const u = Number(it.precoUnitario) || Number(it.precoTotal) || 0;
+          const tot = Number(it.precoTotal) || parseFloat((q * u).toFixed(2));
+          return {
+            ...it,
+            quantidade: q,
+            precoUnitario: u,
+            precoTotal: tot,
+            selecionado: true
+          };
+        })
+      );
       if (resultado.formaPagamentoSugerida) {
         setFormaPagamento(resultado.formaPagamentoSugerida as FormaPagamento);
       }
@@ -117,9 +130,15 @@ export const ConferenciaCupomModal: React.FC<ConferenciaCupomModalProps> = ({
       if (it.id !== id) return it;
       const atualizado = { ...it, [campo]: valor };
       if (campo === 'quantidade' || campo === 'precoUnitario') {
-        const q = Number(campo === 'quantidade' ? valor : it.quantidade) || 1;
+        const q = Number(campo === 'quantidade' ? valor : it.quantidade) || 0;
         const u = Number(campo === 'precoUnitario' ? valor : it.precoUnitario) || 0;
         atualizado.precoTotal = parseFloat((q * u).toFixed(2));
+      } else if (campo === 'precoTotal') {
+        const t = Number(valor) || 0;
+        const q = Number(it.quantidade) || 1;
+        if (q > 0) {
+          atualizado.precoUnitario = parseFloat((t / q).toFixed(2));
+        }
       }
       return atualizado;
     }));
@@ -479,125 +498,214 @@ export const ConferenciaCupomModal: React.FC<ConferenciaCupomModalProps> = ({
             <div style={{
               display: 'flex',
               flexDirection: 'column',
-              gap: '6px',
-              maxHeight: '340px',
-              overflowY: 'auto'
+              gap: '8px',
+              maxHeight: '350px',
+              overflowY: 'auto',
+              paddingRight: '2px'
             }}>
               {itens.map((it) => (
                 <div 
                   key={it.id}
                   style={{
                     display: 'flex',
-                    alignItems: 'center',
-                    gap: '8px',
-                    padding: '8px 10px',
-                    borderRadius: '10px',
+                    flexDirection: 'column',
+                    gap: '7px',
+                    padding: '9px 11px',
+                    borderRadius: '12px',
                     backgroundColor: it.selecionado ? '#132F4C' : '#0B1E33',
-                    border: it.selecionado ? '1px solid #265D97' : '1px solid #162C46',
-                    opacity: it.selecionado ? 1 : 0.6,
-                    transition: 'all 0.15s ease',
+                    border: it.selecionado ? '1.5px solid #265D97' : '1px solid #162C46',
+                    opacity: it.selecionado ? 1 : 0.55,
+                    transition: 'all 0.18s ease',
                     boxSizing: 'border-box',
                     width: '100%'
                   }}
                 >
-                  <input
-                    type="checkbox"
-                    checked={it.selecionado}
-                    onChange={() => toggleItem(it.id)}
-                    style={{
-                      width: '16px',
-                      height: '16px',
-                      cursor: 'pointer',
-                      accentColor: '#4CAF50',
-                      flexShrink: 0
-                    }}
-                  />
+                  {/* Linha 1 (Topo): Checkbox, Nome do Produto em linha inteira e Botão Excluir */}
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    width: '100%'
+                  }}>
+                    <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', flexShrink: 0 }}>
+                      <input
+                        type="checkbox"
+                        checked={it.selecionado}
+                        onChange={() => toggleItem(it.id)}
+                        style={{
+                          width: '17px',
+                          height: '17px',
+                          cursor: 'pointer',
+                          accentColor: '#4CAF50'
+                        }}
+                      />
+                    </label>
 
-                  <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: '3px' }}>
                     <input
                       type="text"
                       value={it.nome}
                       onChange={(e) => atualizarItem(it.id, 'nome', e.target.value)}
                       title={it.nome}
+                      placeholder="Nome do produto"
                       style={{
-                        width: '100%',
-                        background: 'transparent',
-                        border: 'none',
-                        outline: 'none',
+                        flex: 1,
+                        minWidth: 0,
+                        backgroundColor: '#0A1B30',
+                        border: '1px solid #1E3A5F',
+                        borderRadius: '7px',
                         color: '#FFFFFF',
-                        fontSize: '11.5px',
+                        fontSize: '11px',
                         fontWeight: 700,
-                        textOverflow: 'ellipsis',
-                        overflow: 'hidden',
-                        whiteSpace: 'nowrap',
-                        padding: 0
+                        padding: '5px 8px',
+                        outline: 'none',
+                        boxSizing: 'border-box'
                       }}
                     />
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '10px', color: '#8A99AD' }}>
-                      <span>Qtd:</span>
+
+                    <button
+                      type="button"
+                      onClick={() => removerItem(it.id)}
+                      title="Remover produto"
+                      style={{
+                        background: 'rgba(244, 67, 54, 0.12)',
+                        border: 'none',
+                        borderRadius: '7px',
+                        color: '#F44336',
+                        cursor: 'pointer',
+                        padding: '4px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        flexShrink: 0,
+                        width: '26px',
+                        height: '26px'
+                      }}
+                    >
+                      <Trash2 size={13} />
+                    </button>
+                  </div>
+
+                  {/* Linha 2 (Valores em 3 Colunas no padrão exato do Meu Mercado): Qtd, Unitário R$, Total R$ */}
+                  <div style={{
+                    display: 'grid',
+                    gridTemplateColumns: '0.8fr 1.1fr 1.1fr',
+                    gap: '6px',
+                    width: '100%'
+                  }}>
+                    {/* Coluna 1: Qtd */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', minWidth: 0 }}>
+                      <label style={{ fontSize: '9.5px', fontWeight: 800, color: '#8A99AD', textTransform: 'uppercase' }}>
+                        Qtd
+                      </label>
                       <input
                         type="number"
-                        step="0.01"
+                        step="any"
+                        min="0.001"
                         value={it.quantidade}
                         onChange={(e) => atualizarItem(it.id, 'quantidade', e.target.value)}
                         style={{
-                          width: '42px',
-                          background: '#0A1B30',
+                          width: '100%',
+                          backgroundColor: '#0A1B30',
                           border: '1px solid #1E3A5F',
-                          borderRadius: '4px',
+                          borderRadius: '6px',
                           color: '#FFFFFF',
                           fontSize: '10.5px',
-                          padding: '1px 3px',
-                          textAlign: 'center'
-                        }}
-                      />
-                      <span>× R$</span>
-                      <input
-                        type="number"
-                        step="0.01"
-                        value={it.precoUnitario}
-                        onChange={(e) => atualizarItem(it.id, 'precoUnitario', e.target.value)}
-                        style={{
-                          width: '54px',
-                          background: '#0A1B30',
-                          border: '1px solid #1E3A5F',
-                          borderRadius: '4px',
-                          color: '#FFFFFF',
-                          fontSize: '10.5px',
-                          padding: '1px 3px',
-                          textAlign: 'center'
+                          fontWeight: 700,
+                          padding: '4px 6px',
+                          textAlign: 'center',
+                          boxSizing: 'border-box'
                         }}
                       />
                     </div>
-                  </div>
 
-                  <div style={{ textAlign: 'right', flexShrink: 0, paddingLeft: '4px' }}>
-                    <span style={{ fontSize: '12px', fontWeight: 800, color: '#4CAF50', whiteSpace: 'nowrap' }}>
-                      {formatarMoeda(it.precoTotal)}
-                    </span>
-                  </div>
+                    {/* Coluna 2: Unitário com prefixo R$ e 2 casas decimais dos centavos garantidas */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', minWidth: 0 }}>
+                      <label style={{ fontSize: '9.5px', fontWeight: 800, color: '#8A99AD', textTransform: 'uppercase' }}>
+                        Unitário
+                      </label>
+                      <div style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '3px',
+                        backgroundColor: '#0A1B30',
+                        border: '1px solid #1E3A5F',
+                        borderRadius: '6px',
+                        padding: '0 6px',
+                        boxSizing: 'border-box'
+                      }}>
+                        <span style={{ fontSize: '9.5px', fontWeight: 800, color: '#5090D3', flexShrink: 0 }}>
+                          R$
+                        </span>
+                        <input
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          value={typeof it.precoUnitario === 'number' ? it.precoUnitario.toFixed(2) : it.precoUnitario}
+                          onChange={(e) => atualizarItem(it.id, 'precoUnitario', e.target.value)}
+                          onBlur={(e) => {
+                            const num = parseFloat(Number(e.target.value || 0).toFixed(2));
+                            atualizarItem(it.id, 'precoUnitario', num);
+                          }}
+                          style={{
+                            width: '100%',
+                            background: 'transparent',
+                            border: 'none',
+                            outline: 'none',
+                            color: '#FFFFFF',
+                            fontSize: '10.5px',
+                            fontWeight: 700,
+                            padding: '4px 0',
+                            textAlign: 'right',
+                            boxSizing: 'border-box'
+                          }}
+                        />
+                      </div>
+                    </div>
 
-                  <button
-                    type="button"
-                    onClick={() => removerItem(it.id)}
-                    title="Excluir item"
-                    style={{
-                      background: 'rgba(244, 67, 54, 0.12)',
-                      border: 'none',
-                      borderRadius: '6px',
-                      color: '#F44336',
-                      cursor: 'pointer',
-                      padding: '5px',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      flexShrink: 0,
-                      width: '26px',
-                      height: '26px'
-                    }}
-                  >
-                    <Trash2 size={13} />
-                  </button>
+                    {/* Coluna 3: Total com prefixo R$ e 2 casas decimais dos centavos garantidas */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', minWidth: 0 }}>
+                      <label style={{ fontSize: '9.5px', fontWeight: 800, color: '#8A99AD', textTransform: 'uppercase' }}>
+                        Total
+                      </label>
+                      <div style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '3px',
+                        backgroundColor: '#0A1B30',
+                        border: '1px solid #1E3A5F',
+                        borderRadius: '6px',
+                        padding: '0 6px',
+                        boxSizing: 'border-box'
+                      }}>
+                        <span style={{ fontSize: '9.5px', fontWeight: 800, color: '#4CAF50', flexShrink: 0 }}>
+                          R$
+                        </span>
+                        <input
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          value={typeof it.precoTotal === 'number' ? it.precoTotal.toFixed(2) : it.precoTotal}
+                          onChange={(e) => atualizarItem(it.id, 'precoTotal', e.target.value)}
+                          onBlur={(e) => {
+                            const num = parseFloat(Number(e.target.value || 0).toFixed(2));
+                            atualizarItem(it.id, 'precoTotal', num);
+                          }}
+                          style={{
+                            width: '100%',
+                            background: 'transparent',
+                            border: 'none',
+                            outline: 'none',
+                            color: '#4CAF50',
+                            fontSize: '10.5px',
+                            fontWeight: 900,
+                            padding: '4px 0',
+                            textAlign: 'right',
+                            boxSizing: 'border-box'
+                          }}
+                        />
+                      </div>
+                    </div>
+                  </div>
                 </div>
               ))}
             </div>
