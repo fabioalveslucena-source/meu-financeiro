@@ -44,7 +44,7 @@ export class FirestoreSyncService {
   /**
    * Salva ou atualiza um lançamento na nuvem
    */
-  public static async salvarLancamento(uid: string = MASTER_UID, lancamento: Lancamento): Promise<void> {
+  public static async salvarLancamento(uid: string, lancamento: Lancamento): Promise<void> {
     if (!db || !isFirebaseConfigured || !uid) return;
     try {
       const docRef = doc(db, 'usuarios', uid, 'lancamentos', lancamento.id);
@@ -62,7 +62,7 @@ export class FirestoreSyncService {
   /**
    * Baixa os IDs de lançamentos que foram excluídos na nuvem
    */
-  public static async baixarIdsExcluidos(uid: string = MASTER_UID): Promise<string[]> {
+  public static async baixarIdsExcluidos(uid: string): Promise<string[]> {
     if (!db || !isFirebaseConfigured || !uid) return [];
     try {
       const docRef = doc(db, 'usuarios', uid, 'sistema', 'exclusoes');
@@ -80,7 +80,7 @@ export class FirestoreSyncService {
   /**
    * Salva IDs de lançamentos excluídos no Firestore para que todos os aparelhos saibam da exclusão
    */
-  public static async salvarIdsExcluidos(uid: string = MASTER_UID, novosIds: string[]): Promise<void> {
+  public static async salvarIdsExcluidos(uid: string, novosIds: string[]): Promise<void> {
     if (!db || !isFirebaseConfigured || !uid || novosIds.length === 0) return;
     try {
       const docRef = doc(db, 'usuarios', uid, 'sistema', 'exclusoes');
@@ -97,7 +97,7 @@ export class FirestoreSyncService {
   /**
    * Remove um lançamento na nuvem e registra nos excluídos de forma segura
    */
-  public static async excluirLancamento(uid: string = MASTER_UID, lancamentoId: string): Promise<void> {
+  public static async excluirLancamento(uid: string, lancamentoId: string): Promise<void> {
     if (!db || !isFirebaseConfigured || !uid) return;
     try {
       await this.salvarIdsExcluidos(uid, [lancamentoId]);
@@ -111,7 +111,7 @@ export class FirestoreSyncService {
   /**
    * Remove múltiplos lançamentos na nuvem de forma atômica (Batch Write)
    */
-  public static async excluirLoteLancamentos(uid: string = MASTER_UID, ids: string[]): Promise<void> {
+  public static async excluirLoteLancamentos(uid: string, ids: string[]): Promise<void> {
     if (!db || !isFirebaseConfigured || !uid || ids.length === 0) return;
     try {
       await this.salvarIdsExcluidos(uid, ids);
@@ -133,7 +133,7 @@ export class FirestoreSyncService {
   /**
    * Salva um lote de lançamentos na nuvem (Batch Write)
    */
-  public static async enviarTodosLancamentos(uid: string = MASTER_UID, lancamentos: Lancamento[]): Promise<number> {
+  public static async enviarTodosLancamentos(uid: string, lancamentos: Lancamento[]): Promise<number> {
     if (!db || !isFirebaseConfigured || !uid || lancamentos.length === 0) return 0;
     try {
       // Divide em lotes de 400 (limite seguro do Firestore é 500 por batch)
@@ -168,7 +168,7 @@ export class FirestoreSyncService {
   /**
    * Baixa todos os lançamentos existentes no Firestore
    */
-  public static async baixarTodosLancamentos(uid: string = MASTER_UID): Promise<Lancamento[]> {
+  public static async baixarTodosLancamentos(uid: string): Promise<Lancamento[]> {
     if (!db || !isFirebaseConfigured || !uid) return [];
     try {
       const colRef = collection(db, 'usuarios', uid, 'lancamentos');
@@ -193,7 +193,7 @@ export class FirestoreSyncService {
   /**
    * Salva os cartões na nuvem
    */
-  public static async salvarCartoes(uid: string = MASTER_UID, cartoes: Cartao[]): Promise<void> {
+  public static async salvarCartoes(uid: string, cartoes: Cartao[]): Promise<void> {
     if (!db || !isFirebaseConfigured || !uid) return;
     try {
       const batch = writeBatch(db);
@@ -210,7 +210,7 @@ export class FirestoreSyncService {
   /**
    * Baixa cartões do Firestore
    */
-  public static async baixarCartoes(uid: string = MASTER_UID): Promise<Cartao[]> {
+  public static async baixarCartoes(uid: string): Promise<Cartao[]> {
     if (!db || !isFirebaseConfigured || !uid) return [];
     try {
       const snap = await getDocs(collection(db, 'usuarios', uid, 'cartoes'));
@@ -226,7 +226,7 @@ export class FirestoreSyncService {
   /**
    * Salva as categorias na nuvem
    */
-  public static async salvarCategorias(uid: string = MASTER_UID, categorias: Categoria[]): Promise<void> {
+  public static async salvarCategorias(uid: string, categorias: Categoria[]): Promise<void> {
     if (!db || !isFirebaseConfigured || !uid || categorias.length === 0) return;
     try {
       const tamLote = 400;
@@ -247,7 +247,7 @@ export class FirestoreSyncService {
   /**
    * Baixa as categorias do Firestore
    */
-  public static async baixarCategorias(uid: string = MASTER_UID): Promise<Categoria[]> {
+  public static async baixarCategorias(uid: string): Promise<Categoria[]> {
     if (!db || !isFirebaseConfigured || !uid) return [];
     try {
       const snap = await getDocs(collection(db, 'usuarios', uid, 'categorias'));
@@ -263,7 +263,7 @@ export class FirestoreSyncService {
   /**
    * Salva as naturezas na nuvem
    */
-  public static async salvarNaturezas(uid: string = MASTER_UID, naturezas: Natureza[]): Promise<void> {
+  public static async salvarNaturezas(uid: string, naturezas: Natureza[]): Promise<void> {
     if (!db || !isFirebaseConfigured || !uid || naturezas.length === 0) return;
     try {
       const batch = writeBatch(db);
@@ -280,7 +280,7 @@ export class FirestoreSyncService {
   /**
    * Baixa as naturezas do Firestore
    */
-  public static async baixarNaturezas(uid: string = MASTER_UID): Promise<Natureza[]> {
+  public static async baixarNaturezas(uid: string): Promise<Natureza[]> {
     if (!db || !isFirebaseConfigured || !uid) return [];
     try {
       const snap = await getDocs(collection(db, 'usuarios', uid, 'naturezas'));
@@ -296,7 +296,7 @@ export class FirestoreSyncService {
   /**
    * Salva perfil do usuário na nuvem
    */
-  public static async salvarPerfil(uid: string = MASTER_UID, usuario: UsuarioPerfil): Promise<void> {
+  public static async salvarPerfil(uid: string, usuario: UsuarioPerfil): Promise<void> {
     if (!db || !isFirebaseConfigured || !uid) return;
     try {
       const docRef = doc(db, 'usuarios', uid, 'perfil', 'dados');
@@ -309,7 +309,7 @@ export class FirestoreSyncService {
   /**
    * Baixa perfil do usuário do Firestore
    */
-  public static async baixarPerfil(uid: string = MASTER_UID): Promise<UsuarioPerfil | null> {
+  public static async baixarPerfil(uid: string): Promise<UsuarioPerfil | null> {
     if (!db || !isFirebaseConfigured || !uid) return null;
     try {
       const snap = await getDoc(doc(db, 'usuarios', uid, 'perfil', 'dados'));
@@ -328,7 +328,7 @@ export class FirestoreSyncService {
    * Garante que nenhum dado seja perdido e que todos os aparelhos tenham a mesma base.
    */
   public static async sincronizarTudo(
-    uid: string = MASTER_UID,
+    uid: string,
     estadoLocal: {
       lancamentos: Lancamento[];
       cartoes: Cartao[];
@@ -494,7 +494,7 @@ export class FirestoreSyncService {
    * Ativa a escuta contínua em tempo real (multi-dispositivos PC, Mac, Mobile)
    */
   public static iniciarEscutaTempoReal(
-    uid: string = MASTER_UID,
+    uid: string,
     onLancamentosAtualizados: (lancamentos: Lancamento[]) => void
   ): void {
     if (!db || !isFirebaseConfigured || !uid) return;

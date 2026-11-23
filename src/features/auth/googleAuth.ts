@@ -21,21 +21,14 @@ export interface PerfilGoogle {
   fotoUrl: string;
 }
 
-export const USUARIO_PADRAO_FABIO: PerfilGoogle = {
-  uid: 'fabio-master-uid',
-  nome: 'FABIO ALVES LUCENA',
-  email: 'alveslucenafabio@gmail.com',
-  fotoUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80',
-};
-
 /**
  * Dispara o Google Magic Logon
  * Tenta popup e, se o navegador mobile bloquear, utiliza redirect
  */
 export async function fazerLoginGoogle(): Promise<PerfilGoogle | null> {
   if (!auth || !isFirebaseConfigured) {
-    console.warn('Firebase não configurado com chaves de produção. Ativando sessão Magic Logon local para FABIO ALVES LUCENA.');
-    return USUARIO_PADRAO_FABIO;
+    console.error('Firebase não configurado ou indisponível.');
+    throw new Error('Serviço de autenticação temporariamente indisponível.');
   }
 
   try {
@@ -96,7 +89,7 @@ export function obterUsuarioLogado(): PerfilGoogle | null {
 }
 
 function extrairDadosUsuario(user: User): PerfilGoogle {
-  const isFabio = user.email?.toLowerCase() === 'alveslucenafabio@gmail.com';
+  const isFabio = user.email?.toLowerCase().trim() === 'alveslucenafabio@gmail.com';
   return {
     uid: isFabio ? 'fabio-master-uid' : user.uid,
     nome: user.displayName || (isFabio ? 'FABIO ALVES LUCENA' : 'Usuário'),

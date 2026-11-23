@@ -163,10 +163,9 @@ interface FinanceState {
 
 export const ADMIN_EMAIL = 'alveslucenafabio@gmail.com';
 
-export function isUsuarioAdmin(email?: string, uid?: string, nome?: string): boolean {
-  if (uid === MASTER_UID || uid === 'fabio-master-uid') return true;
+export function isUsuarioAdmin(email?: string, uid?: string, _nome?: string): boolean {
   if (email && email.toLowerCase().trim() === ADMIN_EMAIL.toLowerCase().trim()) return true;
-  if (nome && (nome.toUpperCase().includes('FABIO') || nome.toUpperCase().includes('LUCENA'))) return true;
+  if (uid && (uid === MASTER_UID || uid === 'fabio-master-uid')) return true;
   return false;
 }
 
@@ -183,25 +182,31 @@ export const STORAGE_KEY_SEGURANCA = 'mf_seguranca_v2';
 export const STORAGE_KEY_TEMA = 'mf_tema_v1';
 export const STORAGE_KEY_LANCAMENTOS_EXCLUIDOS = 'mf_lancamentos_excluidos_v1';
 
-export function registrarIdsExcluidos(ids: string[]): void {
+export function registrarIdsExcluidos(ids: string[], uid?: string): void {
   try {
     if (ids.length === 0) return;
+    const chave = getStorageKey(STORAGE_KEY_LANCAMENTOS_EXCLUIDOS, uid);
     if (typeof localStorage !== 'undefined') {
-      const salvo = localStorage.getItem(STORAGE_KEY_LANCAMENTOS_EXCLUIDOS);
+      const salvo = localStorage.getItem(chave);
       const conjunto = salvo ? new Set<string>(JSON.parse(salvo)) : new Set<string>();
       ids.forEach((id) => conjunto.add(id));
-      localStorage.setItem(STORAGE_KEY_LANCAMENTOS_EXCLUIDOS, JSON.stringify(Array.from(conjunto)));
+      localStorage.setItem(chave, JSON.stringify(Array.from(conjunto)));
     }
-    // Propaga automaticamente para a nuvem Firestore para proteger todos os outros dispositivos
-    FirestoreSyncService.salvarIdsExcluidos(MASTER_UID, ids).catch(console.warn);
+    // Propaga para a nuvem Firestore se o usuário estiver autenticado
+    if (uid) {
+      FirestoreSyncService.salvarIdsExcluidos(uid, ids).catch(console.warn);
+    }
   } catch (e) {
     console.error('Erro ao salvar IDs excluídos:', e);
   }
 }
 
 export function getStorageKey(chave: string, uid?: string): string {
-  if (!uid || uid === MASTER_UID || uid === 'fabio-master-uid') {
+  if (uid === MASTER_UID || uid === 'fabio-master-uid') {
     return chave;
+  }
+  if (!uid) {
+    return `${chave}_anon`;
   }
   return `${chave}_${uid}`;
 }
@@ -398,12 +403,9 @@ function salvarNoStorage<T>(chave: string, valor: T): void {
 
 export const useFinanceStore = create<FinanceState>((set, get) => {
   const activeUid = typeof localStorage !== 'undefined' ? localStorage.getItem(STORAGE_KEY_ACTIVE_UID) : null;
-  const existeFabioLocal = typeof localStorage !== 'undefined' && Boolean(localStorage.getItem(STORAGE_KEY_USUARIO));
-
-  // Um novo dispositivo/navegador não tem nem activeUid nem chave de usuário antiga
-  const ehNovoDispositivo = !activeUid && !existeFabioLocal;
-  const uidInicial = ehNovoDispositivo ? '' : (activeUid || MASTER_UID);
-  const isFabio = !ehNovoDispositivo && (uidInicial === MASTER_UID || uidInicial === 'fabio-master-uid');
+  const isFabio = Boolean(activeUid && (activeUid === MASTER_UID || activeUid === 'fabio-master-uid'));
+  const ehNovoDispositivo = !activeUid;
+  const uidInicial = activeUid || '';
 
   const usuarioInicial: UsuarioPerfil = ehNovoDispositivo
     ? {
@@ -426,8 +428,8 @@ export const useFinanceStore = create<FinanceState>((set, get) => {
         }
       );
 
-  // Garante que o administrador Fábio sempre possua e-mail e UID devidamente definidos
-  if (isFabio || (usuarioInicial.nome && usuarioInicial.nome.toUpperCase().includes('FABIO'))) {
+  // Garante que o administrador Fábio sempre possua e-mail e UID devidamente definidos se autenticado
+  if (isFabio) {
     usuarioInicial.email = usuarioInicial.email || ADMIN_EMAIL;
     usuarioInicial.uid = MASTER_UID;
   }
@@ -558,9 +560,11 @@ export const useFinanceStore = create<FinanceState>((set, get) => {
     setUsuario: (dados: Partial<UsuarioPerfil>) => {
       set((state) => {
         const novoUsuario = { ...state.usuario, ...dados };
-        const uid = novoUsuario.uid || MASTER_UID;
+        const uid = novoUsuario.uid;
         salvarNoStorage(getStorageKey(STORAGE_KEY_USUARIO, uid), novoUsuario);
-        FirestoreSyncService.salvarPerfil(uid, novoUsuario);
+        if (uid) {
+          FirestoreSyncService.salvarPerfil(uid, novoUsuario);
+        }
 
         let novasContas = [...state.contas];
         if (dados.bancoPrincipal || dados.agencia || dados.numeroConta || dados.tipoConta) {
@@ -624,7 +628,7 @@ export const useFinanceStore = create<FinanceState>((set, get) => {
 
     adicionarCompraMercado: (dados) => {
       const { lancamentos, usuario, adicionarLogRealtime, mostrarToast } = get();
-      const uid = usuario.uid || MASTER_UID;
+      const uid = usuario.uid;
       const totalParcelas = Math.max(1, dados.totalParcelas || 1);
       const dataObj = new Date(dados.data + 'T12:00:00');
       const [anoStr, mesStr] = dados.data.split('-');
@@ -692,7 +696,9 @@ export const useFinanceStore = create<FinanceState>((set, get) => {
         };
 
         novosLancamentos.push(l);
-        FirestoreSyncService.salvarLancamento(uid, l);
+        if (uid) {
+          FirestoreSyncService.salvarLancamento(uid, l);
+        }
       }
 
       const novaLista = [...novosLancamentos, ...lancamentos];
@@ -723,27 +729,31 @@ export const useFinanceStore = create<FinanceState>((set, get) => {
 
     atualizarCartao: (id, dados) => {
       set((state) => {
-        const uid = state.usuario.uid || MASTER_UID;
+        const uid = state.usuario.uid;
         const novosCartoes = state.cartoes.map((c) => c.id === id ? { ...c, ...dados } : c);
         salvarNoStorage(getStorageKey(STORAGE_KEY_CARTOES, uid), novosCartoes);
-        FirestoreSyncService.salvarCartoes(uid, novosCartoes);
+        if (uid) {
+          FirestoreSyncService.salvarCartoes(uid, novosCartoes);
+        }
         return { cartoes: novosCartoes, ultimoEventoTimestamp: Date.now() };
       });
       get().mostrarToast('Cartão atualizado com sucesso!', 'sucesso');
     },
 
     adicionarCartao: (cartao) => {
-      const uid = get().usuario.uid || MASTER_UID;
+      const uid = get().usuario.uid;
       const novo: Cartao = {
         ...cartao,
         id: `cartao-${Date.now()}`,
-        userId: uid,
+        userId: uid || 'anonimo',
         ativo: true,
       };
       set((state) => {
         const novosCartoes = [...state.cartoes, novo];
         salvarNoStorage(getStorageKey(STORAGE_KEY_CARTOES, uid), novosCartoes);
-        FirestoreSyncService.salvarCartoes(uid, novosCartoes);
+        if (uid) {
+          FirestoreSyncService.salvarCartoes(uid, novosCartoes);
+        }
         return { cartoes: novosCartoes, ultimoEventoTimestamp: Date.now() };
       });
       get().mostrarToast(`Cartão "${novo.nome}" cadastrado com sucesso!`, 'sucesso');
@@ -751,20 +761,22 @@ export const useFinanceStore = create<FinanceState>((set, get) => {
 
     excluirCartao: (id) => {
       set((state) => {
-        const uid = state.usuario.uid || MASTER_UID;
+        const uid = state.usuario.uid;
         const novosCartoes = state.cartoes.filter((c) => c.id !== id);
         salvarNoStorage(getStorageKey(STORAGE_KEY_CARTOES, uid), novosCartoes);
-        FirestoreSyncService.salvarCartoes(uid, novosCartoes);
+        if (uid) {
+          FirestoreSyncService.salvarCartoes(uid, novosCartoes);
+        }
         return { cartoes: novosCartoes, ultimoEventoTimestamp: Date.now() };
       });
       get().mostrarToast('Cartão removido.', 'info');
     },
 
     adicionarCategoria: (cat) => {
-      const uid = get().usuario.uid || MASTER_UID;
+      const uid = get().usuario.uid;
       const nova: Categoria = {
         id: `cat-${Date.now()}`,
-        userId: uid,
+        userId: uid || 'anonimo',
         natureza: cat.natureza,
         nome: cat.nome.trim(),
         tipo: cat.tipo || 'Despesa',
@@ -773,25 +785,29 @@ export const useFinanceStore = create<FinanceState>((set, get) => {
       set((state) => {
         const novasCategorias = [...state.categorias, nova];
         salvarNoStorage(getStorageKey(STORAGE_KEY_CATEGORIAS, uid), novasCategorias);
-        FirestoreSyncService.salvarCategorias(uid, novasCategorias).catch(console.warn);
+        if (uid) {
+          FirestoreSyncService.salvarCategorias(uid, novasCategorias).catch(console.warn);
+        }
         return { categorias: novasCategorias, ultimoEventoTimestamp: Date.now() };
       });
       get().mostrarToast(`Categoria "${nova.nome}" cadastrada com sucesso!`, 'sucesso');
     },
 
     excluirCategoria: (id) => {
-      const uid = get().usuario.uid || MASTER_UID;
+      const uid = get().usuario.uid;
       set((state) => {
         const novasCategorias = state.categorias.filter((c) => c.id !== id);
         salvarNoStorage(getStorageKey(STORAGE_KEY_CATEGORIAS, uid), novasCategorias);
-        FirestoreSyncService.salvarCategorias(uid, novasCategorias).catch(console.warn);
+        if (uid) {
+          FirestoreSyncService.salvarCategorias(uid, novasCategorias).catch(console.warn);
+        }
         return { categorias: novasCategorias, ultimoEventoTimestamp: Date.now() };
       });
       get().mostrarToast('Categoria removida.', 'info');
     },
 
     adicionarNatureza: (nat) => {
-      const uid = get().usuario.uid || MASTER_UID;
+      const uid = get().usuario.uid;
       const emoji = nat.emoji?.trim() || '📁';
       const nome = nat.nome.trim();
       const nova: Natureza = {
@@ -803,7 +819,9 @@ export const useFinanceStore = create<FinanceState>((set, get) => {
       set((state) => {
         const novasNaturezas = [...state.naturezas, nova];
         salvarNoStorage(getStorageKey(STORAGE_KEY_NATUREZAS, uid), novasNaturezas);
-        FirestoreSyncService.salvarNaturezas(uid, novasNaturezas).catch(console.warn);
+        if (uid) {
+          FirestoreSyncService.salvarNaturezas(uid, novasNaturezas).catch(console.warn);
+        }
         return { naturezas: novasNaturezas, ultimoEventoTimestamp: Date.now() };
       });
       get().mostrarToast(`Natureza "${nova.label}" cadastrada com sucesso!`, 'sucesso');
@@ -893,11 +911,13 @@ export const useFinanceStore = create<FinanceState>((set, get) => {
         });
       }
 
-      const uid = get().usuario.uid || MASTER_UID;
+      const uid = get().usuario.uid;
       const lancamentosAtualizados = [...novos, ...get().lancamentos];
       set({ lancamentos: lancamentosAtualizados, ultimoEventoTimestamp: Date.now() });
       salvarNoStorage(getStorageKey(STORAGE_KEY_LANCAMENTOS, uid), lancamentosAtualizados);
-      novos.forEach((n) => FirestoreSyncService.salvarLancamento(uid, n));
+      if (uid) {
+        novos.forEach((n) => FirestoreSyncService.salvarLancamento(uid, n));
+      }
 
       const msg = totalParcelas > 1 
         ? `Compra parcelada em ${totalParcelas}x adicionada!`
@@ -930,7 +950,7 @@ export const useFinanceStore = create<FinanceState>((set, get) => {
       }
 
       const { lancamentos, usuario } = get();
-      const uid = usuario.uid || MASTER_UID;
+      const uid = usuario.uid;
       const index = lancamentos.findIndex((l) => l.id === id);
       if (index === -1) {
         return { sucesso: false, mensagem: 'Lançamento não encontrado.' };
@@ -948,7 +968,9 @@ export const useFinanceStore = create<FinanceState>((set, get) => {
 
       set({ lancamentos: novaLista, ultimoEventoTimestamp: Date.now() });
       salvarNoStorage(getStorageKey(STORAGE_KEY_LANCAMENTOS, uid), novaLista);
-      FirestoreSyncService.salvarLancamento(uid, itemAtualizado);
+      if (uid) {
+        FirestoreSyncService.salvarLancamento(uid, itemAtualizado);
+      }
       get().mostrarToast('Lançamento atualizado com sucesso!', 'sucesso');
       get().adicionarLogRealtime(
         `[UPDATE] ${itemAtualizado.descricao}`,
@@ -975,7 +997,7 @@ export const useFinanceStore = create<FinanceState>((set, get) => {
       }
 
       const { lancamentos, usuario } = get();
-      const uid = usuario.uid || MASTER_UID;
+      const uid = usuario.uid;
       const item = lancamentos.find((l) => l.id === id);
       if (!item) {
         return { sucesso: false, mensagem: 'Lançamento não encontrado.' };
@@ -986,15 +1008,19 @@ export const useFinanceStore = create<FinanceState>((set, get) => {
       if (excluirTodasParcelas && item.compraId) {
         const itensExcluidos = lancamentos.filter((l) => l.compraId === item.compraId);
         const ids = itensExcluidos.map((l) => l.id);
-        registrarIdsExcluidos(ids);
+        registrarIdsExcluidos(ids, uid);
         novaLista = lancamentos.filter((l) => l.compraId !== item.compraId);
-        FirestoreSyncService.excluirLoteLancamentos(uid, ids).catch(console.warn);
+        if (uid) {
+          FirestoreSyncService.excluirLoteLancamentos(uid, ids).catch(console.warn);
+        }
         detalheLog = `Todas as parcelas da compra "${item.descricao}" foram removidas.`;
         get().mostrarToast('Todas as parcelas da compra foram removidas.', 'info');
       } else {
-        registrarIdsExcluidos([id]);
+        registrarIdsExcluidos([id], uid);
         novaLista = lancamentos.filter((l) => l.id !== id);
-        FirestoreSyncService.excluirLancamento(uid, id).catch(console.warn);
+        if (uid) {
+          FirestoreSyncService.excluirLancamento(uid, id).catch(console.warn);
+        }
         detalheLog = `Item "${item.descricao}" (R$ ${item.valor.toFixed(2)}) excluído.`;
         get().mostrarToast('Lançamento excluído com sucesso.', 'info');
       }
@@ -1022,7 +1048,7 @@ export const useFinanceStore = create<FinanceState>((set, get) => {
       }
 
       const { lancamentos, usuario } = get();
-      const uid = usuario.uid || MASTER_UID;
+      const uid = usuario.uid;
       const itensDoMes = lancamentos.filter((l) => l.competencia === competencia);
       if (itensDoMes.length === 0) {
         get().mostrarToast(`Nenhum lançamento encontrado em ${competencia}.`, 'info');
@@ -1030,9 +1056,11 @@ export const useFinanceStore = create<FinanceState>((set, get) => {
       }
 
       const idsParaExcluir = itensDoMes.map((l) => l.id);
-      registrarIdsExcluidos(idsParaExcluir);
+      registrarIdsExcluidos(idsParaExcluir, uid);
 
-      FirestoreSyncService.excluirLoteLancamentos(uid, idsParaExcluir).catch(console.warn);
+      if (uid) {
+        FirestoreSyncService.excluirLoteLancamentos(uid, idsParaExcluir).catch(console.warn);
+      }
 
       const novaLista = lancamentos.filter((l) => l.competencia !== competencia);
       set({ lancamentos: novaLista, ultimoEventoTimestamp: Date.now() });
@@ -1505,9 +1533,13 @@ export const useFinanceStore = create<FinanceState>((set, get) => {
     sincronizandoNuvem: false,
 
     sincronizarComNuvem: async () => {
-      set({ sincronizandoNuvem: true });
       const { lancamentos, cartoes, usuario, categorias, naturezas } = get();
-      const uid = usuario.uid || MASTER_UID;
+      if (!usuario.uid || usuario.nome === 'Novo Usuário') {
+        set({ sincronizandoNuvem: false });
+        return { sucesso: false, mensagem: 'Usuário não autenticado.' };
+      }
+      set({ sincronizandoNuvem: true });
+      const uid = usuario.uid;
       try {
         const res = await FirestoreSyncService.sincronizarTudo(uid, {
           lancamentos,
@@ -1530,7 +1562,7 @@ export const useFinanceStore = create<FinanceState>((set, get) => {
         }
 
         const usuarioBase = res.usuarioSincronizado || usuario;
-        const isFabioUser = uid === MASTER_UID || uid === 'fabio-master-uid' || usuarioBase.nome?.toUpperCase().includes('FABIO');
+        const isFabioUser = isUsuarioAdmin(usuarioBase.email, uid);
         const usuarioFinal: UsuarioPerfil = {
           ...usuarioBase,
           email: usuarioBase.email || (isFabioUser ? ADMIN_EMAIL : usuario.email),
@@ -1563,9 +1595,10 @@ export const useFinanceStore = create<FinanceState>((set, get) => {
     },
 
     enviarTudoParaNuvem: async () => {
-      set({ sincronizandoNuvem: true });
       const { lancamentos, cartoes, usuario } = get();
-      const uid = usuario.uid || MASTER_UID;
+      if (!usuario.uid || usuario.nome === 'Novo Usuário') return;
+      set({ sincronizandoNuvem: true });
+      const uid = usuario.uid;
       try {
         await FirestoreSyncService.enviarTodosLancamentos(uid, lancamentos);
         await FirestoreSyncService.salvarCartoes(uid, cartoes);
@@ -1579,8 +1612,10 @@ export const useFinanceStore = create<FinanceState>((set, get) => {
     },
 
     baixarTudoDaNuvem: async () => {
+      const { usuario } = get();
+      if (!usuario.uid || usuario.nome === 'Novo Usuário') return;
       set({ sincronizandoNuvem: true });
-      const uid = get().usuario.uid || MASTER_UID;
+      const uid = usuario.uid;
       try {
         const lancamentosNuvem = await FirestoreSyncService.baixarTodosLancamentos(uid);
         const cartoesNuvem = await FirestoreSyncService.baixarCartoes(uid);
@@ -1588,7 +1623,8 @@ export const useFinanceStore = create<FinanceState>((set, get) => {
         const idsExcluidosNuvem = await FirestoreSyncService.baixarIdsExcluidos(uid);
 
         if (typeof localStorage !== 'undefined') {
-          localStorage.setItem(STORAGE_KEY_LANCAMENTOS_EXCLUIDOS, JSON.stringify(idsExcluidosNuvem));
+          const chaveExcluidos = getStorageKey(STORAGE_KEY_LANCAMENTOS_EXCLUIDOS, uid);
+          localStorage.setItem(chaveExcluidos, JSON.stringify(idsExcluidosNuvem));
         }
         const setExcluidos = new Set(idsExcluidosNuvem);
         const lancamentosFiltrados = lancamentosNuvem.filter(l => !setExcluidos.has(l.id));
@@ -1601,7 +1637,7 @@ export const useFinanceStore = create<FinanceState>((set, get) => {
           set({ cartoes: cartoesNuvem });
         }
         if (perfilNuvem) {
-          const isFabioUser = uid === MASTER_UID || uid === 'fabio-master-uid' || perfilNuvem.nome?.toUpperCase().includes('FABIO');
+          const isFabioUser = isUsuarioAdmin(perfilNuvem.email, uid);
           const perfilFinal: UsuarioPerfil = {
             ...perfilNuvem,
             email: perfilNuvem.email || (isFabioUser ? ADMIN_EMAIL : get().usuario.email),
@@ -1692,13 +1728,12 @@ export const useFinanceStore = create<FinanceState>((set, get) => {
         const categoriasFinais = categoriasNuvem.length > 0 ? categoriasNuvem : catLocal;
         const naturezasFinais = naturezasNuvem.length > 0 ? naturezasNuvem : natLocal;
 
-        const isFabioUser = isFabio || (perfil.nome && perfil.nome.toUpperCase().includes('FABIO')) || (perfilNuvem?.nome && perfilNuvem.nome.toUpperCase().includes('FABIO'));
         const novoPerfil: UsuarioPerfil = {
-          nome: perfil.nome || perfilNuvem?.nome || (isFabioUser ? 'FABIO ALVES LUCENA' : 'Meu Perfil'),
-          titulo: perfilNuvem?.titulo || (isFabioUser ? 'Titular Master • Conta Especial' : 'Controle Financeiro Pessoal'),
-          bancoPrincipal: perfilNuvem?.bancoPrincipal || (isFabioUser ? 'Banco do Brasil' : (cartoesFinais[0]?.nome || 'Meu Banco')),
-          avatarUrl: perfil.fotoUrl || perfilNuvem?.avatarUrl || (isFabioUser ? USUARIO_PADRAO.avatarUrl : 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80'),
-          email: perfil.email || perfilNuvem?.email || (isFabioUser ? ADMIN_EMAIL : ''),
+          nome: perfil.nome || perfilNuvem?.nome || (isFabio ? 'FABIO ALVES LUCENA' : 'Meu Perfil'),
+          titulo: perfilNuvem?.titulo || (isFabio ? 'Titular Master • Conta Especial' : 'Controle Financeiro Pessoal'),
+          bancoPrincipal: perfilNuvem?.bancoPrincipal || (isFabio ? 'Banco do Brasil' : (cartoesFinais[0]?.nome || 'Meu Banco')),
+          avatarUrl: perfil.fotoUrl || perfilNuvem?.avatarUrl || (isFabio ? USUARIO_PADRAO.avatarUrl : 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80'),
+          email: perfil.email || perfilNuvem?.email || (isFabio ? ADMIN_EMAIL : ''),
           uid: uidFinal,
         };
 

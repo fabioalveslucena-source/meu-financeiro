@@ -1550,10 +1550,10 @@ export const ConfiguracoesBaseModal: React.FC<ConfiguracoesBaseModalProps> = ({
                       </span>
                     </div>
                     <span style={{ fontSize: '12px', color: '#82B1FF', display: 'block' }}>
-                      {usuario.email || 'alveslucenafabio@gmail.com'}
+                      {usuario.email || 'admin@meufinanceiro.com'}
                     </span>
                     <span style={{ fontSize: '10px', color: '#AAB4BE' }}>
-                      UID: {usuario.uid || 'fabio-master-uid'}
+                      UID: {usuario.uid || 'admin-master'}
                     </span>
                   </div>
                 </div>

@@ -14,7 +14,7 @@ import { SyncProgressOverlay } from '../comum/SyncProgressOverlay';
 import { OnboardingModal } from '../comum/OnboardingModal';
 import { ConfiguracoesBaseModal } from '../configuracoes/ConfiguracoesBaseModal';
 import { useFinanceStore, isUsuarioAdmin } from '../../stores/financeStore';
-import { FirestoreSyncService, MASTER_UID } from '../../services/firestoreSync';
+import { FirestoreSyncService } from '../../services/firestoreSync';
 import type { VozInterpretada } from '../../features/voice/voiceInterpreter';
 import type { TipoLancamento } from '../../types';
 import { observarEstadoAuth } from '../../features/auth/googleAuth';
@@ -81,8 +81,9 @@ export const AppShell: React.FC = () => {
   }, [usuario.uid, autenticarUsuario]);
 
   useEffect(() => {
-    const uid = usuario.uid || (usuario.nome === 'Novo Usuário' ? '' : MASTER_UID);
-    if (!uid) return;
+    // Bloqueia sincronização com a nuvem se não houver UID autenticado ou for 'Novo Usuário'
+    if (!usuario.uid || usuario.nome === 'Novo Usuário') return;
+    const uid = usuario.uid;
 
     // Sincroniza dados com a nuvem Firestore automaticamente para o usuário ativo
     sincronizarComNuvem();
